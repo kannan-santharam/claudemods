@@ -1,0 +1,14 @@
+{
+  "name": "claudemods",
+  "owner": {
+    "name": "Kannan Santharam"
+  },
+  "description": "Claude Code mods by Kannan Santharam, one folder per mod.",
+  "plugins": [
+    {
+      "name": "fleet",
+      "source": "./fleet",
+      "description": "A live dashboard for every Claude Code session on your Mac: status, model, context, cost and activity, an animated office view, one-click jump to each terminal tab, messaging, model switching, and starting or resuming sessions from the browser."
+    }
+  ]
+}
