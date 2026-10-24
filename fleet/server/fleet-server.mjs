@@ -1159,21 +1159,49 @@ function cleanLine(text, max) {
   return String(text || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max)
 }
 
+// Terminal has no command for a new tab, so with a window already open it
+// presses ⌘T and waits for the tab to appear. Pressing keys needs the
+// Accessibility permission; without it the session opens in a new window
+// and the answer says why. Answers "tab", "window" or "window-no-access".
 const OPEN_IN_TERMINAL = `on run argv
+  set theCommand to item 1 of argv
   tell application "Terminal"
+    set hasWindow to (count of windows) > 0
     activate
-    do script (item 1 of argv)
   end tell
-  return "ok"
+  if hasWindow then
+    tell application "Terminal" to set tabsBefore to count of tabs of front window
+    try
+      tell application "System Events" to tell process "Terminal" to keystroke "t" using command down
+    on error
+      tell application "Terminal" to do script theCommand
+      return "window-no-access"
+    end try
+    repeat 20 times
+      delay 0.1
+      tell application "Terminal" to set tabsNow to count of tabs of front window
+      if tabsNow > tabsBefore then
+        tell application "Terminal" to do script theCommand in selected tab of front window
+        return "tab"
+      end if
+    end repeat
+  end if
+  tell application "Terminal" to do script theCommand
+  return "window"
 end run`
 
 const OPEN_IN_ITERM = `on run argv
   tell application "iTerm2"
     activate
+    if (count of windows) > 0 then
+      tell current window to create tab with default profile
+      tell current session of current window to write text (item 1 of argv)
+      return "tab"
+    end if
     set newWindow to (create window with default profile)
     tell current session of newWindow to write text (item 1 of argv)
   end tell
-  return "ok"
+  return "window"
 end run`
 
 const IS_RUNNING = `on run argv
@@ -1183,10 +1211,19 @@ end run`
 
 // New windows open in the terminal you use: Terminal if it is open, else
 // iTerm2 if that is, else Terminal.
+// A new session opens as a tab in the front window when it can, else in a new window.
 async function openInTerminal(command) {
   const terminalRunning = (await osascript(IS_RUNNING, 'Terminal')).stdout.trim() === 'yes'
   const itermRunning = !terminalRunning && (await osascript(IS_RUNNING, 'iTerm2')).stdout.trim() === 'yes'
-  return osascript(itermRunning ? OPEN_IN_ITERM : OPEN_IN_TERMINAL, command)
+  const result = await osascript(itermRunning ? OPEN_IN_ITERM : OPEN_IN_TERMINAL, command)
+  const answer = result.stdout.trim()
+  if (answer === 'tab' || answer === 'window') return { ok: true, command, where: answer }
+  if (answer === 'window-no-access') {
+    return { ok: true, command, where: 'window', hint: 'To open new sessions as tabs instead, allow Terminal in System Settings › Privacy & Security › Accessibility.' }
+  }
+  if (result.stderr.includes('-1743'))
+    return { ok: false, reason: 'macOS blocked it: allow control of Terminal in System Settings › Privacy & Security › Automation.' }
+  return { ok: false, reason: result.stderr.trim() || 'Terminal did not open.' }
 }
 
 // -------------------------------------------------------- folder browser --
@@ -1251,11 +1288,7 @@ async function startSession(body) {
     model ? `--model ${shellQuote(model)}` : '',
     name ? `--name ${shellQuote(name)}` : '',
   ].filter(Boolean).join(' ')
-  const result = await openInTerminal(command)
-  if (result.stdout.trim() === 'ok') return { ok: true, command }
-  if (result.stderr.includes('-1743'))
-    return { ok: false, reason: 'macOS blocked it: allow control of Terminal in System Settings › Privacy & Security › Automation.' }
-  return { ok: false, reason: result.stderr.trim() || 'Terminal did not open.' }
+  return openInTerminal(command)
 }
 
 const TYPE_INTO_ITERM = `on run argv
@@ -1433,11 +1466,7 @@ async function resumeSession(body) {
   const command = [`cd ${shellQuote(facts.cwd)} &&`, 'claude', `--resume ${sessionId}`, model ? `--model ${shellQuote(model)}` : '']
     .filter(Boolean)
     .join(' ')
-  const result = await openInTerminal(command)
-  if (result.stdout.trim() === 'ok') return { ok: true, command }
-  if (result.stderr.includes('-1743'))
-    return { ok: false, reason: 'macOS blocked it: allow control of Terminal in System Settings › Privacy & Security › Automation.' }
-  return { ok: false, reason: result.stderr.trim() || 'Terminal did not open.' }
+  return openInTerminal(command)
 }
 
 async function runSessionCommand(body) {

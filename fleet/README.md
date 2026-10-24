@@ -45,12 +45,12 @@ Sessions started after the install load the mod. Sessions already running still 
 - `/fleet` opens the pane beside the conversation; run it again (or `/fleet close`) to close it.
 - `/fleet web` opens the browser dashboard at http://127.0.0.1:8770, signed in. Opening that address any other way shows a prompt to run `/fleet web`: the dashboard only opens for you. Any session with the mod starts the dashboard server if it is not running, and it stops by itself after an hour with no Claude sessions. After a plugin update, the first session on the new version replaces the old server.
 
-The first time you click **Open tab**, start a session or send a message to an older session, macOS asks whether Claude may control Terminal (or iTerm2). Allow it in System Settings › Privacy & Security › Automation. New sessions open in Terminal if it is running, otherwise in iTerm2.
+The first time you click **Open tab**, start a session or send a message to an older session, macOS asks whether Claude may control Terminal (or iTerm2). Allow it in System Settings › Privacy & Security › Automation. New and resumed sessions open as a new tab in the front window, in Terminal if it is running, otherwise in iTerm2. Terminal has no command for a new tab, so Fleet presses ⌘T for you, which needs Terminal allowed in System Settings › Privacy & Security › Accessibility; until then they open in a new window and the dashboard tells you so.
 
 ### What it reads, runs and sends
 
 - Reads `~/.claude/sessions`, the transcripts under `~/.claude/projects` (the last 8 days), `ps` and `git` in each session's folder.
-- Runs `osascript` to bring a tab to the front, type a message into an older session's tab, or open a new Terminal or iTerm2 window; `claude` to start or resume a session; and sends a session `SIGTERM` (or `SIGKILL` if you force it) when you end it from the dashboard.
+- Runs `osascript` to bring a tab to the front, type a message into an older session's tab, open a new Terminal or iTerm2 tab (or window) for a session you start or resume; `claude` to start or resume a session; and sends a session `SIGTERM` (or `SIGKILL` if you force it) when you end it from the dashboard.
 - Typing into a tab only happens while that session is idle with Claude in the foreground, never into a plain shell.
 
 ## Settings
