@@ -1,9 +1,9 @@
 {
   "name": "claudemods",
   "owner": {
-    "name": "Kannan Santharam"
+    "name": "Kannan Appiya Santharam"
   },
-  "description": "Claude Code mods by Kannan Santharam, one folder per mod.",
+  "description": "Claude Code mods by Kannan Appiya Santharam, one folder per mod.",
   "plugins": [
     {
       "name": "fleet",

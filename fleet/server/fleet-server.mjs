@@ -1325,7 +1325,7 @@ async function typeIntoTab(tty, text) {
     // separately once the paste has settled (about two seconds; longer text takes longer) submits it.
     await new Promise(resolve => setTimeout(resolve, Math.min(6000, 2500 + text.length)))
     await osascript(script, `/dev/${tty}`, '\r')
-    return { ok: true }
+    return { ok: true, script }
   }
   return { ok: false, reason: 'its Terminal or iTerm2 tab was not found' }
 }
@@ -1493,7 +1493,89 @@ async function runSessionCommand(body) {
   } else return { ok: false, reason: 'Only /model, /rename and /compact can be sent.' }
 
   inbox.push({ id: crypto.randomUUID(), sessionId: session.sessionId, text: `/${command}${args ? ' ' + args : ''}`, command, args, createdAt: Date.now(), claimedAt: 0, claimedBy: '' })
+  if (command === 'model') void answerModelQuestion(session.sessionId, args)
   return { ok: true, via: hasMod(session.sessionId) ? 'command' : 'typed' }
+}
+
+// /model asks "Switch model?" in the terminal when the conversation is cached
+// for the current model. The person already confirmed the switch in the
+// dashboard, which showed the same warning, so once that question is on screen
+// in the session's tab, offering exactly this model, Return picks its "Yes".
+// Nothing is pressed unless the question is there.
+const READ_TERMINAL_TAB = `on run argv
+  if application "Terminal" is not running then return ""
+  tell application "Terminal"
+    repeat with w in windows
+      repeat with t in tabs of w
+        if tty of t is (item 1 of argv) then return history of t
+      end repeat
+    end repeat
+  end tell
+  return ""
+end run`
+const READ_ITERM_TAB = `on run argv
+  if application "iTerm2" is not running then return ""
+  tell application "iTerm2"
+    repeat with w in windows
+      repeat with t in tabs of w
+        repeat with s in sessions of t
+          if tty of s is (item 1 of argv) then return text of s
+        end repeat
+      end repeat
+    end repeat
+  end tell
+  return ""
+end run`
+// /model also saves the model as the default for new sessions. A switch from
+// the dashboard is for that one session, so the saved default is put back as
+// it was (only its "model" key; the rest of the file is left as it is).
+const USER_SETTINGS = path.join(HOME, '.claude', 'settings.json')
+function readDefaultModel() {
+  try { return JSON.parse(fs.readFileSync(USER_SETTINGS, 'utf8')).model } catch { return undefined }
+}
+function restoreDefaultModel(model) {
+  try {
+    const settings = JSON.parse(fs.readFileSync(USER_SETTINGS, 'utf8'))
+    if (settings.model === model) return false
+    if (model === undefined) delete settings.model
+    else settings.model = model
+    fs.writeFileSync(USER_SETTINGS, JSON.stringify(settings, null, 2) + '\n')
+    return true
+  } catch {
+    return false
+  }
+}
+const answering = new Set()
+async function answerModelQuestion(sessionId, model) {
+  if (answering.has(sessionId)) return
+  answering.add(sessionId)
+  const label = MODELS.find(option => option.id === model)?.label || model
+  const defaultBefore = readDefaultModel()
+  const deadline = Date.now() + MESSAGE_TTL_MS
+  let isAnswered = false, isRestored = false, quietPolls = 0
+  try {
+    while (Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      if (readDefaultModel() !== defaultBefore) isRestored = restoreDefaultModel(defaultBefore) || isRestored
+      if (isRestored) return
+      // Switched without saving a default (or not yet saved): give it a few polls.
+      const session = live.get(sessionId)
+      if (!session) return
+      if (baseModel(heartbeats.get(sessionId)?.model) === model && ++quietPolls > 3) return
+      if (isAnswered || !session.tty) continue
+      for (const [reader, typer] of [[READ_TERMINAL_TAB, TYPE_INTO_TAB], [READ_ITERM_TAB, TYPE_INTO_ITERM]]) {
+        const screen = (await osascript(reader, `/dev/${session.tty}`)).stdout
+        const lastLines = screen.trimEnd().split('\n').slice(-12).join('\n')
+        if (lastLines.includes('Switch model?') && new RegExp(`❯\\s*1\\.\\s*Yes, switch to ${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(lastLines)) {
+          await osascript(typer, `/dev/${session.tty}`, '\r')
+          isAnswered = true
+          break
+        }
+      }
+    }
+  } finally {
+    answering.delete(sessionId)
+  }
 }
 
 function hasMod(sessionId) {

@@ -557,6 +557,16 @@ tr.session.flash > td { animation: flash 1.6s ease-out; }
     </div>
   </form>
 </div>
+<div class="overlay" id="model-dialog" hidden>
+  <form class="dialog wide" id="model-form" role="dialog" aria-modal="true" aria-labelledby="model-title" aria-describedby="model-text">
+    <h3 id="model-title">Switch model?</h3>
+    <p id="model-text"></p>
+    <div class="dialog-actions">
+      <button type="button" class="btn" id="model-cancel">Cancel</button>
+      <button type="submit" class="btn primary" id="model-confirm">Switch model</button>
+    </div>
+  </form>
+</div>
 <div class="overlay" id="end-dialog" hidden>
   <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="end-title" aria-describedby="end-text">
     <div class="dialog-icon">✕</div>
@@ -770,11 +780,16 @@ function subagentRows(s, depth) {
 // under it, with each session's subagents, so the tree shows who runs what.
 // belowOf counts what works under each session, all the way down: running
 // subagents and the child sessions (and theirs) working or waiting for you.
+// Rows keep their place: sorted by name (then start time), never by status, so a
+// session going busy or idle does not make the table jump.
+const byName = (first, second) =>
+  String(first.name || '').localeCompare(String(second.name || ''), undefined, { sensitivity: 'base', numeric: true }) ||
+  (first.startedAt || 0) - (second.startedAt || 0) || String(first.sessionId).localeCompare(String(second.sessionId))
 function sessionTree(sessions) {
   const byId = new Map(sessions.map(s => [s.sessionId, s]))
   const childrenOf = new Map()
   const roots = []
-  for (const s of sessions) {
+  for (const s of sessions.slice().sort(byName)) {
     const parent = s.parentSessionId
     if (parent && parent !== s.sessionId && byId.has(parent)) {
       if (!childrenOf.has(parent)) childrenOf.set(parent, [])
@@ -950,7 +965,7 @@ $('#live-rows').addEventListener('click', event => {
   if (focusId) return focusTab(focusId)
   if (sendId) return sendFromDraft(sendId)
   const modelId = attr('applyModel'), renameId = attr('applyRename')
-  if (modelId) { event.preventDefault(); return sessionCommand(modelId, 'model', fieldValue('model:' + modelId, sessionById(modelId)?.model || '')) }
+  if (modelId) { event.preventDefault(); return askToSwitchModel(modelId, fieldValue('model:' + modelId, sessionById(modelId)?.model || '')) }
   if (renameId) { event.preventDefault(); return sessionCommand(renameId, 'rename', fieldValue('rename:' + renameId, sessionById(renameId)?.name || '')) }
   if (selectId) {
     target.checked ? state.selected.add(selectId) : state.selected.delete(selectId)
@@ -1199,6 +1214,35 @@ $('#compact-form').addEventListener('submit', async event => {
     toast(result.ok ? `${sessionById(sessionId)?.name || 'The session'} will compact ${result.via === 'command' ? 'when idle' : 'once its tab is idle'}` : result.reason)
     setTimeout(refreshLive, 3000)
   } catch (error) { toast(error.message) } finally { button.disabled = false }
+})
+
+// ------------------------------------------------------------ switching --
+// The session would ask "Switch model?" in its terminal; it is asked here
+// instead, and the session is told the answer, so nothing waits in the tab.
+const switching = { sessionId: '', model: '' }
+function askToSwitchModel(sessionId, model) {
+  const session = sessionById(sessionId)
+  if (!session) return
+  if (!model) return toast('Choose a model first')
+  if (model === session.model) return toast(`${session.name} already uses ${shortModel(model)}`)
+  Object.assign(switching, { sessionId, model })
+  const label = (state.options?.models || []).find(option => option.id === model)?.label || shortModel(model)
+  $('#model-title').textContent = `Switch ${session.name} to ${label}?`
+  $('#model-text').textContent = session.contextTokens
+    ? `Its conversation is cached for ${shortModel(session.model)}. On ${label}, the full history (${fmtTokens(session.contextTokens)} tokens) is read again with its next message, so that reply is slower and uses more tokens. Later replies are cached again.`
+    : `It switches to ${label} for its next message.`
+  $('#model-confirm').textContent = `Switch to ${label}`
+  $('#model-dialog').hidden = false
+  $('#model-confirm').focus()
+}
+function closeModelDialog() { $('#model-dialog').hidden = true }
+$('#model-cancel').addEventListener('click', closeModelDialog)
+$('#model-dialog').addEventListener('click', event => { if (event.target.id === 'model-dialog') closeModelDialog() })
+document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('#model-dialog').hidden) closeModelDialog() })
+$('#model-form').addEventListener('submit', async event => {
+  event.preventDefault()
+  closeModelDialog()
+  await sessionCommand(switching.sessionId, 'model', switching.model)
 })
 
 // ---------------------------------------------------------------- ending --
