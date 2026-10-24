@@ -1,5 +1,25 @@
 # Fleet — a dashboard for all your Claude Code sessions
 
+## Installation
+
+Mac only, needs Node.js 18 or newer.
+
+1. In Claude Code, run:
+
+   ```
+   /plugin install fleet --marketplace kannan-santharam/claudemods
+   ```
+
+2. Answer `y`, then choose `user`.
+
+3. Open a new Claude session and run:
+
+   ```
+   /fleet web
+   ```
+
+## About
+
 If you run Claude Code in many terminal tabs at once, Fleet gives you one place to see and steer all of them. It is a Claude Code mod with two faces: a pane inside any session (`/fleet`) and a browser dashboard (`/fleet web`) with live status, reports and charts.
 
 ## What it does
@@ -22,17 +42,9 @@ Costs are an estimate at API list prices. On a Claude subscription they are not 
 - Claude Code with mods (function-hook plugins) enabled
 - Node.js 18 or newer. The dashboard server is one small Node script with no dependencies; the mod finds Node on your PATH or where Homebrew, nvm, fnm, volta or asdf keep it.
 
-## Install
+## More on installing
 
-At the prompt of a Claude Code session:
-
-```
-/plugin install fleet --marketplace kannan-santharam/claudemods
-```
-
-Answer `y` to add the marketplace, then pick the user scope so it loads in every session.
-
-From a shell:
+The user scope loads Fleet in every session. To install from a shell instead:
 
 ```
 claude plugin install fleet --marketplace kannan-santharam/claudemods
