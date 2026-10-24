@@ -196,8 +196,6 @@ tr.subagent > td { padding-top: 6px; padding-bottom: 6px; background: color-mix(
 .name.sub { font-weight: 500; font-size: 13px; max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .btn:disabled { opacity: .55; cursor: default; }
 .meter-cell { position: relative; }
-.compact-btn { position: absolute; inset: -4px -6px; display: none; align-items: center; justify-content: center; gap: 6px; border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border)); border-radius: 8px; background: var(--surface-1); color: var(--accent); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; box-shadow: var(--shadow); }
-.meter-cell:hover .compact-btn, .compact-btn:focus-visible { display: flex; }
 .actions { display: flex; gap: 6px; justify-content: flex-end; }
 input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
 
@@ -852,7 +850,6 @@ function renderLive() {
         <td class="hide-sm"><span class="chip"><i class="sw" style="background:${modelColor(s.model)}"></i>${esc(shortModel(s.model))}</span></td>
         <td><div class="meter-cell">
           <div class="meter" data-tip="${fmtTokens(s.contextTokens)} of ${fmtTokens(s.contextWindow)} tokens"><div class="track"><b class="${hot ? 'hot' : ''}" style="width:${s.contextPercent}%"></b></div><span>${s.contextPercent}%</span></div>
-          <button class="compact-btn" data-compact="${id}" title="Summarise the conversation so far to free up context">Compact</button>
         </div></td>
         <td class="num hide-sm">${fmtTokens(s.todayTokens)}</td>
         <td class="num hide-sm">${fmtCost(s.todayCost)}</td>
@@ -883,6 +880,7 @@ function renderLive() {
             <button class="btn small" data-apply-rename="${id}">Rename</button>
           </label>
           <span class="spacer"></span>
+          <button class="btn small" data-compact="${id}" title="Summarise the conversation so far to free up context (${s.contextPercent}% full)">Compact · ${s.contextPercent}%</button>
           <button class="btn small danger" data-end="${id}" title="Stop this Claude session; its conversation is kept and can be resumed">End session</button>
         </div>
         <div class="convo">

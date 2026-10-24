@@ -1299,7 +1299,7 @@ const TYPE_INTO_ITERM = `on run argv
       repeat with t in tabs of w
         repeat with s in sessions of t
           if tty of s is target then
-            tell s to write text (item 2 of argv)
+            tell s to write text (item 2 of argv) newline no
             return "ok"
           end if
         end repeat
@@ -1318,7 +1318,14 @@ async function typeIntoTab(tty, text) {
     } catch {
       continue
     }
-    if (result.stdout.trim() === 'ok') return { ok: true }
+    if (result.stdout.trim() !== 'ok') continue
+    // The terminal ends typed text with a line feed, which Claude Code reads as
+    // "new line", not "send", and a fast burst reads as a paste. So the text goes
+    // in first (its line breaks stay line breaks), and a carriage return sent
+    // separately once the paste has settled (about two seconds; longer text takes longer) submits it.
+    await new Promise(resolve => setTimeout(resolve, Math.min(6000, 2500 + text.length)))
+    await osascript(script, `/dev/${tty}`, '\r')
+    return { ok: true }
   }
   return { ok: false, reason: 'its Terminal or iTerm2 tab was not found' }
 }
@@ -1497,7 +1504,7 @@ function hasMod(sessionId) {
 // What is typed must stay one prompt: Claude Code reads backslash-Enter as a
 // new line, and a leading / or ! would run a command or a shell line instead.
 function asTypedPrompt(text) {
-  return guardLeading(stripControls(text)).replace(/\n/g, '\\\n')
+  return guardLeading(stripControls(text))
 }
 
 // Escape, Ctrl-C, Ctrl-D and the like would act on the terminal, not be read.
