@@ -28,6 +28,7 @@ const TOKEN_FILE = path.join(DATA_DIR, 'token')
 const PRICING_FILE = path.join(DATA_DIR, 'pricing.json')
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json')
 const STATUS_LOG_FILE = path.join(DATA_DIR, 'status-log.jsonl')
+const RECENTLY_CLOSED_FILE = path.join(DATA_DIR, 'recently-closed.json')
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const PAGE_FILE = path.join(HERE, 'dashboard.html')
 
@@ -303,6 +304,41 @@ function pruneMemory() {
   }
 }
 
+// The last ten sessions that closed, with what it takes to resume them, kept
+// across restarts. Only sessions that had a terminal tab: a headless run is
+// not something to reopen.
+const RECENTLY_CLOSED_LIMIT = 10
+let recentlyClosed = []
+function loadRecentlyClosed() {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(RECENTLY_CLOSED_FILE, 'utf8'))
+    recentlyClosed = Array.isArray(parsed) ? parsed.slice(0, RECENTLY_CLOSED_LIMIT) : []
+  } catch {
+    recentlyClosed = []
+  }
+}
+function rememberClosed(session, endedAt) {
+  if (!session || !session.tty) return
+  const summary = sessionSummaries(dayKey(endedAt - 7 * DAY_MS)).get(session.sessionId)
+  const entry = {
+    sessionId: session.sessionId,
+    name: displayName(session, summary),
+    cwd: session.cwd,
+    folder: session.folder,
+    model: baseModel(heartbeats.get(session.sessionId)?.model) || summary?.model || '',
+    lastPrompt: String(summary?.lastPrompt || '').slice(0, 300),
+    startedAt: session.startedAt || 0,
+    endedAt,
+  }
+  recentlyClosed = [entry, ...recentlyClosed.filter(other => other.sessionId !== entry.sessionId)].slice(0, RECENTLY_CLOSED_LIMIT)
+  try { writePrivate(RECENTLY_CLOSED_FILE, JSON.stringify(recentlyClosed, null, 1)) } catch {}
+}
+function listRecentlyClosed() {
+  return recentlyClosed
+    .filter(entry => !live.has(entry.sessionId) && !isExcludedPath(entry.cwd) && fs.existsSync(entry.cwd))
+    .map(entry => ({ ...entry, cwd: undefined }))
+}
+
 function recordStatus(entry) {
   statusLog.push(entry)
   fs.appendFile(STATUS_LOG_FILE, JSON.stringify(entry) + '\n', { mode: 0o600 }, () => {})
@@ -397,6 +433,7 @@ async function scanRegistry() {
   }
   for (const sessionId of [...live.keys()]) {
     if (seen.has(sessionId)) continue
+    rememberClosed(live.get(sessionId), now)
     live.delete(sessionId)
     heartbeats.delete(sessionId)
     recordStatus({ t: now, sessionId, name: '', status: 'ended' })
@@ -1320,14 +1357,34 @@ async function typeIntoTab(tty, text) {
     }
     if (result.stdout.trim() !== 'ok') continue
     // The terminal ends typed text with a line feed, which Claude Code reads as
-    // "new line", not "send", and a fast burst reads as a paste. So the text goes
-    // in first (its line breaks stay line breaks), and a carriage return sent
-    // separately once the paste has settled (about two seconds; longer text takes longer) submits it.
-    await new Promise(resolve => setTimeout(resolve, Math.min(6000, 2500 + text.length)))
-    await osascript(script, `/dev/${tty}`, '\r')
-    return { ok: true, script }
+    // "new line", not "send", and a fast burst reads as a paste whose Return is
+    // swallowed. So the text goes in first (its line breaks stay line breaks),
+    // then a carriage return, and the input box is read back: while the text is
+    // still sitting there, Return is pressed again a little later.
+    const reader = script === TYPE_INTO_TAB ? READ_TERMINAL_TAB : READ_ITERM_TAB
+    const opening = text.split('\n')[0].trim().slice(0, 30)
+    let waitMs = Math.min(6000, 2500 + text.length)
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await sleep(waitMs)
+      await osascript(script, `/dev/${tty}`, '\r')
+      await sleep(1000)
+      const box = inputBoxText((await osascript(reader, `/dev/${tty}`)).stdout)
+      if (box === null || !(box.includes(opening) || box.includes('[Pasted text'))) return { ok: true, script }
+      waitMs = 2000
+    }
+    return { ok: false, reason: 'it is still in its input box: press Enter in its tab' }
   }
   return { ok: false, reason: 'its Terminal or iTerm2 tab was not found' }
+}
+const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
+
+// What sits in Claude Code's input box: the lines between the last two rules
+// drawn across the screen. null when the screen does not show one.
+function inputBoxText(screen) {
+  const lines = String(screen || '').trimEnd().split('\n')
+  const rules = []
+  for (let index = lines.length - 1; index >= 0 && rules.length < 2; index--) if (/^\s*─{20,}/.test(lines[index])) rules.push(index)
+  return rules.length < 2 ? null : lines.slice(rules[1] + 1, rules[0]).join('\n')
 }
 
 const TYPE_INTO_TAB = `on run argv
@@ -1843,6 +1900,7 @@ const server = http.createServer(async (request, response) => {
     if (request.method === 'GET' && url.pathname === '/api/browse') {
       return send(response, 200, await browse(url.searchParams.get('path') || ''))
     }
+    if (request.method === 'GET' && url.pathname === '/api/recently-closed') return send(response, 200, { sessions: listRecentlyClosed() })
     if (request.method === 'GET' && url.pathname === '/api/history') {
       return send(response, 200, await listHistory(url.searchParams.get('folder') || ''))
     }
@@ -1933,6 +1991,7 @@ server.listen(PORT, '127.0.0.1', () => {
   loadPricing()
   loadConfig()
   loadStatusLog()
+  loadRecentlyClosed()
   log(`fleet listening on http://127.0.0.1:${PORT} (pid ${process.pid})`)
 
   const registryLoop = async () => {

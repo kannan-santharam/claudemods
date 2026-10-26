@@ -200,6 +200,13 @@ tr.subagent > td { padding-top: 6px; padding-bottom: 6px; background: color-mix(
 input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
 
 .detail > td { padding: 0 10px 16px; background: var(--surface-2); }
+/* Nothing typed or shown in an open session can widen the table: the panel
+   takes the row's width and its content wraps or scrolls inside it. */
+.detail-body { contain: inline-size; position: sticky; left: 10px; max-width: calc(100cqw - 20px); }
+.card > .scroll-x { container-type: inline-size; }
+.delivery { overflow-wrap: anywhere; }
+.composer.chat textarea { min-width: 0; }
+.drawer.files { overflow-x: auto; }
 .convo { display: grid; gap: 10px; padding: 12px 4px 0 34px; }
 .thread { display: flex; flex-direction: column; gap: 12px; padding: 4px 0 6px; }
 .msg { display: flex; gap: 8px; align-items: flex-end; max-width: min(78%, 980px); }
@@ -321,6 +328,11 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent);
 .history .item:hover { background: var(--surface-2); }
 .history .item[aria-selected="true"] { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
 .history .item.live { cursor: default; opacity: .75; }
+.history.closed { max-height: 252px; margin-bottom: 4px; }
+.history.closed .item { grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; cursor: default; }
+.history.closed .item:hover { background: none; }
+.history.closed .snippet { grid-column: 1 / 3; }
+.history.closed .btn { grid-row: 1 / 3; grid-column: 3; }
 .history .title { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .history .meta { font-size: 12px; color: var(--text-muted); text-align: right; white-space: nowrap; }
 .history .snippet { grid-column: 1 / -1; font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -533,11 +545,12 @@ tr.session.flash > td { animation: flash 1.6s ease-out; }
 <div class="overlay" id="resume-dialog" hidden>
   <form class="dialog wider" id="resume-form" role="dialog" aria-modal="true" aria-labelledby="resume-title">
     <h3 id="resume-title">Resume a past session</h3>
-    <p>Pick a folder, then a session from it. It reopens in a new tab of your terminal (or a new window) with its conversation intact.</p>
-    <div class="field"><span>Folder</span><div class="picker" id="resume-picker"></div></div>
+    <p>It reopens in a new tab of your terminal (or a new window) with its conversation intact.</p>
     <div class="field-row">
       <label class="field"><span>Model</span><select id="resume-model"></select></label>
     </div>
+    <div class="field" id="closed-section" hidden><span>Recently closed</span><div class="history closed" id="closed-list"></div></div>
+    <div class="field"><span>Or pick a folder, then a session from it</span><div class="picker" id="resume-picker"></div></div>
     <input class="search" id="resume-search" placeholder="Filter by name or prompt…" autocomplete="off">
     <div class="history" id="resume-list" role="listbox" aria-label="Past sessions"></div>
     <div class="dialog-actions">
@@ -884,7 +897,7 @@ function renderLive() {
     // The conversation and the message box come first; what the row already
     // shows (model, context, cost) is not repeated, and the rest waits behind a button.
     rows.push(`
-      <tr class="detail"><td colspan="9">
+      <tr class="detail"><td colspan="9"><div class="detail-body">
         <div class="controls actions">
           <label class="control">Model
             <select data-field="model:${id}">${modelOptions(fieldValue('model:' + s.sessionId, s.model))}</select>
@@ -922,7 +935,7 @@ function renderLive() {
             ${s.parentSessionId ? `<dt>Started by</dt><dd>${esc(byId.get(s.parentSessionId)?.name || s.parentSessionId)}${s.launcher ? ' via ' + esc(s.launcher) : ''}</dd>` : ''}
             <dt>Version</dt><dd>${esc(s.version || '—')}</dd>
           </dl>` : ''}
-      </td></tr>`)
+      </div></td></tr>`)
     }
     if (!isCollapsed) rows.push(subagentRows(s, depth))
   }
@@ -1141,8 +1154,38 @@ async function loadHistory() {
   } catch (error) { resume.sessions = []; toast(error.message) }
   renderHistory()
 }
+// The last ten sessions that closed, each one click from coming back.
+async function loadRecentlyClosed() {
+  try {
+    const result = await api('/api/recently-closed')
+    const closed = result.sessions || []
+    $('#closed-section').hidden = !closed.length
+    $('#closed-list').innerHTML = closed.map(s => `
+      <div class="item">
+        <span class="title">${esc(s.name)}</span>
+        <span class="meta">${esc(s.folder)} · closed ${ago(s.endedAt)} ago${s.model ? ' · ' + esc(shortModel(s.model)) : ''}</span>
+        <button type="button" class="btn small primary" data-resume-closed="${esc(s.sessionId)}">Resume</button>
+        <span class="snippet">${s.lastPrompt ? 'Last: ' + esc(s.lastPrompt) : '&nbsp;'}</span>
+      </div>`).join('')
+  } catch { $('#closed-section').hidden = true }
+}
+async function resumeSession(sessionId, button) {
+  if (button) button.disabled = true
+  try {
+    const result = await api('/api/resume', { sessionId, model: $('#resume-model').value })
+    if (!result.ok) return toast(result.reason)
+    closeResumeDialog()
+    toast(`Resumed in a new ${result.where === 'tab' ? 'tab' : 'window'} — it appears here in a few seconds${result.hint ? '. ' + result.hint : ''}`)
+    setTimeout(refreshLive, 4000)
+  } catch (error) { toast(error.message) } finally { if (button) button.disabled = false }
+}
+$('#closed-list').addEventListener('click', event => {
+  const button = event.target.closest('[data-resume-closed]')
+  if (button) resumeSession(button.dataset.resumeClosed, button)
+})
 async function openResumeDialog() {
   await loadOptions()
+  loadRecentlyClosed()
   const options = state.options || { folders: [], models: [] }
   $('#resume-model').innerHTML = options.models.map(m => `<option value="${esc(m.id)}">${esc(m.id ? m.label : 'Keep its model')}</option>`).join('')
   $('#resume-search').value = ''
@@ -1176,12 +1219,8 @@ $('#resume-form').addEventListener('submit', async event => {
   button.disabled = true
   try {
     rememberFolder(resumePicker.path)
-    const result = await api('/api/resume', { sessionId: resume.chosen, model: $('#resume-model').value })
-    if (!result.ok) return toast(result.reason)
-    closeResumeDialog()
-    toast(`Resumed in a new ${result.where === 'tab' ? 'tab' : 'window'} — it appears here in a few seconds${result.hint ? '. ' + result.hint : ''}`)
-    setTimeout(refreshLive, 4000)
-  } catch (error) { toast(error.message) } finally { button.disabled = !resume.chosen }
+    await resumeSession(resume.chosen)
+  } finally { button.disabled = !resume.chosen }
 })
 document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('#resume-dialog').hidden) closeResumeDialog() })
 

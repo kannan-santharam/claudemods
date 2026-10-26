@@ -30,7 +30,7 @@ If you run Claude Code in many terminal tabs at once, Fleet gives you one place 
 - **Jump to a session's terminal tab** with one click (Terminal and iTerm2).
 - **Message a session** from the browser or the pane. A connected session takes the message as if you typed it; an older session gets it typed into its tab once it is idle.
 - **Switch a session's model, rename it, compact it or end it** from the browser (open a session: the buttons sit at the top), or select several and end them together. Ending stops it the way closing it would, so its conversation is kept and it can be resumed.
-- **Start a new session** in any folder you browse to (breadcrumbs, subfolders, recent folders), with a name and a model, or **resume a past one** from that folder's history.
+- **Start a new session** in any folder you browse to (breadcrumbs, subfolders, recent folders), with a name and a model, or **resume a past one**, with the last ten sessions you closed listed first so each is one click away, or any session from a folder's history.
 - **Reports**: estimated cost or tokens per day by model, a 24-hour activity timeline with the time each session waited for you, cost by project, top sessions, context fill, tool calls and a per-project table (sessions, prompts, commits, files edited, branches).
 - **Plan usage**: your 5-hour and weekly limits as Claude Code reports them, with the time left until each resets.
 
