@@ -12,11 +12,11 @@
   --surface-1: #fcfcfb;
   --surface-2: #f0efec;
   --surface-3: #e7e6e2;
-  --border: #e2e1dc;
-  --grid: #ecebe7;
+  --border: #dcdbd5;
+  --grid: #e8e7e2;
   --text-primary: #0b0b0b;
   --text-secondary: #52514e;
-  --text-muted: #7c7b76;
+  --text-muted: #6d6c67;
   --accent: #2a78d6;
   --accent-soft: #e3eefb;
   --series-1: #2a78d6;
@@ -115,17 +115,22 @@ button, textarea, input { font: inherit; color: inherit; }
 .icon-btn { border: 1px solid var(--border); background: var(--surface-1); border-radius: 9px; width: 34px; height: 32px; cursor: pointer; color: var(--text-secondary); }
 
 /* tiles */
-.tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
-.tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); min-width: 0; }
-.tile .label { color: var(--text-secondary); font-size: 12.5px; }
-.tile .value { font-size: 26px; font-weight: 650; letter-spacing: -.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
-.tile .sub { color: var(--text-muted); font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tile.alert { border-color: color-mix(in srgb, var(--critical) 45%, var(--border)); }
+/* Plan usage gets a little more width, so its two limits fit side by side. */
+.tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(0, 1.5fr); gap: 12px; margin-bottom: 16px; }
+.tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; box-shadow: var(--shadow); min-width: 0; }
+.tile .label { color: var(--text-secondary); font-size: 12px; }
+.tile .value { font-size: 21px; line-height: 1.25; font-weight: 650; letter-spacing: -.02em; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.tile .sub { color: var(--text-muted); font-size: 11.5px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile.alert { border-color: transparent; }
 .tile.alert .value { color: var(--critical); }
-.limit { margin-top: 8px; }
-.limit + .limit { margin-top: 6px; }
-.limit .resets { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
-.limit .row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); }
+.limit { margin-top: 6px; }
+.limit .resets { font-size: 11px; line-height: 1.35; color: var(--text-muted); margin-top: 2px; text-wrap: pretty; }
+.limit .row { display: flex; justify-content: space-between; gap: 4px; font-size: 11px; white-space: nowrap; color: var(--text-secondary); }
+.limit .track { height: 5px; }
+/* Plan usage: the two limits sit side by side when the tile is wide enough, stacked when not. */
+.tile:has(> .limit) { display: flex; flex-wrap: wrap; align-content: flex-start; column-gap: 10px; }
+.tile:has(> .limit) > .label { flex: 0 0 100%; }
+.tile > .limit { flex: 1 1 100px; min-width: 0; }
 .track { height: 6px; border-radius: 4px; background: var(--surface-3); overflow: hidden; margin-top: 3px; }
 .track > b { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
 .track > b.hot { background: var(--critical); }
@@ -234,7 +239,7 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent);
 @keyframes typing { 0%, 60%, 100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .bubble.typing i { animation: none; } }
 .msg.claude .bubble.asking { background: var(--critical-soft); color: var(--critical); box-shadow: none; }
-.ask-card { background: var(--surface-1); border: 1px solid color-mix(in srgb, var(--critical) 35%, var(--border)); border-left: 3px solid var(--critical); border-radius: 12px; padding: 10px 12px; max-width: 640px; box-shadow: 0 1px 2px rgba(0,0,0,.08); display: grid; gap: 8px; }
+.ask-card { background: var(--surface-1); border: 1px solid transparent; border-radius: 12px; padding: 10px 12px; max-width: 640px; box-shadow: 0 1px 2px rgba(0,0,0,.08); display: grid; gap: 8px; }
 .ask-head { font-weight: 650; font-size: 13.5px; display: flex; justify-content: space-between; gap: 12px; }
 .ask-head span { font-weight: 400; font-size: 11.5px; color: var(--text-muted); }
 .ask-note { font-size: 12.5px; color: var(--text-secondary); }
@@ -434,6 +439,239 @@ tr.session.flash > td { animation: flash 1.6s ease-out; }
   .tl-row, .tl-axis { grid-template-columns: 110px 1fr 52px; }
   .tl-grid { left: 122px; right: 64px; }
 }
+
+/* ------------------------------------------------- table and chat side by side -- */
+/* The table on the left and the selected session docked on the right, filling the window. */
+.split { display: grid; grid-template-columns: minmax(0, 58fr) minmax(0, 42fr); gap: 14px; align-items: start; }
+@media (max-width: 1100px) { .split { grid-template-columns: minmax(0, 1fr); } }
+.live-card > header { gap: 10px; }
+.filters button span { color: var(--text-muted); margin-left: 4px; font-weight: 500; }
+.filters button[aria-pressed="true"] span { color: var(--text-secondary); }
+.live-search { font: inherit; font-size: 13px; color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; width: 220px; max-width: 100%; outline: none; }
+.live-search:focus { border-color: var(--accent); }
+tr.session { cursor: pointer; }
+tr.session.selected > td { background: var(--surface-2); }
+tr.session.selected > td:first-child { box-shadow: inset 2px 0 0 var(--text-primary); }
+.live-card .bulkbar { position: sticky; bottom: 0; margin: 0; border-radius: 0 0 var(--radius) var(--radius); }
+.today { white-space: nowrap; }
+.split { height: max(480px, calc(100vh - var(--split-top, 200px) - 16px)); }
+.split > .live-card { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+.live-card > .scroll-x { flex: 1; min-height: 0; overflow: auto; }
+.live-card thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-1); }
+.session-pane { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+@media (max-width: 1100px) {
+  .split { height: auto; }
+  .split > .live-card { height: auto; }
+  .session-pane { height: 82vh; }
+}
+.pane-head { padding: 14px 16px 0; display: grid; gap: 8px; border-bottom: 1px solid var(--border); }
+.pane-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pane-title h2 { margin: 0; font-size: 16px; }
+.pane-where { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; color: var(--text-muted); font-size: 12.5px; }
+.pane-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pane-tools select, .pane-tools input { font: inherit; font-size: 12.5px; color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; padding: 4px 8px; }
+.pane-tools input { width: 150px; }
+.pane-tools .spacer { flex: 1; }
+.actions-menu { position: relative; }
+.actions-menu .menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; width: 300px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 12px 30px rgba(0, 0, 0, .35); padding: 10px; display: grid; gap: 10px; }
+.actions-menu .menu label { display: grid; gap: 5px; font-size: 12px; color: var(--text-muted); }
+.actions-menu .menu .row { display: flex; gap: 6px; }
+.actions-menu .menu .row > :first-child { flex: 1; min-width: 0; }
+.actions-menu .menu select, .actions-menu .menu input { width: 100%; font: inherit; font-size: 12.5px; color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; padding: 5px 8px; }
+.actions-menu .menu .item { text-align: left; justify-content: flex-start; width: 100%; }
+.pane-tabs { display: flex; gap: 2px; }
+.pane-tabs button { border: 0; background: none; font: inherit; font-size: 13px; color: var(--text-secondary); padding: 6px 10px 9px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.pane-tabs button[aria-selected="true"] { color: var(--text-primary); font-weight: 600; border-bottom-color: var(--text-primary); }
+.pane-body { overflow-y: auto; flex: 1; min-height: 0; padding: 12px 16px; }
+.pane-body .thread { padding: 0; }
+.pane-body .msg { max-width: 92%; }
+.pane-foot { padding: 10px 16px 14px; border-top: 1px solid var(--border); display: grid; gap: 6px; }
+.pane-foot .composer.chat { margin: 0; }
+.pane-empty { padding: 40px 24px; color: var(--text-muted); text-align: center; }
+.pane-body .drawer { margin: 0; }
+/* Rows a little tighter, so every column fits beside the pane. */
+.wrap { max-width: 1680px; }
+.live-card th, .live-card td { padding-left: 8px; padding-right: 8px; }
+.live-card td { padding-top: 7px; padding-bottom: 7px; }
+.live-card .name.sub { max-width: 260px; }
+.live-card .meter { min-width: 92px; gap: 6px; }
+.live-card .meter span { font-size: 12px; min-width: 30px; text-align: right; }
+.live-card .shell-out { max-width: 300px; margin: 0; }
+.live-card td.num { white-space: nowrap; }
+
+/* ---------------------------------------------- tags read as labels, buttons as buttons -- */
+/* Tags are flat: no border, a soft fill, small text in a full pill (or just a dot and
+   a word). Buttons are raised: a solid fill, a firmer border, a shadow under them and a
+   pressed state, so nothing you can't click looks like something you can. */
+.tag, .tag.hidden-tag, .tag.shell-kind, .shell-tag, .sid {
+  border: 0;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+  padding: 0 8px;
+}
+.tag { background: color-mix(in srgb, var(--text-muted) 14%, transparent); color: var(--text-secondary); }
+.tag.hidden-tag { background: color-mix(in srgb, var(--series-7) 16%, transparent); color: var(--series-7); }
+.tag.shell-kind, .shell-tag { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.sid { background: color-mix(in srgb, var(--text-muted) 10%, transparent); color: var(--text-secondary); font-size: 11px; }
+.sid:hover { background: color-mix(in srgb, var(--text-muted) 20%, transparent); }
+/* "connected" is a status word with a dot, not a box. */
+.link { border: 0; padding: 0; border-radius: 0; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; color: var(--text-muted); }
+.link::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); opacity: .6; }
+.link.on { color: var(--good-text); }
+.link.on::before { background: var(--good); opacity: 1; }
+/* The subagents toggle reads as a link with a chevron. */
+.nest { border: 0; background: none; padding: 0; color: var(--text-muted); font-size: 11.5px; border-radius: 0; }
+.nest:hover { background: none; color: var(--text-primary); text-decoration: underline; }
+/* Buttons: raised. */
+.btn {
+  background: var(--surface-2);
+  border-color: color-mix(in srgb, var(--text-muted) 38%, var(--border));
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .06), 0 1px 2px rgba(0, 0, 0, .08);
+  font-weight: 550;
+  color: var(--text-primary);
+}
+.btn:hover { background: var(--surface-3); border-color: color-mix(in srgb, var(--text-muted) 55%, var(--border)); }
+.btn:active { transform: translateY(1px); box-shadow: none; }
+.btn.ghost { box-shadow: none; }
+.btn.primary { box-shadow: 0 1px 2px rgba(0, 0, 0, .18); }
+.btn.danger { background: color-mix(in srgb, var(--critical) 8%, var(--surface-2)); }
+.btn:disabled { box-shadow: none; transform: none; }
+
+/* ------------------------------------------------- a turning ring on what waits for you -- */
+/* Only the "Waiting on you" tile and the question cards: a thin multi-colour border that
+   slowly turns. No glow. It sits on the element's own border, so nothing can clip it. */
+@property --fleet-spin { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes fleet-spin { to { --fleet-spin: 360deg; } }
+.tile.alert, .ask-card, .nav-item.waiting { position: relative; border-color: transparent; }
+.tile.alert::before, .ask-card::before, .nav-item.waiting::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(from var(--fleet-spin), #ff3ec8, #ff8a3d, #ffd23f, #2ee6ff, #8b5cf6, #ff3ec8);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: fleet-spin 4s linear infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) { .tile.alert::before, .ask-card::before, .nav-item.waiting::before { animation: none; } }
+
+/* ------------------------------------------------------------------ light theme pass -- */
+/* Light is the base; these only name light, so dark is untouched. */
+:root[data-theme="light"] .msg.claude .bubble { background: var(--surface-2); box-shadow: none; }
+:root[data-theme="light"] .msg.claude .bubble .md code { background: var(--surface-1); }
+:root[data-theme="light"] .btn:not(.primary):not(.danger):not(.danger-solid):not(.ghost) { background: #fff; }
+:root[data-theme="light"] .btn:not(.primary):not(.danger):not(.danger-solid):not(.ghost):hover { background: var(--surface-2); }
+:root[data-theme="light"] .actions-menu .menu { box-shadow: 0 12px 32px rgba(20, 20, 18, .14), 0 2px 6px rgba(20, 20, 18, .06); }
+
+/* The terminal tab button as its own column at the end of each row. To make room
+   the table takes a little more of the width, and "connected" is just its dot there. */
+.split { grid-template-columns: minmax(0, 62fr) minmax(0, 38fr); }
+@media (max-width: 1100px) { .split { grid-template-columns: minmax(0, 1fr); } }
+.live-card .link { font-size: 0; gap: 0; }
+.live-card .link::before { width: 7px; height: 7px; }
+.live-card .meter { min-width: 84px; }
+.live-card .where { flex-wrap: wrap; row-gap: 2px; }
+.live-card .shell-out { max-width: 240px; }
+.tab-col { width: 1%; text-align: right; white-space: nowrap; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ------------------------------------------------- sessions: List view, three panes -- */
+/* List: every session down the left, the selected one's chat in the middle, its figures,
+   the headline figures and a small office on the right. Table: the table and the docked
+   chat, as before. The same .split holds both, so it is sized to the window the same way. */
+.view-toggle { margin-left: auto; align-self: center; margin-bottom: 4px; }
+.view-toggle[hidden] { display: none; }
+.tabs .view-toggle button { border-bottom: 0; margin-bottom: 0; padding: 3px 12px; font-size: 12.5px; }
+.nav-col, .side-col { display: none; }
+#view-sessions[data-layout="list"] .live-card { display: none; }
+#view-sessions[data-layout="list"] .split { grid-template-columns: 300px minmax(0, 1fr) 320px; gap: 14px; }
+#view-sessions[data-layout="list"] .nav-col { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+#view-sessions[data-layout="list"] .side-col { display: flex; flex-direction: column; gap: 12px; height: 100%; min-width: 0; overflow-y: auto; scrollbar-width: thin; }
+@media (min-width: 900px) {
+  #view-sessions[data-layout="list"] .split { height: max(480px, calc(100vh - var(--split-top, 200px) - 16px)); }
+  #view-sessions[data-layout="list"] .session-pane { height: 100%; }
+}
+@media (max-width: 1279px) {
+  #view-sessions[data-layout="list"] .split { grid-template-columns: 290px minmax(0, 1fr); }
+  #view-sessions[data-layout="list"] .side-col { display: none; }
+}
+@media (max-width: 899px) {
+  #view-sessions[data-layout="list"] .split { grid-template-columns: minmax(0, 1fr); height: auto; }
+  #view-sessions[data-layout="list"] .nav-col { height: auto; max-height: 44vh; }
+  #view-sessions[data-layout="list"] .session-pane { height: 82vh; }
+}
+
+/* left: the sessions */
+.nav-head { display: grid; gap: 8px; padding: 12px 12px 10px; border-bottom: 1px solid var(--border); }
+.nav-head .live-search { width: 100%; }
+.nav-filters { display: flex; flex-wrap: wrap; gap: 0; }
+.nav-filters button { flex: 1 1 auto; padding: 3px 5px; font-size: 12px; }
+.nav-list { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 8px 10px; scrollbar-width: thin; }
+.nav-group { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 6px 5px; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
+.nav-group.needs { color: var(--critical); }
+.nav-group span { font-weight: 500; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.nav-item { position: relative; display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; column-gap: 9px; align-items: start; padding: 8px 8px 8px 10px; margin-bottom: 3px; border: 1px solid transparent; border-radius: 10px; cursor: pointer; }
+.nav-item:hover { background: var(--surface-2); }
+.nav-item.selected { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.nav-item.waiting { border-color: transparent; }
+.nav-item.child { margin-left: 16px; }
+.nav-item.child::after { content: "↳"; position: absolute; left: -13px; top: 7px; font-size: 12px; color: var(--text-muted); }
+.nav-dot { width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--text-muted); }
+.nav-dot.busy { background: var(--accent); animation: blink 1.2s infinite; }
+.nav-dot.waiting { background: var(--critical); border-radius: 2px; transform: rotate(45deg); }
+.nav-dot.shell { background: var(--series-7); }
+.nav-dot.delegating { background: transparent; border: 2px solid var(--accent); animation: blink 1.6s infinite; }
+.nav-dot.delegating.needs { border-color: var(--critical); }
+@media (prefers-reduced-motion: reduce) { .nav-dot.busy, .nav-dot.delegating { animation: none; } }
+.nav-main { min-width: 0; display: grid; gap: 2px; }
+.nav-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.nav-name { font-weight: 600; font-size: 13.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-line .chip { margin-left: auto; font-size: 11.5px; flex: none; }
+.nav-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; font-size: 12px; color: var(--text-muted); min-width: 0; }
+.nav-sub .folder { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-sub .tag { font-size: 10.5px; line-height: 16px; padding: 0 6px; }
+.nav-ctx { display: flex; align-items: center; gap: 7px; margin-top: 3px; }
+.nav-ctx .track { flex: 1; height: 3px; margin: 0; }
+.nav-ctx span { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; min-width: 28px; text-align: right; }
+.nav-open { width: 26px; height: 24px; padding: 0; justify-content: center; font-size: 12.5px; margin-top: 1px; }
+.nav-item.flash { animation: flash 1.6s ease-out; }
+@media (prefers-reduced-motion: reduce) { .nav-item.flash { animation: none; background: var(--accent-soft); } }
+.nav-empty { padding: 28px 10px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+/* right: this session, the figures, the office */
+.side-card { padding: 12px 14px 14px; display: grid; gap: 10px; }
+.side-card h3 { margin: 0; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; display: flex; justify-content: space-between; gap: 8px; }
+.side-card h3 span { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-meter { display: grid; gap: 4px; }
+.side-meter .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.side-meter .big { font-size: 22px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.side-meter .of { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.side-meter .track { height: 7px; margin: 0; }
+.side-card .kv { font-size: 12.5px; }
+.side-card .kv dd { font-variant-numeric: tabular-nums; }
+.side-list { display: grid; gap: 7px; }
+.side-list h4 { margin: 0; font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
+.side-list .item { display: grid; gap: 1px; min-width: 0; padding-left: 9px; border-left: 2px solid var(--border); }
+.side-list .item b { font-weight: 550; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-list .item span { font-size: 11.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-list .item code { font-family: var(--mono); font-size: 11px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-col .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.side-col .tile { padding: 8px 10px; }
+.side-col .tile .label { font-size: 11.5px; }
+.side-col .tile .value { font-size: 18px; }
+.side-col .tile .sub { font-size: 11px; }
+.side-col .tile > .limit { flex-basis: 100%; margin-top: 4px; }
+.side-col .limit .resets { display: none; }
+.office-mini > header { padding: 10px 12px 6px; }
+.office-mini > header h2 { font-size: 13.5px; }
+.office-mini > header .hint { font-size: 11.5px; }
+.mini-stage { padding: 0 8px 8px; cursor: pointer; }
+#office-mini { display: block; width: 100%; height: 150px; border-radius: 8px; }
 </style>
 </head>
 <body>
@@ -461,6 +699,11 @@ tr.session.flash > td { animation: flash 1.6s ease-out; }
   <div class="tabs" role="tablist" aria-label="View">
     <button role="tab" data-tab="sessions" aria-selected="true" aria-controls="view-sessions">Sessions</button>
     <button role="tab" data-tab="office" aria-selected="false" aria-controls="view-office">Office</button>
+    <button role="tab" data-tab="reports" aria-selected="false" aria-controls="view-reports">Reports</button>
+    <div class="seg view-toggle" id="view-toggle" role="group" aria-label="Sessions layout">
+      <button type="button" data-view="list" aria-pressed="true" title="Sessions as a list, the chat in the middle and its figures on the right">List</button>
+      <button type="button" data-view="table" aria-pressed="false" title="Sessions as a table, with the chat docked beside it">Table</button>
+    </div>
   </div>
 
   <div id="view-office" role="tabpanel" hidden>
@@ -501,40 +744,59 @@ tr.session.flash > td { animation: flash 1.6s ease-out; }
     </section>
   </div>
 
-  <div id="view-sessions" role="tabpanel">
-  <section class="card">
+  <div id="view-sessions" role="tabpanel" data-layout="list">
+  <div class="split">
+  <aside class="card nav-col" aria-label="Sessions">
+    <div class="nav-head">
+      <input class="live-search" id="nav-search" type="search" placeholder="Search sessions or folders" autocomplete="off" aria-label="Search sessions or folders">
+      <div class="seg filters nav-filters" role="group" aria-label="Show" id="nav-filters"></div>
+    </div>
+    <div class="nav-list" id="nav-list" role="listbox" aria-label="Sessions"></div>
+  </aside>
+  <section class="card live-card">
     <header>
-      <h2>Live sessions</h2>
-      <span class="hint" id="live-hint"></span>
+      <div class="seg filters" role="group" aria-label="Show" id="live-filters"></div>
       <span class="spacer"></span>
-      <label class="hint" style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="select-all"> Select all</label>
+      <input class="live-search" id="live-search" type="search" placeholder="Search sessions or folders" autocomplete="off" aria-label="Search sessions or folders">
+      <span class="hint" id="live-hint" hidden></span>
     </header>
+    <div class="scroll-x">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:28px"><input type="checkbox" id="select-all" aria-label="Select all sessions"></th>
+            <th>Status</th>
+            <th>Session</th>
+            <th class="hide-sm">Model</th>
+            <th>Context</th>
+            <th class="num hide-sm">Today</th>
+            <th class="num hide-sm">Active</th>
+            <th class="tab-col"><span class="sr-only">Terminal tab</span></th>
+          </tr>
+        </thead>
+        <tbody id="live-rows"></tbody>
+      </table>
+    </div>
     <div class="bulkbar" id="bulkbar" hidden>
       <span id="bulk-count"></span>
       <span class="spacer"></span>
       <button class="btn small" id="bulk-clear">Clear selection</button>
       <button class="btn small danger-solid" id="bulk-end">End selected</button>
     </div>
-    <div class="scroll-x">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:28px"></th>
-            <th>Status</th>
-            <th>Session</th>
-            <th class="hide-sm">Model</th>
-            <th>Context</th>
-            <th class="num hide-sm">Tokens today</th>
-            <th class="num hide-sm">Cost today</th>
-            <th class="num hide-sm">Last activity</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="live-rows"></tbody>
-      </table>
-    </div>
   </section>
+  <aside class="card session-pane" id="session-pane" aria-label="The selected session"></aside>
+  <aside class="side-col" aria-label="About the selected session">
+    <section class="card side-card" id="side-session"></section>
+    <div id="side-tiles"></div>
+    <section class="card office-mini">
+      <header><h2>Office</h2><span class="hint" id="office-mini-hint"></span><span class="spacer"></span><button class="btn small" type="button" data-open-office>Open Office ↗</button></header>
+      <div class="mini-stage" data-open-office title="Open the Office"><canvas id="office-mini" role="img" aria-label="A small live view of the office"></canvas></div>
+    </section>
+  </aside>
+  </div>
+  </div>
 
+  <div id="view-reports" role="tabpanel" hidden>
   <div class="grid">
     <section class="card span-2">
       <header>
@@ -603,6 +865,7 @@ tr.session.flash > td { animation: flash 1.6s ease-out; }
   </div>
   </div>
 </div>
+<div class="needs-glow" aria-hidden="true"></div>
 <div class="tip" id="tip"></div>
 <div class="toast" id="toast"></div>
 <div class="overlay" id="new-dialog" hidden>
@@ -691,7 +954,7 @@ tr.session.flash > td { animation: flash 1.6s ease-out; }
 
 <script>
 'use strict'
-const state = { live: null, report: null, range: '7d', measure: 'cost', open: new Set(), selected: new Set(), drafts: {}, fields: {}, collapsed: new Set(), showFiles: new Set(), showDetails: new Set(), showScreen: new Set(), screens: {}, options: null, charts: {}, lastLiveOk: 0 }
+const state = { live: null, report: null, range: '7d', measure: 'cost', open: new Set(), selected: new Set(), drafts: {}, fields: {}, collapsed: new Set(), showFiles: new Set(), showDetails: new Set(), showScreen: new Set(), screens: {}, paneTab: {}, actionsMenu: '', filter: 'all', search: '', view: 'list', visible: [], options: null, charts: {}, lastLiveOk: 0 }
 
 // ---------------------------------------------------------------- helpers --
 const $ = selector => document.querySelector(selector)
@@ -773,7 +1036,11 @@ async function api(route, body) {
 }
 
 // ---------------------------------------------------------------- theme --
-try { const saved = localStorage.getItem('fleet-theme'); if (saved) document.documentElement.dataset.theme = saved } catch {}
+// The theme is always named on the root, so the dark styles apply whether it was
+// chosen here or comes from the system.
+const systemTheme = () => (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+const savedTheme = () => { try { return localStorage.getItem('fleet-theme') || '' } catch { return '' } }
+document.documentElement.dataset.theme = savedTheme() || systemTheme()
 $('#theme').addEventListener('click', () => {
   const dark = matchMedia('(prefers-color-scheme: dark)').matches
   const current = document.documentElement.dataset.theme || (dark ? 'dark' : 'light')
@@ -782,8 +1049,12 @@ $('#theme').addEventListener('click', () => {
   try { localStorage.setItem('fleet-theme', next) } catch {}
   renderAll()
   office.themeChanged()
+  drawOfficeMini()
 })
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => renderAll())
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (!savedTheme()) document.documentElement.dataset.theme = systemTheme()
+  renderAll()
+})
 
 // ---------------------------------------------------------------- tiles --
 // Time left in a usage window: "resets in 2h 14m", or a day and time when days away.
@@ -802,6 +1073,8 @@ function renderTiles() {
   const sessions = live?.sessions || []
   const count = status => sessions.filter(s => s.status === status).length
   const waiting = sessions.filter(s => s.status === 'waiting')
+  // The window's edges glow while anyone waits for you.
+  document.documentElement.classList.toggle('needs-you', waiting.length > 0)
   const runningSubagentTotal = sessions.reduce((sum, s) => sum + (s.subagents || []).filter(a => a.isRunning).length, 0)
   const runningShellTotal = sessions.reduce((sum, s) => sum + (s.shells || []).length, 0)
   const longest = waiting.slice().sort((a, b) => a.updatedAt - b.updatedAt)[0]
@@ -869,7 +1142,7 @@ function subagentRows(s, depth) {
         <div class="where"><span>${esc(a.agentType || 'subagent')}</span><span class="tag">subagent${a.isBackground ? ' · background' : ''}</span></div>
       </div></div></td>
       <td class="hide-sm">${model ? `<span class="chip"><i class="sw" style="background:${modelColor(model)}"></i>${esc(shortModel(model))}</span>` : ''}</td>
-      <td></td><td class="hide-sm"></td><td class="hide-sm"></td>
+      <td></td><td class="hide-sm"></td>
       <td class="num hide-sm">for ${ago(a.startedAt)}</td>
       <td></td>
     </tr>`
@@ -888,7 +1161,7 @@ function shellRows(s, depth) {
         ${shell.lastOutput ? `<div class="shell-out" title="${esc(shell.lastOutput)}"><code>${esc(shell.lastOutput)}</code>${shell.outputAt ? ` <span>${esc(ago(shell.outputAt))} ago</span>` : ''}</div>` : ''}
       </div></div></td>
       <td class="hide-sm"></td>
-      <td></td><td class="hide-sm"></td><td class="hide-sm"></td>
+      <td></td><td class="hide-sm"></td>
       <td class="num hide-sm">for ${ago(shell.startedAt)}</td>
       <td></td>
     </tr>`).join('')
@@ -1049,19 +1322,257 @@ async function refreshScreens() {
   } finally { isReadingScreens = false }
 }
 
+// Which sessions the table lists: the segment picked above it and the search box.
+const FILTERS = [
+  ['all', 'All', () => true],
+  ['waiting', 'Needs you', s => s.status === 'waiting'],
+  ['working', 'Working', s => s.status === 'busy'],
+  ['idle', 'Idle', s => s.status === 'idle' || s.status === 'shell'],
+  ['hidden', 'Hidden', s => s.hidden],
+]
+function matchesFilter(s) {
+  const test = (FILTERS.find(filter => filter[0] === state.filter) || FILTERS[0])[2]
+  const query = state.search.trim().toLowerCase()
+  return test(s) && (!query || `${s.name} ${s.folder} ${s.branch || ''} ${s.jobId || ''}`.toLowerCase().includes(query))
+}
+function renderFilters(sessions) {
+  const html = FILTERS.map(([key, label, test]) => {
+    const count = sessions.filter(test).length
+    if (key === 'hidden' && !count) return ''
+    return `<button type="button" data-filter="${key}" aria-pressed="${state.filter === key}">${label}<span>${count}</span></button>`
+  }).join('')
+  if ($('#live-filters').innerHTML !== html) $('#live-filters').innerHTML = html
+  // The List view's column has the same chips, compact: its group headings carry the counts.
+  const compact = FILTERS.map(([key, label, test]) => {
+    const count = sessions.filter(test).length
+    if (key === 'hidden' && !count) return ''
+    return `<button type="button" data-filter="${key}" aria-pressed="${state.filter === key}" title="${count} session${count === 1 ? '' : 's'}">${label}</button>`
+  }).join('')
+  if ($('#nav-filters').innerHTML !== compact) $('#nav-filters').innerHTML = compact
+}
+// ---------------------------------------------------------- List view --
+// Every session down the left: whoever waits for you pinned on top, then those
+// working (or delegating to helpers), then the rest. Inside a group sessions keep
+// their place by name, and a child session sits under its parent when both are in
+// the same group; otherwise it says whose it is.
+const isListView = () => state.view === 'list'
+function navDot(s, below) {
+  const isQuiet = s.status === 'idle' || s.status === 'shell'
+  if (isQuiet && below && below.working + below.waiting) return `delegating ${below.waiting ? 'needs' : ''}`
+  return { waiting: 'waiting', busy: 'busy', shell: 'shell' }[s.status] || ''
+}
+function navItem(s, depth, byId, belowOf) {
+  const id = esc(s.sessionId)
+  const below = belowOf.get(s.sessionId)
+  const runningSubagents = (s.subagents || []).filter(a => a.isRunning).length
+  const runningShells = (s.shells || []).length
+  const parent = s.parentSessionId && byId.get(s.parentSessionId)
+  const badges = [
+    s.hidden ? '<span class="tag hidden-tag" title="Runs hidden in Claude Code\'s background service: no terminal tab">hidden</span>' : !s.tty ? '<span class="tag">headless</span>' : '',
+    runningSubagents ? `<span class="tag">${runningSubagents} subagent${runningSubagents > 1 ? 's' : ''}</span>` : '',
+    runningShells ? `<span class="tag shell-kind" title="${esc((s.shells || []).map(shell => shell.description || shell.command).join('\n'))}">${runningShells} shell${runningShells > 1 ? 's' : ''}</span>` : '',
+    parent && !depth ? `<span title="Started by ${esc(parent.name)}">↳ ${esc(parent.name)}</span>` : '',
+  ].join('')
+  const opener = s.hidden
+    ? `<button class="btn small nav-open" data-attach="${id}" aria-label="Open in terminal" title="Open it in a new terminal tab with claude attach ${esc(s.jobId)}; it keeps running hidden when you close that tab">↗</button>`
+    : s.tty
+    ? `<button class="btn small nav-open" data-focus="${id}" aria-label="Open tab" title="Bring its terminal tab to the front">↗</button>`
+    : `<button class="btn small nav-open" disabled aria-label="No tab" title="Runs without a terminal${s.launcher ? ', started by ' + esc(s.launcher) : ''}">↗</button>`
+  const isOpen = state.open.has(s.sessionId)
+  const look = STATUS[s.status]?.label || s.status || ''
+  return `<div class="nav-item ${isOpen ? 'selected' : ''} ${s.status === 'waiting' ? 'waiting' : ''} ${depth ? 'child' : ''}" data-id="${id}" role="option" aria-selected="${isOpen}">
+    <i class="nav-dot ${navDot(s, below)}" title="${esc(s.status === 'waiting' && s.waitingFor ? s.waitingFor : look)}"></i>
+    <div class="nav-main">
+      <div class="nav-line"><span class="nav-name" title="${esc(s.name)}">${esc(s.name)}</span><span class="chip"><i class="sw" style="background:${modelColor(s.model)}"></i>${esc(shortModel(s.model))}</span></div>
+      <div class="nav-sub"><span class="folder" title="${esc(s.cwd || s.folder)}">${esc(s.folder)}</span>${badges}</div>
+      <div class="nav-ctx" data-tip="${fmtTokens(s.contextTokens)} of ${fmtTokens(s.contextWindow)} tokens"><div class="track"><b class="${s.contextPercent >= 80 ? 'hot' : ''}" style="width:${s.contextPercent}%"></b></div><span>${s.contextPercent}%</span></div>
+    </div>
+    ${opener}
+  </div>`
+}
+// Every session in alphabetical order, each child session indented under the
+// session that started it. Whoever waits for you keeps its ring, not a section.
+function renderNav(sessions, byId, childrenOf, belowOf) {
+  const list = $('#nav-list')
+  const shown = sessions.filter(matchesFilter)
+  const isShown = new Set(shown.map(s => s.sessionId))
+  const order = []
+  const items = []
+  const visit = (s, depth) => {
+    order.push(s.sessionId)
+    items.push(navItem(s, depth, byId, belowOf))
+    if (depth > 5) return
+    for (const child of (childrenOf.get(s.sessionId) || []).slice().sort(byName)) if (isShown.has(child.sessionId)) visit(child, depth + 1)
+  }
+  shown.filter(s => !isShown.has(s.parentSessionId)).sort(byName).forEach(s => visit(s, 0))
+  const html = items.join('') || `<div class="nav-empty">${sessions.length ? 'No session matches.' : 'No Claude Code sessions are running.'}</div>`
+  if (list.innerHTML !== html) { const top = list.scrollTop; list.innerHTML = html; list.scrollTop = top }
+  return order
+}
+// The selected session's own figures, beside its chat.
+function renderSide(byId, belowOf) {
+  const holder = $('#side-session')
+  const s = byId.get([...state.open][0])
+  let html
+  if (!s) html = '<h3>This session</h3><div class="stamp">Pick a session on the left.</div>'
+  else {
+    const subagents = (s.subagents || []).filter(a => a.isRunning)
+    const shells = s.shells || []
+    const hot = s.contextPercent >= 80
+    html = `
+      <h3>This session<span title="${esc(s.name)}">${esc(s.name)}</span></h3>
+      <div class="side-meter">
+        <div class="row"><span class="big">${s.contextPercent}%</span><span class="of">${fmtTokens(s.contextTokens)} of ${fmtTokens(s.contextWindow)} tokens</span></div>
+        <div class="track"><b class="${hot ? 'hot' : ''}" style="width:${s.contextPercent}%"></b></div>
+      </div>
+      <dl class="kv">
+        <dt>Model</dt><dd><span class="chip"><i class="sw" style="background:${modelColor(s.model)}"></i>${esc(shortModel(s.model))}</span></dd>
+        <dt>Today</dt><dd>${fmtTokens(s.todayTokens)} tokens · ${fmtCost(s.todayCost)}</dd>
+        <dt>Last activity</dt><dd>${s.lastActivityAt ? ago(s.lastActivityAt) + ' ago' : '—'}</dd>
+        <dt>Started</dt><dd>${s.startedAt ? clock(s.startedAt) + ' · ' + ago(s.startedAt) + ' ago' : '—'}</dd>
+        <dt>Files edited</dt><dd>${(s.filesTouched || []).length}</dd>
+      </dl>
+      ${subagents.length ? `<div class="side-list"><h4>Subagents running · ${subagents.length}</h4>${subagents.map(a => `<div class="item"><b title="${esc(a.description)}">${esc(a.description)}</b><span>${esc(a.agentType || 'subagent')}${a.model ? ' · ' + esc(shortModel(MODEL_ALIASES[a.model] || a.model)) : ''} · for ${ago(a.startedAt)}</span></div>`).join('')}</div>` : ''}
+      ${shells.length ? `<div class="side-list"><h4>Background shells · ${shells.length}</h4>${shells.map(shell => `<div class="item"><b title="${esc(shell.command)}">${esc(shell.description || shell.command || 'Background shell')}</b>${shell.lastOutput ? `<code title="${esc(shell.lastOutput)}">${esc(shell.lastOutput)}</code>` : `<span>for ${ago(shell.startedAt)}</span>`}</div>`).join('')}</div>` : ''}`
+  }
+  if (holder.innerHTML !== html) holder.innerHTML = html
+}
+// List or Table, remembered in this browser. The headline figures sit in the List
+// view's right column when it is showing, and above the tabs otherwise.
+const wideQuery = matchMedia('(min-width: 1280px)')
+function placeTiles() {
+  const tiles = $('#tiles')
+  const inSide = isListView() && !$('#view-sessions').hidden && wideQuery.matches
+  if (inSide && tiles.parentElement.id !== 'side-tiles') $('#side-tiles').appendChild(tiles)
+  else if (!inSide && tiles.parentElement.id === 'side-tiles') document.querySelector('.tabs').before(tiles)
+  fitSplit()
+}
+function setView(view) {
+  state.view = view === 'table' ? 'table' : 'list'
+  remember('fleet-sessions-view', state.view)
+  $('#view-sessions').dataset.layout = state.view
+  document.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === state.view)))
+  placeTiles()
+  renderLive()
+  drawOfficeMini()
+}
+// The small office in the List view: one still frame of the real scene, redrawn
+// with each refresh while it is on screen. No animation loop of its own.
+function drawOfficeMini() {
+  const mini = $('#office-mini')
+  if (!isListView() || $('#view-sessions').hidden || document.visibilityState !== 'visible' || !mini.clientWidth) return
+  const sessions = state.live?.sessions || []
+  const waiting = sessions.filter(s => s.status === 'waiting').length
+  $('#office-mini-hint').textContent = waiting ? `${waiting} waiting for you` : `${sessions.filter(s => s.status === 'busy').length} at their desks`
+  office.drawMini(mini)
+}
+// The selected session, docked on the right: who it is, what you can do to it,
+// and its conversation, files, details or screen as tabs.
+function renderPane(byId, belowOf) {
+  const pane = $('#session-pane')
+  const s = byId.get([...state.open][0])
+  pane.dataset.session = s ? s.sessionId : ''
+  if (!s) { pane.innerHTML = '<div class="pane-empty">Pick a session to see its conversation here.</div>'; return }
+  const id = esc(s.sessionId)
+  const tab = state.paneTab[s.sessionId] || 'chat'
+  const d = lastDelivery(s.sessionId)
+  const files = s.filesTouched
+  const filesHtml = files.map(f => `<div title="${esc(f.file)}">${esc(f.file.startsWith(s.cwd + '/') ? f.file.slice(s.cwd.length + 1) : f.file)}</div>`).join('')
+  const opener = s.hidden
+    ? `<button class="btn small" data-attach="${id}" title="Open it in a new terminal tab with claude attach ${esc(s.jobId)}; it keeps running hidden when you close that tab">Open in terminal ↗</button>`
+    : s.tty
+    ? `<button class="btn small" data-focus="${id}" title="Bring its terminal tab to the front">Open tab ↗</button>`
+    : `<button class="btn small" disabled title="Runs without a terminal${s.launcher ? ', started by ' + esc(s.launcher) : ''}">No tab</button>`
+  const tabButton = (key, label) => `<button type="button" role="tab" data-pane-tab="${key}" data-session="${id}" aria-selected="${tab === key}">${label}</button>`
+  let content = ''
+  if (tab === 'files') content = files.length ? `<div class="drawer files">${filesHtml}</div>` : '<div class="pane-empty">No files edited today.</div>'
+  else if (tab === 'screen' && s.hidden) content = `<div class="drawer screen-drawer">${screenHtml(s)}</div>`
+  else if (tab === 'details') content = `<dl class="drawer kv">
+      <dt>Path</dt><dd><code>${esc(s.cwd)}</code></dd>
+      <dt>Session id</dt><dd><code>${esc(s.sessionId)}</code></dd>
+      ${s.hidden ? `<dt>Hidden</dt><dd>job <code>${esc(s.jobId)}</code> · <code>claude attach ${esc(s.jobId)}</code> opens it in a terminal · pid ${s.pid}</dd>` : `<dt>Terminal</dt><dd><code>${esc(s.tty || '—')}</code> · pid ${s.pid}</dd>`}
+      ${s.branch ? `<dt>Branch</dt><dd><code>${esc(s.branch)}</code></dd>` : ''}
+      <dt>Started</dt><dd>${s.startedAt ? new Date(s.startedAt).toLocaleString() + ' · ' + ago(s.startedAt) + ' ago' : '—'}</dd>
+      ${s.sessionCostUsd != null ? `<dt>Session cost</dt><dd>${fmtCost(s.sessionCostUsd)} (as /cost reports it)</dd>` : ''}
+      <dt>Today</dt><dd>${s.prompts} prompts · ${s.commits} commits · ${s.subagentCount} subagents · ${fmtTokens(s.todayTokens)} tokens · ${fmtCost(s.todayCost)}</dd>
+      ${s.parentSessionId ? `<dt>Started by</dt><dd>${esc(byId.get(s.parentSessionId)?.name || s.parentSessionId)}${s.launcher ? ' via ' + esc(s.launcher) : ''}</dd>` : ''}
+      <dt>Version</dt><dd>${esc(s.version || '—')}</dd>
+    </dl>`
+  else content = `<div class="thread">${chatThread(s, id)}</div>`
+  pane.innerHTML = `
+    <div class="pane-head">
+      <div class="pane-title"><h2>${esc(s.name)}</h2>${statusPill(s, belowOf?.get(s.sessionId))}</div>
+      <div class="pane-where"><span>${esc(s.folder)}</span><span>·</span><span>${esc(shortModel(s.model))}</span>${s.branch ? `<span>·</span><span>${esc(s.branch)}</span>` : ''}${s.hidden ? `<span class="tag hidden-tag">hidden</span><span class="sid" data-copy="${esc(s.jobId)}" title="Click to copy">${esc(s.jobId)}</span>` : ''}<span class="link ${s.hasMod ? 'on' : ''}">${s.hasMod ? 'connected' : 'not connected'}</span></div>
+      <div class="pane-tools">
+        ${opener}
+        <button class="btn small" data-compact="${id}" title="Summarise the conversation so far to free up context (${s.contextPercent}% full)">Compact · ${s.contextPercent}%</button>
+        <span class="spacer"></span>
+        <div class="actions-menu">
+          <button class="btn small" data-actions-menu="${id}" aria-expanded="${state.actionsMenu === s.sessionId}" aria-haspopup="true">Actions ▾</button>
+          ${state.actionsMenu === s.sessionId ? `<div class="menu" role="menu">
+            <label>Model<div class="row"><select data-field="model:${id}" aria-label="Model">${modelOptions(fieldValue('model:' + s.sessionId, s.model))}</select><button class="btn small" data-apply-model="${id}">Switch</button></div></label>
+            <label>Name<div class="row"><input data-field="rename:${id}" maxlength="80" value="${esc(fieldValue('rename:' + s.sessionId, s.name))}" aria-label="Name"><button class="btn small" data-apply-rename="${id}">Rename</button></div></label>
+            <button class="btn small item" data-copy="${esc(s.hidden ? s.jobId : s.sessionId)}">Copy ${s.hidden ? 'its id (' + esc(s.jobId) + ')' : 'session id'}</button>
+            ${s.hidden ? `<button class="btn small item" data-copy="claude attach ${esc(s.jobId)}">Copy the attach command</button>` : ''}
+          </div>` : ''}
+        </div>
+        <button class="btn small danger" data-end="${id}" title="Stop this Claude session and close its tab; its conversation is kept and can be resumed">End session</button>
+      </div>
+      <div class="pane-tabs" role="tablist" aria-label="Show">
+        ${tabButton('chat', 'Chat')}${tabButton('files', `Files edited · ${files.length}`)}${tabButton('details', 'Details')}${s.hidden ? tabButton('screen', 'Screen') : ''}
+      </div>
+    </div>
+    <div class="pane-body">${content}</div>
+    ${tab === 'chat' ? `<div class="pane-foot">
+      <div class="composer chat">
+        <textarea rows="2" data-draft="${id}" placeholder="Message ${esc(s.name)} — Enter to send, Shift+Enter for a new line">${esc(state.drafts[s.sessionId] || '')}</textarea>
+        <button class="btn primary" data-send="${id}" aria-label="Send">Send ➤</button>
+      </div>
+      ${d ? `<div class="delivery ${d.isDelivered ? 'good' : 'bad'}">${d.isDelivered ? '✓ Delivered' : '✕ Not delivered'} as a ${esc(d.via)} ${ago(d.at)} ago${d.reason ? ' — ' + esc(d.reason) : ''}: “${esc(d.text.slice(0, 90))}”</div>` : ''}
+      ${s.hasMod ? '' : s.hidden ? '<div class="delivery bad">Not connected: a hidden session takes messages only through the Fleet mod, which has not reported in from it.</div>' : '<div class="delivery">Not connected: messages and commands are typed into its tab once it is idle.</div>'}
+    </div>` : ''}`
+}
+// The split fills the window below the header and the figures.
+function fitSplit() {
+  const split = document.querySelector('.split')
+  if (!split || $('#view-sessions').hidden) return
+  document.documentElement.style.setProperty('--split-top', Math.round(split.getBoundingClientRect().top + scrollY) + 'px')
+}
+addEventListener('resize', fitSplit)
+// A click anywhere outside the actions menu closes it.
+document.addEventListener('click', event => {
+  if (state.actionsMenu && !event.target.closest('.actions-menu')) { state.actionsMenu = ''; renderLive() }
+})
+function selectSession(sessionId) {
+  state.open = new Set([sessionId])
+  renderLive()
+  document.querySelector(isListView() ? `.nav-item[data-id="${CSS.escape(sessionId)}"]` : `tr.session[data-id="${CSS.escape(sessionId)}"]`)?.scrollIntoView({ block: 'nearest' })
+}
+
 function renderLive() {
   const sessions = state.live?.sessions || []
   const connected = sessions.filter(s => s.hasMod).length
   $('#live-hint').textContent = `${connected} of ${sessions.length} connected through the fleet mod`
   const rows = []
   const { byId, childrenOf, roots, belowOf } = sessionTree(sessions)
+  renderFilters(sessions)
   const ordered = []
   const visit = (s, depth) => {
     ordered.push({ s, depth })
     if (state.collapsed.has(s.sessionId) || depth > 5) return
     for (const child of childrenOf.get(s.sessionId) || []) visit(child, depth + 1)
   }
-  roots.forEach(s => visit(s, 0))
+  // A filter or a search lists the matching sessions flat; otherwise the tree.
+  const isFiltered = state.filter !== 'all' || state.search.trim()
+  if (isFiltered) sessions.filter(matchesFilter).sort(byName).forEach(s => ordered.push({ s, depth: 0 }))
+  else roots.forEach(s => visit(s, 0))
+  state.visible = ordered.map(item => item.s.sessionId)
+  // One session is shown on the right: the one picked, else the first waiting for you, else the first row.
+  const picked = [...state.open][0]
+  if (!picked || !byId.has(picked)) {
+    const fallback = sessions.find(s => s.status === 'waiting') || (isListView() ? sessions.filter(s => s.status === 'busy').sort(byName)[0] : null) || ordered[0]?.s
+    state.open = new Set(fallback ? [fallback.sessionId] : [])
+  }
   for (const { s, depth } of ordered) {
     const isOpen = state.open.has(s.sessionId)
     const kids = (childrenOf.get(s.sessionId) || []).length
@@ -1076,12 +1587,12 @@ function renderLive() {
     const hot = s.contextPercent >= 80
     const id = esc(s.sessionId)
     rows.push(`
-      <tr class="session ${isOpen ? 'open' : ''}" data-id="${id}">
+      <tr class="session ${isOpen ? 'selected' : ''}" data-id="${id}" aria-selected="${isOpen}">
         <td><input type="checkbox" data-select="${id}" ${state.selected.has(s.sessionId) ? 'checked' : ''} aria-label="Select ${esc(s.name)}"></td>
         <td>${statusPill(s, belowOf.get(s.sessionId))}</td>
         <td>
           <div class="nested" style="padding-left:${depth * 22}px">${depth ? '<span class="branch">↳</span>' : ''}<div>
-          <div class="name">${esc(s.name)} <span class="link ${s.hasMod ? 'on' : ''}" title="${s.hasMod ? 'Connected: exact figures, and messages arrive as a prompt' : 'Started before the mod: figures read from its transcript, and messages are typed into its tab when it is idle'}">${s.hasMod ? 'connected' : 'not connected'}</span>${runningShells ? ` <span class="shell-tag" title="${esc((s.shells || []).map(shell => shell.description || shell.command).join('\n'))}"><i></i>${runningShells} shell${runningShells > 1 ? 's' : ''} running</span>` : ''}</div>
+          <div class="name">${esc(s.name)} <span class="link ${s.hasMod ? 'on' : ''}" aria-label="${s.hasMod ? 'connected' : 'not connected'}" title="${s.hasMod ? 'Connected: exact figures, and messages arrive as a prompt' : 'Started before the mod: figures read from its transcript, and messages are typed into its tab when it is idle'}">${s.hasMod ? 'connected' : 'not connected'}</span>${runningShells ? ` <span class="shell-tag" title="${esc((s.shells || []).map(shell => shell.description || shell.command).join('\n'))}"><i></i>${runningShells} shell${runningShells > 1 ? 's' : ''} running</span>` : ''}</div>
           <div class="where"><span>${esc(s.folder)}</span>${s.hidden ? `<span class="tag hidden-tag" title="Runs hidden in Claude Code's background service: no terminal tab">hidden</span><span class="sid" data-copy="${esc(s.jobId)}" title="Its id (click to copy). claude attach ${esc(s.jobId)} opens it in a terminal">${esc(s.jobId)}</span>` : !s.tty ? '<span class="tag">headless</span>' : ''}${depth && s.launcher ? `<span class="tag">started by ${esc(s.launcher)}</span>` : ''}${nestedLabel ? `<button class="nest" data-toggle="${id}" aria-expanded="${!isCollapsed}">${isCollapsed ? '▸' : '▾'} ${esc(nestedLabel)}</button>` : ''}</div>
           </div></div>
         </td>
@@ -1089,90 +1600,49 @@ function renderLive() {
         <td><div class="meter-cell">
           <div class="meter" data-tip="${fmtTokens(s.contextTokens)} of ${fmtTokens(s.contextWindow)} tokens"><div class="track"><b class="${hot ? 'hot' : ''}" style="width:${s.contextPercent}%"></b></div><span>${s.contextPercent}%</span></div>
         </div></td>
-        <td class="num hide-sm">${fmtTokens(s.todayTokens)}</td>
-        <td class="num hide-sm">${fmtCost(s.todayCost)}</td>
+        <td class="num hide-sm today">${fmtTokens(s.todayTokens)} · ${fmtCost(s.todayCost)}</td>
         <td class="num hide-sm">${ago(s.lastActivityAt)}</td>
-        <td><div class="actions">
-          ${s.hidden
-            ? `<button class="btn small" data-attach="${id}" title="Open it in a new terminal tab with claude attach ${esc(s.jobId)}; it keeps running hidden when you close that tab">Open in terminal ↗</button>`
-            : s.tty
-            ? `<button class="btn small" data-focus="${id}" title="Bring its terminal tab to the front">Open tab ↗</button>`
-            : `<button class="btn small" disabled title="Runs without a terminal${s.launcher ? ', started by ' + esc(s.launcher) : ''}">No tab</button>`}
-          <button class="btn small" data-message="${id}">Message</button>
-        </div></td>
+        <td class="tab-col">${s.hidden
+          ? `<button class="btn small" data-attach="${id}" title="Open it in a new terminal tab with claude attach ${esc(s.jobId)}; it keeps running hidden when you close that tab">Terminal ↗</button>`
+          : s.tty
+          ? `<button class="btn small" data-focus="${id}" title="Bring its terminal tab to the front">Open tab ↗</button>`
+          : `<button class="btn small" disabled title="Runs without a terminal${s.launcher ? ', started by ' + esc(s.launcher) : ''}">No tab</button>`}</td>
       </tr>`)
-    if (isOpen) {
-    const d = lastDelivery(s.sessionId)
-    const files = s.filesTouched
-    const filesHtml = files.map(f => `<div title="${esc(f.file)}">${esc(f.file.startsWith(s.cwd + '/') ? f.file.slice(s.cwd.length + 1) : f.file)}</div>`).join('')
-    const showFiles = state.showFiles.has(s.sessionId), showDetails = state.showDetails.has(s.sessionId)
-    // The conversation and the message box come first; what the row already
-    // shows (model, context, cost) is not repeated, and the rest waits behind a button.
-    rows.push(`
-      <tr class="detail"><td colspan="9"><div class="detail-body">
-        <div class="controls actions">
-          <label class="control">Model
-            <select data-field="model:${id}">${modelOptions(fieldValue('model:' + s.sessionId, s.model))}</select>
-            <button class="btn small" data-apply-model="${id}">Switch</button>
-          </label>
-          <label class="control">Name
-            <input data-field="rename:${id}" maxlength="80" value="${esc(fieldValue('rename:' + s.sessionId, s.name))}">
-            <button class="btn small" data-apply-rename="${id}">Rename</button>
-          </label>
-          <span class="spacer"></span>
-          <button class="btn small" data-compact="${id}" title="Summarise the conversation so far to free up context (${s.contextPercent}% full)">Compact · ${s.contextPercent}%</button>
-          <button class="btn small danger" data-end="${id}" title="Stop this Claude session; its conversation is kept and can be resumed">End session</button>
-        </div>
-        <div class="convo">
-          <div class="thread">${chatThread(s, id)}</div>
-          <div class="composer chat">
-            <textarea rows="2" data-draft="${id}" placeholder="Message ${esc(s.name)} — Enter to send, Shift+Enter for a new line">${esc(state.drafts[s.sessionId] || '')}</textarea>
-            <button class="btn primary" data-send="${id}" aria-label="Send">Send ➤</button>
-          </div>
-          ${d ? `<div class="delivery ${d.isDelivered ? 'good' : 'bad'}">${d.isDelivered ? '✓ Delivered' : '✕ Not delivered'} as a ${esc(d.via)} ${ago(d.at)} ago${d.reason ? ' — ' + esc(d.reason) : ''}: “${esc(d.text.slice(0, 90))}”</div>` : ''}
-          ${s.hasMod ? '' : s.hidden ? '<div class="delivery bad">Not connected: a hidden session takes messages only through the Fleet mod, which has not reported in from it.</div>' : '<div class="delivery">Not connected: messages and commands are typed into its tab once it is idle.</div>'}
-        </div>
-        <div class="controls more">
-          <button class="btn small ghost" data-show-files="${id}" aria-expanded="${showFiles}" ${files.length ? '' : 'disabled'}>${showFiles ? '▾' : '▸'} Files edited today · ${files.length}</button>
-          <button class="btn small ghost" data-show-details="${id}" aria-expanded="${showDetails}">${showDetails ? '▾' : '▸'} Details</button>
-          ${s.hidden ? `<button class="btn small ghost" data-show-screen="${id}" aria-expanded="${state.showScreen.has(s.sessionId)}">${state.showScreen.has(s.sessionId) ? '▾' : '▸'} Screen</button>` : ''}
-        </div>
-        ${showFiles ? `<div class="drawer files">${filesHtml}</div>` : ''}
-        ${s.hidden && state.showScreen.has(s.sessionId) ? `<div class="drawer screen-drawer">${screenHtml(s)}</div>` : ''}
-        ${showDetails ? `<dl class="drawer kv">
-            <dt>Path</dt><dd><code>${esc(s.cwd)}</code></dd>
-            <dt>Session id</dt><dd><code>${esc(s.sessionId)}</code></dd>
-            ${s.hidden ? `<dt>Hidden</dt><dd>job <code>${esc(s.jobId)}</code> · <code>claude attach ${esc(s.jobId)}</code> opens it in a terminal · pid ${s.pid}</dd>` : `<dt>Terminal</dt><dd><code>${esc(s.tty || '—')}</code> · pid ${s.pid}</dd>`}
-            ${s.branch ? `<dt>Branch</dt><dd><code>${esc(s.branch)}</code></dd>` : ''}
-            <dt>Started</dt><dd>${s.startedAt ? new Date(s.startedAt).toLocaleString() + ' · ' + ago(s.startedAt) + ' ago' : '—'}</dd>
-            ${s.sessionCostUsd != null ? `<dt>Session cost</dt><dd>${fmtCost(s.sessionCostUsd)} (as /cost reports it)</dd>` : ''}
-            <dt>Today</dt><dd>${s.prompts} prompts · ${s.commits} commits · ${s.subagentCount} subagents</dd>
-            ${s.parentSessionId ? `<dt>Started by</dt><dd>${esc(byId.get(s.parentSessionId)?.name || s.parentSessionId)}${s.launcher ? ' via ' + esc(s.launcher) : ''}</dd>` : ''}
-            <dt>Version</dt><dd>${esc(s.version || '—')}</dd>
-          </dl>` : ''}
-      </div></td></tr>`)
-    }
     if (!isCollapsed) rows.push(subagentRows(s, depth), shellRows(s, depth))
   }
   const body = $('#live-rows')
+  const pane = $('#session-pane')
+  const area = $('#view-sessions')
   // Keep the caret where it was in a message being typed across a refresh.
   const active = document.activeElement
   const keyAttr = active && active.dataset ? (active.dataset.draft !== undefined ? 'draft' : active.dataset.field !== undefined ? 'field' : '') : ''
   const keyValue = keyAttr ? active.dataset[keyAttr] : ''
   const caret = keyAttr && typeof active.selectionStart === 'number' ? [active.selectionStart, active.selectionEnd] : null
-  // A reply being read keeps its scroll position across the 2-second refresh.
-  const replyScroll = new Map([...body.querySelectorAll('[data-reply]')].map(reply => [reply.dataset.reply, reply.scrollTop]))
-  body.innerHTML = rows.join('') || '<tr><td colspan="9" class="empty">No Claude Code sessions are running.</td></tr>'
-  for (const reply of body.querySelectorAll('[data-reply]')) if (replyScroll.has(reply.dataset.reply)) reply.scrollTop = replyScroll.get(reply.dataset.reply)
+  // A reply being read keeps its scroll position across the 2-second refresh, and so does the pane.
+  const replyScroll = new Map([...area.querySelectorAll('[data-reply]')].map(reply => [reply.dataset.reply, reply.scrollTop]))
+  const paneBody = pane.querySelector('.pane-body')
+  const paneScroll = paneBody && pane.dataset.session === [...state.open][0] ? { top: paneBody.scrollTop, atEnd: paneBody.scrollTop + paneBody.clientHeight >= paneBody.scrollHeight - 8 } : null
+  body.innerHTML = rows.join('') || `<tr><td colspan="8" class="empty">${sessions.length ? 'No session matches.' : 'No Claude Code sessions are running.'}</td></tr>`
+  // The List view's column, in its own order, which j and k then follow.
+  const navOrder = renderNav(sessions, byId, childrenOf, belowOf)
+  if (isListView()) state.visible = navOrder
+  renderPane(byId, belowOf)
+  renderSide(byId, belowOf)
+  // Size the split before scrolling the chat, so it lands on the newest message.
+  fitSplit()
+  const newBody = pane.querySelector('.pane-body')
+  if (newBody) newBody.scrollTop = paneScroll && !paneScroll.atEnd ? paneScroll.top : newBody.scrollHeight
+  for (const reply of area.querySelectorAll('[data-reply]')) if (replyScroll.has(reply.dataset.reply)) reply.scrollTop = replyScroll.get(reply.dataset.reply)
   if (keyAttr) {
-    const field = body.querySelector(`[data-${keyAttr}="${CSS.escape(keyValue)}"]`)
+    const field = area.querySelector(`[data-${keyAttr}="${CSS.escape(keyValue)}"]`)
     if (field) { field.focus(); if (caret) field.setSelectionRange(caret[0], caret[1]) }
   }
+  fitSplit()
   $('#select-all').checked = sessions.length > 0 && sessions.every(s => state.selected.has(s.sessionId))
   renderBulkbar()
 }
 
-$('#live-rows').addEventListener('click', event => {
+$('#view-sessions').addEventListener('click', event => {
   const target = event.target
   // dataset keys are camelCase; their attributes are kebab-case (applyModel → data-apply-model).
   const attr = name => target.closest(`[data-${name.replace(/[A-Z]/g, ch => '-' + ch.toLowerCase())}]`)?.dataset[name]
@@ -1210,29 +1680,42 @@ $('#live-rows').addEventListener('click', event => {
     return renderLive()
   }
   if (messageId) {
-    state.open.add(messageId)
-    renderLive()
+    state.paneTab[messageId] = 'chat'
+    selectSession(messageId)
     document.querySelector(`textarea[data-draft="${CSS.escape(messageId)}"]`)?.focus()
     return
   }
-  if (target.closest('textarea, button, input, a, .detail')) return
-  const row = target.closest('tr.session')
+  const menuId = attr('actionsMenu')
+  if (menuId) { state.actionsMenu = state.actionsMenu === menuId ? '' : menuId; return renderLive() }
+  if (state.actionsMenu && !target.closest('.actions-menu')) { state.actionsMenu = ''; renderLive() }
+  const paneTab = target.closest('[data-pane-tab]')
+  if (paneTab) {
+    const sessionId = paneTab.dataset.session, tab = paneTab.dataset.paneTab
+    state.paneTab[sessionId] = tab
+    state.showScreen = tab === 'screen' ? new Set([sessionId]) : new Set()
+    renderLive()
+    if (tab === 'screen') refreshScreens().then(renderLive)
+    return
+  }
+  const filter = target.closest('[data-filter]')
+  if (filter) { state.filter = filter.dataset.filter; return renderLive() }
+  if (target.closest('[data-open-office]')) return setTab('office')
+  if (target.closest('textarea, button, input, select, a, .session-pane')) return
+  const row = target.closest('tr.session, .nav-item')
   if (!row) return
-  const id = row.dataset.id
-  state.open.has(id) ? state.open.delete(id) : state.open.add(id)
-  renderLive()
+  selectSession(row.dataset.id)
 })
-$('#live-rows').addEventListener('input', event => {
+$('#view-sessions').addEventListener('input', event => {
   const id = event.target.dataset && event.target.dataset.draft
   if (id) state.drafts[id] = event.target.value
   const field = event.target.dataset && event.target.dataset.field
   if (field) state.fields[field] = event.target.value
 })
-$('#live-rows').addEventListener('change', event => {
+$('#view-sessions').addEventListener('change', event => {
   const field = event.target.dataset && event.target.dataset.field
   if (field) state.fields[field] = event.target.value
 })
-$('#live-rows').addEventListener('keydown', event => {
+$('#view-sessions').addEventListener('keydown', event => {
   const id = event.target.dataset && event.target.dataset.draft
   if (id && event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
     event.preventDefault()
@@ -1244,6 +1727,23 @@ $('#live-rows').addEventListener('keydown', event => {
     const sessionId = field.slice('rename:'.length)
     sessionCommand(sessionId, 'rename', event.target.value)
   }
+})
+for (const box of ['#live-search', '#nav-search']) $(box).addEventListener('input', event => {
+  state.search = event.target.value
+  for (const other of ['#live-search', '#nav-search']) if ($(other) !== event.target) $(other).value = state.search
+  renderLive()
+})
+document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => setView(button.dataset.view)))
+wideQuery.addEventListener('change', () => { placeTiles(); drawOfficeMini() })
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && state.actionsMenu) { state.actionsMenu = ''; renderLive(); return }
+  if (event.metaKey || event.ctrlKey || event.altKey || !$('#view-reports').hidden || !$('#view-office').hidden) return
+  if (event.target.closest('input, textarea, select, [contenteditable]') || !(event.key === 'j' || event.key === 'k')) return
+  const list = state.visible
+  if (!list.length) return
+  const at = list.indexOf([...state.open][0])
+  const next = list[Math.max(0, Math.min(list.length - 1, at + (event.key === 'j' ? 1 : -1)))]
+  if (next) { event.preventDefault(); selectSession(next) }
 })
 $('#select-all').addEventListener('change', event => {
   const sessions = state.live?.sessions || []
@@ -1811,9 +2311,10 @@ const office = (() => {
   }
   const TRIP_LABEL = { globe: 'searching the web at the globe', racks: 'watching a long command at the racks' }
   const OUTFIT_LABEL = { blazer: 'blazer (Opus)', hoodie: 'hoodie (Sonnet)', beanie: 'beanie (Haiku)', headphones: 'headphones (Fable)' }
-  const canvas = $('#office-canvas')
+  // The Office canvas; drawMini lends both to a small canvas for one frame.
+  let canvas = $('#office-canvas')
   const card = $('#office-card')
-  const mainPen = canvas.getContext('2d')
+  let mainPen = canvas.getContext('2d')
   const lightCanvas = document.createElement('canvas')
   const lightPen = lightCanvas.getContext('2d')
   const motionQuery = matchMedia('(prefers-reduced-motion: reduce)')
@@ -1880,6 +2381,8 @@ const office = (() => {
   }
   const shade = (hex, ratio) => mix(hex, '#000000', ratio)
   const alpha = (hex, opacity) => { const [red, green, blue] = parseHex(hex); return `rgba(${red},${green},${blue},${opacity})` }
+  // The Office keeps its colours when the page around it goes grey: --office-* wins where set.
+  const officeCss = name => css(name.replace(/^--/, '--office-')) || css(name)
   function refreshColors() {
     const background = parseHex(css('--bg') || '#f4f4f2')
     const isDark = (background[0] * 0.299 + background[1] * 0.587 + background[2] * 0.114) / 255 < 0.45
@@ -1900,12 +2403,12 @@ const office = (() => {
       text: css('--text-primary'),
       muted: css('--text-muted'),
       label: css('--surface-1'),
-      accent: css('--accent'),
-      accentSoft: css('--accent-soft'),
-      critical: css('--critical'),
-      warning: css('--series-4'),
-      good: css('--good'),
-      shirts: SHIRT_TOKENS.map(name => css(name)),
+      accent: officeCss('--accent'),
+      accentSoft: officeCss('--accent-soft'),
+      critical: officeCss('--critical'),
+      warning: officeCss('--series-4'),
+      good: officeCss('--good'),
+      shirts: SHIRT_TOKENS.map(name => officeCss(name)),
       wood,
       metal: isDark ? ['#4a4d52', '#3a3c40', '#2e3033'] : ['#cfd2d6', '#b3b7bd', '#9fa4ab'],
       dark: isDark ? ['#33363b', '#232528', '#1a1b1e'] : ['#43464c', '#2f3136', '#25272b'],
@@ -3088,9 +3591,9 @@ const office = (() => {
   }
 
   // --------------------------------------------------------------- frame --
-  function draw() {
+  function draw(fit = fitView) {
     if (!colors) refreshColors()
-    if (!fitView()) return
+    if (!fit()) return
     nightness = nightnessNow()
     renderFloor()
     pen = mainPen
@@ -3667,12 +4170,13 @@ const office = (() => {
   function openInList(sessionId) {
     tip.style.display = 'none'
     if (isWallMode()) document.exitFullscreen().catch(() => {})
-    state.open.add(sessionId)
+    state.open = new Set([sessionId])
+    state.filter = 'all'
     let parent = sessionById(sessionId)?.parentSessionId
     for (let depth = 0; parent && depth < 6; depth++) { state.collapsed.delete(parent); parent = sessionById(parent)?.parentSessionId }
     setTab('sessions')
     renderLive()
-    const row = document.querySelector(`tr.session[data-id="${CSS.escape(sessionId)}"]`)
+    const row = document.querySelector(isListView() ? `.nav-item[data-id="${CSS.escape(sessionId)}"]` : `tr.session[data-id="${CSS.escape(sessionId)}"]`)
     if (row) { row.scrollIntoView({ block: 'center', behavior: isReduced() ? 'auto' : 'smooth' }); row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 1600) }
   }
 
@@ -3762,8 +4266,51 @@ const office = (() => {
   // The clock, the sky and relative times in the ticker move even when nothing else does.
   setInterval(() => { renderTicker(); if (isActive && isReduced()) draw() }, 30_000)
 
+  // One still frame of the whole office, fitted into another canvas at its own
+  // size: the List view's preview. Everything the main canvas keeps between
+  // frames (its size, the floor cache, the hit boxes for hover) is put back.
+  let miniFloor = null, miniFloorKey = ''
+  function fitMini(target) {
+    const { minX, maxX, minY, maxY } = worldBounds()
+    const spanX = maxX - minX, spanY = maxY - minY
+    // As tall as the room is for its width, so the preview has no empty bands.
+    const cssWidth = Math.floor(target.clientWidth)
+    const cssHeight = Math.max(110, Math.min(240, Math.round(cssWidth * spanY / spanX)))
+    if (!cssWidth) return false
+    if (target.style.height !== cssHeight + 'px') target.style.height = cssHeight + 'px'
+    const scale = Math.min(cssWidth / spanX, cssHeight / spanY)
+    const ratio = window.devicePixelRatio || 1
+    const centerX = (minX + maxX) / 2, centerY = (minY + maxY) / 2
+    view = { scale, baseScale: scale, ratio, cssWidth, cssHeight, spanX, spanY, baseCenterX: centerX, baseCenterY: centerY, offsetX: cssWidth / 2 - centerX * scale, offsetY: cssHeight / 2 - centerY * scale }
+    if (target.width !== Math.round(cssWidth * ratio) || target.height !== Math.round(cssHeight * ratio)) {
+      target.width = Math.round(cssWidth * ratio)
+      target.height = Math.round(cssHeight * ratio)
+    }
+    return true
+  }
+  function drawMini(target) {
+    if (isActive || !target || !target.clientWidth) return
+    // Nobody walks while the Office tab is closed: everyone is simply where they belong.
+    settleAll()
+    const saved = { canvas, mainPen, pen, view, floorCache, floorCacheKey, hitBoxes, lights, hoveredKey, showNames }
+    canvas = target
+    mainPen = target.getContext('2d')
+    floorCache = miniFloor
+    floorCacheKey = miniFloorKey
+    hoveredKey = ''
+    showNames = false
+    try {
+      draw(() => fitMini(target))
+    } finally {
+      miniFloor = floorCache
+      miniFloorKey = floorCacheKey
+      ;({ canvas, mainPen, pen, view, floorCache, floorCacheKey, hitBoxes, lights, hoveredKey, showNames } = saved)
+    }
+  }
+
   return {
     sync,
+    drawMini,
     setActive(next) {
       isActive = next
       if (next) { lastFrameAt = 0; if (isReduced()) settleAll(); draw(); wake() } else if (frameId) { cancelAnimationFrame(frameId); frameId = 0; lastFrameAt = 0 }
@@ -3775,9 +4322,16 @@ const office = (() => {
 
 // ------------------------------------------------------------------ tabs --
 function setTab(name) {
+  if (!['sessions', 'office', 'reports'].includes(name)) name = 'sessions'
   const isOffice = name === 'office'
-  $('#view-sessions').hidden = isOffice
+  $('#view-sessions').hidden = name !== 'sessions'
   $('#view-office').hidden = !isOffice
+  $('#view-reports').hidden = name !== 'reports'
+  // Charts measure their box when drawn: draw them once the tab is showing.
+  if (name === 'reports') requestAnimationFrame(() => { renderCharts(); renderTimeline(); renderContextBars() })
+  $('#view-toggle').hidden = name !== 'sessions'
+  placeTiles()
+  if (name === 'sessions') requestAnimationFrame(() => { fitSplit(); drawOfficeMini() })
   document.querySelectorAll('[data-tab]').forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.tab === name)))
   remember('fleet-tab', name)
   office.setActive(isOffice)
@@ -3785,7 +4339,10 @@ function setTab(name) {
 document.querySelectorAll('[data-tab]').forEach(tab => tab.addEventListener('click', () => setTab(tab.dataset.tab)))
 
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => office.themeChanged())
-setTab(location.hash === '#office' || remembered('fleet-tab') === 'office' ? 'office' : 'sessions')
+state.view = remembered('fleet-sessions-view') === 'table' ? 'table' : 'list'
+$('#view-sessions').dataset.layout = state.view
+document.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === state.view)))
+setTab(location.hash === '#office' ? 'office' : location.hash === '#reports' ? 'reports' : remembered('fleet-tab') || 'sessions')
 
 // ---------------------------------------------------------------- polling --
 async function refreshLive() {
@@ -3796,8 +4353,9 @@ async function refreshLive() {
     for (const id of [...state.selected]) if (!ids.has(id)) state.selected.delete(id)
     office.sync(state.live)
     renderTiles(); renderContextBars(); renderFeed()
+    drawOfficeMini()
     // A native select closes when redrawn: hold the table while one has focus.
-    if (!(document.activeElement && document.activeElement.tagName === 'SELECT' && $('#live-rows').contains(document.activeElement))) renderLive()
+    if (!(document.activeElement && document.activeElement.tagName === 'SELECT' && $('#view-sessions').contains(document.activeElement))) renderLive()
   } catch (error) {
     $('#updated').textContent = error.message
     // A fetch that never reached the server throws a TypeError.

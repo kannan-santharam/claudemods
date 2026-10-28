@@ -644,9 +644,15 @@ const allowedForSession = new Set<string>() // tools allowed for the rest of the
 // Whether this session runs hidden, and the permission mode its last prompt was
 // sent under (the server reads it from the transcript).
 async function sessionMode($: EngineInterface): Promise<{ hidden: boolean; permissionMode: string }> {
-  if (!isServerUp) return { hidden: false, permissionMode: '' }
-  const answer = await callServer($, `/api/asks/mode?sessionId=${encodeURIComponent(await $.session.id())}`).catch(() => undefined)
-  return { hidden: Boolean(answer?.hidden), permissionMode: String(answer?.permissionMode ?? '') }
+  // Asked as soon as the session starts, the dashboard server may still be starting:
+  // try a few times over a few seconds before deciding there is no dashboard to ask.
+  const sessionId = encodeURIComponent(await $.session.id())
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const answer = await callServer($, `/api/asks/mode?sessionId=${sessionId}`).catch(() => undefined)
+    if (answer) return { hidden: Boolean(answer.hidden), permissionMode: String(answer.permissionMode ?? '') }
+    await $.process.run(['/bin/sleep', '1']).catch(() => undefined)
+  }
+  return { hidden: false, permissionMode: '' }
 }
 async function isHiddenSession($: EngineInterface): Promise<boolean> {
   return (await sessionMode($)).hidden

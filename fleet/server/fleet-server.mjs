@@ -2342,7 +2342,11 @@ const server = http.createServer(async (request, response) => {
     }
     if (request.method === 'GET' && url.pathname === '/api/screen') return send(response, 200, await hiddenScreen(url.searchParams.get('sessionId') || ''))
     if (request.method === 'GET' && url.pathname === '/api/asks/mode') {
-      const session = live.get(url.searchParams.get('sessionId') || '')
+      // A session asks right after it starts, often before the 2-second registry scan has
+      // seen it: look again before answering, or its question would go to a terminal nobody sees.
+      const askedFor = url.searchParams.get('sessionId') || ''
+      if (!live.has(askedFor)) await scanRegistry()
+      const session = live.get(askedFor)
       if (session?.hidden && mainFileIndex.version !== filesVersion) shellsOf(session, Date.now())
       return send(response, 200, { hidden: Boolean(session?.hidden), permissionMode: (session && mainFileIndex.bySession.get(session.sessionId)?.permissionMode) || '' })
     }
