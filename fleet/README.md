@@ -1,7 +1,3 @@
-
-
-https://github.com/user-attachments/assets/910a17e7-e8b1-43dc-87d9-d708e0ececcb
-
 # Fleet — a dashboard for all your Claude Code sessions
 
 ## Installation
@@ -24,9 +20,9 @@ Mac only, needs Node.js 18 or newer.
 
 ## Demo
 
-[![Fleet in one minute: sessions, chat, questions on the web, the Office and reports]([docs/fleet-demo-poster.jpg)](docs/fleet-demo.mp4](https://github.com/user-attachments/assets/910a17e7-e8b1-43dc-87d9-d708e0ececcb))
+Fleet in one minute, with sound and subtitles.
 
-Click the picture to play the one minute demo (with sound and subtitles).
+https://github.com/user-attachments/assets/910a17e7-e8b1-43dc-87d9-d708e0ececcb
 
 ## About
 
