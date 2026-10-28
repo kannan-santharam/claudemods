@@ -405,7 +405,10 @@ async function scanRegistry() {
   for (const registration of registrations) {
     if (!ttyByPid.has(registration.pid) || isExcludedPath(registration.cwd)) continue
     seen.add(registration.sessionId)
-    const tty = ttyByPid.get(registration.pid)
+    // A hidden session (`claude --bg`) has a terminal only inside Claude Code's background
+    // service: it has no tab to focus or type into, and is reached by its job id.
+    const hidden = registration.kind === 'bg'
+    const tty = hidden ? '' : ttyByPid.get(registration.pid)
     const status = registration.status || 'unknown'
     const name = registration.name || baseName(registration.cwd)
     if (lastStatus.get(registration.sessionId) !== status) {
@@ -426,6 +429,8 @@ async function scanRegistry() {
       startedAt: registration.startedAt || 0,
       version: registration.version || '',
       kind: registration.kind || '',
+      hidden,
+      jobId: hidden ? String(registration.jobId || registration.sessionId.slice(0, 8)) : '',
       nameSource: registration.nameSource || '',
       entrypoint: registration.entrypoint || '',
       ...ancestry(registration.pid),
@@ -440,6 +445,7 @@ async function scanRegistry() {
     lastStatus.delete(sessionId)
   }
   if (live.size) lastSeenLiveAt = now
+  sweepAsks(now)
 }
 
 // ------------------------------------------------------------ transcripts --
@@ -475,21 +481,58 @@ function newFileState(filePath) {
     agentName: '',
     prompts: 0,
     commits: 0,
+    pushes: 0,
     contextTokens: 0,
     usage: {}, // day -> model -> tokens
     tools: {},
     filesTouched: {},
     activeMinutes: new Set(),
+    shells: new Map(), // background shell id -> what it runs and when it ended
+    bashInputs: new Map(), // tool_use id -> the Bash call, until its result says whether it went to the background
   }
 }
 
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit'])
+const SHELLS_KEPT = 40
+
+// A background shell ends with a task notification, queued for the session as
+// soon as the command exits: <task-id>…</task-id> … <status>completed</status>.
+function noteTaskNotifications(state, text, time) {
+  if (!text.includes('<task-notification>')) return
+  for (const block of text.split('<task-notification>').slice(1)) {
+    const id = block.match(/<task-id>([^<]+)<\/task-id>/)?.[1]?.trim()
+    const shell = id && state.shells.get(id)
+    if (!shell || shell.endedAt) continue
+    shell.endedAt = time || Date.now()
+    shell.status = block.match(/<status>([^<]+)<\/status>/)?.[1]?.trim() || 'completed'
+  }
+}
+// A Bash call sent to the background answers with its task id and output file.
+function noteBackgroundShell(state, row, time) {
+  const taskId = row.toolUseResult?.backgroundTaskId
+  if (!taskId || state.shells.has(taskId)) return
+  const result = (row.message.content || []).find(block => block?.type === 'tool_result')
+  const call = (result && state.bashInputs.get(result.tool_use_id)) || {}
+  const text = typeof result?.content === 'string' ? result.content : Array.isArray(result?.content) ? result.content.map(part => part?.text || '').join('\n') : ''
+  state.shells.set(taskId, {
+    id: String(taskId),
+    command: String(call.command || '').slice(0, 400),
+    description: String(call.description || '').slice(0, 160),
+    startedAt: time || Date.now(),
+    endedAt: 0,
+    status: 'running',
+    outputFile: text.match(/Output is being written to: (\S+?\.output)\b/)?.[1] || '',
+  })
+  if (state.shells.size > SHELLS_KEPT) state.shells.delete(state.shells.keys().next().value)
+}
 
 function ingestRow(state, row) {
   if (row.cwd && !state.cwd) state.cwd = row.cwd
   if (row.cwd) state.cwd = row.cwd
   if (row.gitBranch) state.branch = row.gitBranch
   if (row.type === 'custom-title' && row.customTitle) state.title = row.customTitle
+  // Each typed prompt records the permission mode it was sent under.
+  if (row.permissionMode && !row.isSidechain && !state.isSubagent) state.permissionMode = String(row.permissionMode)
   if (row.type === 'agent-name' && row.agentName) state.agentName = String(row.agentName)
   const time = row.timestamp ? Date.parse(row.timestamp) : 0
   if (time) {
@@ -497,8 +540,13 @@ function ingestRow(state, row) {
     state.lastAt = Math.max(state.lastAt, time)
   }
   const message = row.message
+  if (row.type === 'queue-operation' && typeof row.content === 'string' && !state.isSubagent) noteTaskNotifications(state, row.content, time)
   if (row.type === 'user' && message) {
     if (time) state.activeMinutes.add(Math.floor(time / 60000))
+    if (!row.isSidechain && !state.isSubagent) {
+      if (row.toolUseResult?.backgroundTaskId) noteBackgroundShell(state, row, time)
+      if (row.origin?.kind === 'task-notification') noteTaskNotifications(state, typeof message.content === 'string' ? message.content : JSON.stringify(message.content), time)
+    }
     // A typed prompt is a string; one sent with images is a list holding its text blocks.
     const typed = typeof message.content === 'string'
       ? message.content
@@ -542,7 +590,12 @@ function ingestRow(state, row) {
       const touched = input.file_path || input.notebook_path
       state.filesTouched[touched] = (state.filesTouched[touched] || 0) + 1
     }
+    if (tool === 'Bash' && !row.isSidechain && !state.isSubagent && block.id) {
+      state.bashInputs.set(block.id, { command: input.command, description: input.description })
+      if (state.bashInputs.size > 60) state.bashInputs.delete(state.bashInputs.keys().next().value)
+    }
     if (tool === 'Bash' && /\bgit\s+(-C\s+\S+\s+)?commit\b/.test(String(input.command || ''))) state.commits++
+    if (tool === 'Bash' && /\bgit\s+(-C\s+\S+\s+)?push\b/.test(String(input.command || ''))) state.pushes++
   }
   // Claude Code writes one row per content block of a response, each carrying
   // that response's whole usage: count each response id once.
@@ -693,6 +746,7 @@ function sessionSummaries(sinceDay) {
         agentName: '',
         prompts: 0,
         commits: 0,
+        pushes: 0,
         contextTokens: 0,
         subagents: 0,
         tokens: emptyTokens(),
@@ -729,6 +783,7 @@ function sessionSummaries(sinceDay) {
     summary.firstAt = summary.firstAt ? Math.min(summary.firstAt, state.firstAt || summary.firstAt) : state.firstAt
     summary.lastAt = Math.max(summary.lastAt, state.lastAt)
     summary.commits += state.commits
+    summary.pushes += state.pushes
     for (const [day, byModel] of Object.entries(state.usage)) {
       if (day < sinceDay) continue
       for (const [model, tokens] of Object.entries(byModel)) {
@@ -933,6 +988,41 @@ function subagentFilesOf(sessionId) {
   return subagentIndex.bySession.get(sessionId) || []
 }
 
+// The background shells a session still has running, with the end of their output.
+const SHELL_OUTPUT = /^\/(private\/)?tmp\/claude-[^/]+\/.+\/tasks\/[\w-]+\.output$/
+let mainFileIndex = { version: -1, bySession: new Map() }
+function shellsOf(session, now) {
+  if (mainFileIndex.version !== filesVersion) {
+    const bySession = new Map()
+    for (const state of files.values()) if (!state.isSubagent) bySession.set(state.sessionId, state)
+    mainFileIndex = { version: filesVersion, bySession }
+  }
+  const state = mainFileIndex.bySession.get(session.sessionId)
+  if (!state?.shells?.size) return []
+  // A shell from before this process started (the session was resumed) died with the old one.
+  const since = (session.startedAt || 0) - 10_000
+  const found = []
+  for (const shell of state.shells.values()) {
+    if (shell.endedAt || shell.startedAt < since || now - shell.startedAt > DAY_MS) continue
+    found.push({ id: shell.id, command: shell.command, description: shell.description, startedAt: shell.startedAt, ...outputTail(shell.outputFile) })
+  }
+  return found.sort((left, right) => left.startedAt - right.startedAt)
+}
+function outputTail(file) {
+  if (!file || !SHELL_OUTPUT.test(file)) return { lastOutput: '', outputAt: 0 }
+  try {
+    const stat = fs.statSync(file)
+    const length = Math.min(stat.size, 4096)
+    const buffer = Buffer.alloc(length)
+    const handle = fs.openSync(file, 'r')
+    try { fs.readSync(handle, buffer, 0, length, stat.size - length) } finally { fs.closeSync(handle) }
+    const lines = buffer.toString('utf8').replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').split(/\r?\n|\r/).map(line => line.trim()).filter(Boolean)
+    return { lastOutput: (lines[lines.length - 1] || '').slice(0, 240), outputAt: stat.mtimeMs }
+  } catch {
+    return { lastOutput: '', outputAt: 0 }
+  }
+}
+
 function subagentsOf(sessionId, now) {
   const found = []
   for (const state of subagentFilesOf(sessionId)) {
@@ -1040,13 +1130,22 @@ function buildLiveView() {
       lastToolAt: summary?.lastToolAt || 0,
       prompts: summary?.prompts || 0,
       commits: summary?.commits || 0,
+      pushes: summary?.pushes || 0,
       topTools,
       filesTouched,
       lastActivityAt: Math.max(summary?.lastAt || 0, session.updatedAt || 0),
       subagents: subagentsOf(session.sessionId, now),
+      shells: shellsOf(session, now),
+      asks: pendingAsks(session.sessionId),
       subagentCount: summary?.subagents || 0,
     }
   })
+  // A question waiting on the page is the session waiting for you, whatever its registry says.
+  for (const session of sessions) {
+    if (!session.asks.length) continue
+    session.status = 'waiting'
+    session.waitingFor = session.asks[0].kind === 'question' ? 'a question for you' : `permission for ${session.asks[0].toolName}`
+  }
   const rank = { waiting: 0, busy: 1, shell: 2, idle: 3 }
   sessions.sort(
     (left, right) => (rank[left.status] ?? 9) - (rank[right.status] ?? 9) || right.lastActivityAt - left.lastActivityAt,
@@ -1057,6 +1156,204 @@ function buildLiveView() {
     rateLimits: [...rateLimits.values()],
     deliveries: deliveries.slice(-20),
   }
+}
+
+// ------------------------------------------------------------- questions --
+
+// A hidden session has no terminal to ask in. The Fleet mod sends its permission
+// prompts and questions here; the page shows them in the session's chat with
+// buttons; the mod long-polls /api/asks/wait and hands the answer to the session.
+const asks = new Map() // id -> { id, sessionId, kind, toolName, toolInput, suggestions, questions, createdAt, answer }
+const askWaiters = new Map() // id -> Set of resolve(answer)
+const ASK_WAIT_MS = 25_000
+const ASK_TTL_MS = 12 * 60 * 60 * 1000
+
+function boundedInput(value) {
+  try {
+    const text = JSON.stringify(value ?? {})
+    return text.length <= 20_000 ? JSON.parse(text) : { truncated: text.slice(0, 20_000) }
+  } catch {
+    return {}
+  }
+}
+function cleanQuestions(questions) {
+  return (Array.isArray(questions) ? questions : []).slice(0, 4).map(question => ({
+    question: String(question?.question || '').slice(0, 1000),
+    header: String(question?.header || '').slice(0, 40),
+    multiSelect: question?.multiSelect === true,
+    options: (Array.isArray(question?.options) ? question.options : []).slice(0, 6).map(option => ({
+      label: String(option?.label || '').slice(0, 200),
+      description: String(option?.description || '').slice(0, 600),
+    })),
+  })).filter(question => question.question)
+}
+function createAsk(body) {
+  const sessionId = String(body.sessionId || '')
+  if (!SESSION_ID_PATTERN.test(sessionId)) return { ok: false, reason: 'Not a session id.' }
+  const kind = body.kind === 'question' ? 'question' : 'permission'
+  const id = crypto.randomUUID()
+  asks.set(id, {
+    id,
+    sessionId,
+    kind,
+    toolName: cleanLine(body.toolName, 80) || (kind === 'question' ? 'AskUserQuestion' : 'a tool'),
+    toolInput: kind === 'permission' ? boundedInput(body.toolInput) : {},
+    suggestions: Array.isArray(body.suggestions) ? boundedInput(body.suggestions.slice(0, 6)) : [],
+    questions: kind === 'question' ? cleanQuestions(body.questions) : [],
+    reason: cleanLine(body.reason, 300),
+    createdAt: Date.now(),
+    answer: null,
+  })
+  liveCache.at = 0
+  log('ask', kind, sessionId.slice(0, 8), body.toolName || '')
+  return { ok: true, id }
+}
+function pendingAsks(sessionId) {
+  const found = []
+  for (const ask of asks.values()) {
+    if (ask.sessionId !== sessionId || ask.answer) continue
+    found.push({ id: ask.id, kind: ask.kind, toolName: ask.toolName, toolInput: ask.toolInput, reason: ask.reason, questions: ask.questions, createdAt: ask.createdAt })
+  }
+  return found.sort((left, right) => left.createdAt - right.createdAt)
+}
+function waitForAnswer(id) {
+  const ask = asks.get(id)
+  if (!ask) return Promise.resolve({ status: 'gone' })
+  if (ask.answer) return Promise.resolve({ status: 'answered', answer: ask.answer })
+  return new Promise(resolve => {
+    const waiters = askWaiters.get(id) || new Set()
+    askWaiters.set(id, waiters)
+    const done = result => { clearTimeout(timer); waiters.delete(done); resolve(result) }
+    const timer = setTimeout(() => done({ status: 'pending' }), ASK_WAIT_MS)
+    waiters.add(done)
+  })
+}
+function answerAsk(body) {
+  const ask = asks.get(String(body.id || ''))
+  if (!ask) return { ok: false, reason: 'That question is no longer open.' }
+  if (ask.answer) return { ok: false, reason: 'It was already answered.' }
+  const given = body.answer || {}
+  if (ask.kind === 'permission') {
+    ask.answer = { allow: given.allow === true, remember: given.allow === true && given.remember === true, message: cleanLine(given.message, 500) }
+  } else {
+    const answers = {}
+    for (const question of ask.questions) {
+      const value = given.answers?.[question.question]
+      if (typeof value === 'string' && value.trim()) answers[question.question] = value.trim().slice(0, 2000)
+    }
+    const response = String(given.response || '').trim().slice(0, 4000)
+    if (!Object.keys(answers).length && !response) return { ok: false, reason: 'Pick an answer first.' }
+    ask.answer = { answers, response }
+  }
+  for (const done of askWaiters.get(ask.id) || []) done({ status: 'answered', answer: ask.answer })
+  askWaiters.delete(ask.id)
+  liveCache.at = 0
+  // Kept a minute, so a mod that was between polls still collects it.
+  setTimeout(() => asks.delete(ask.id), 60_000)
+  return { ok: true }
+}
+function cancelAsk(body) {
+  const ask = asks.get(String(body.id || ''))
+  if (ask && !ask.answer) asks.delete(ask.id)
+  for (const done of askWaiters.get(String(body.id || '')) || []) done({ status: 'gone' })
+  askWaiters.delete(String(body.id || ''))
+  liveCache.at = 0
+  return { ok: true }
+}
+function sweepAsks(now = Date.now()) {
+  for (const ask of asks.values()) {
+    if (!live.has(ask.sessionId) || now - ask.createdAt > ASK_TTL_MS) cancelAsk({ id: ask.id })
+  }
+}
+
+// ------------------------------------------------------------------ screen --
+
+// What a hidden session's terminal shows, from `claude logs <id>`: the raw
+// output is replayed on a small grid so the page can draw the screen as text.
+function renderScreen(raw, cols = 200, rows = 50) {
+  const blank = () => ({ ch: ' ', fg: '', bold: false })
+  let grid = Array.from({ length: rows }, () => Array.from({ length: cols }, blank))
+  let row = 0, col = 0, fg = '', bold = false
+  const clamp = () => { row = Math.max(0, Math.min(rows - 1, row)); col = Math.max(0, Math.min(cols - 1, col)) }
+  const newline = () => { row++; if (row >= rows) { grid.shift(); grid.push(Array.from({ length: cols }, blank)); row = rows - 1 } }
+  const text = String(raw)
+  for (let index = 0; index < text.length; index++) {
+    const ch = text[index]
+    if (ch === '\x1b') {
+      const next = text[index + 1]
+      if (next === '[') {
+        let end = index + 2
+        while (end < text.length && !/[@-~]/.test(text[end])) end++
+        const params = text.slice(index + 2, end).replace(/^\?/, '')
+        const final = text[end]
+        const numbers = params.split(';').map(part => Number(part) || 0)
+        const first = numbers[0] || 0
+        if (final === 'm') {
+          for (let at = 0; at < numbers.length; at++) {
+            const code = params ? numbers[at] : 0
+            if (code === 0) { fg = ''; bold = false }
+            else if (code === 1) bold = true
+            else if (code === 22) bold = false
+            else if (code === 39) fg = ''
+            else if (code === 38 && numbers[at + 1] === 2) { fg = `rgb(${numbers[at + 2]},${numbers[at + 3]},${numbers[at + 4]})`; at += 4 }
+            else if (code === 38 && numbers[at + 1] === 5) { at += 2 }
+            else if (code === 48) { at += numbers[at + 1] === 2 ? 4 : 2 }
+            else if ((code >= 30 && code <= 37) || (code >= 90 && code <= 97)) fg = ['#000', '#c33', '#3a3', '#c90', '#36c', '#c3c', '#3cc', '#ccc'][(code % 10)]
+          }
+        } else if (final === 'H' || final === 'f') { row = (numbers[0] || 1) - 1; col = (numbers[1] || 1) - 1; clamp() }
+        else if (final === 'A') { row -= first || 1; clamp() }
+        else if (final === 'B') { row += first || 1; clamp() }
+        else if (final === 'C') { col += first || 1; clamp() }
+        else if (final === 'D') { col -= first || 1; clamp() }
+        else if (final === 'G') { col = (first || 1) - 1; clamp() }
+        else if (final === 'd') { row = (first || 1) - 1; clamp() }
+        else if (final === 'J') {
+          if (first === 2 || first === 3) grid = Array.from({ length: rows }, () => Array.from({ length: cols }, blank))
+          else if (first === 0) { for (let c = col; c < cols; c++) grid[row][c] = blank(); for (let r = row + 1; r < rows; r++) grid[r] = Array.from({ length: cols }, blank) }
+        } else if (final === 'K') {
+          const [from, to] = first === 1 ? [0, col + 1] : first === 2 ? [0, cols] : [col, cols]
+          for (let c = from; c < to; c++) grid[row][c] = blank()
+        }
+        index = end
+      } else if (next === ']') {
+        // An OSC string ends at BEL or ESC \.
+        let end = index + 2
+        while (end < text.length && text[end] !== '\x07' && !(text[end] === '\x1b' && text[end + 1] === '\\')) end++
+        index = text[end] === '\x07' ? end : end + 1
+      } else index++
+      continue
+    }
+    if (ch === '\r') { col = 0; continue }
+    if (ch === '\n') { newline(); continue }
+    if (ch === '\b') { col = Math.max(0, col - 1); continue }
+    if (ch === '\t') { col = Math.min(cols - 1, (Math.floor(col / 8) + 1) * 8); continue }
+    if (ch < ' ' || ch === '\x7f') continue
+    if (col >= cols) { col = 0; newline() }
+    grid[row][col] = { ch, fg, bold }
+    col++
+  }
+  // Rows as runs of one style, trailing blanks dropped.
+  const lines = grid.map(cells => {
+    let last = cells.length - 1
+    while (last >= 0 && cells[last].ch === ' ') last--
+    const runs = []
+    for (let c = 0; c <= last; c++) {
+      const cell = cells[c], run = runs[runs.length - 1]
+      if (run && run.fg === cell.fg && run.bold === cell.bold) run.text += cell.ch
+      else runs.push({ text: cell.ch, fg: cell.fg, bold: cell.bold })
+    }
+    return runs
+  })
+  while (lines.length && !lines[lines.length - 1].length) lines.pop()
+  return lines
+}
+async function hiddenScreen(sessionId) {
+  const session = live.get(sessionId)
+  if (!session) return { ok: false, reason: 'That session is no longer running.' }
+  if (!session.hidden) return { ok: false, reason: 'Only a hidden session shows its screen here.' }
+  const result = await run(claudeBinary(), ['logs', session.jobId], { timeout: 8000, maxBuffer: 4 * 1024 * 1024 })
+  if (result.code !== 0) return { ok: false, reason: stripAnsi(result.stderr || result.stdout).trim().split('\n')[0] || 'Its screen could not be read.' }
+  return { ok: true, lines: renderScreen(result.stdout), at: Date.now() }
 }
 
 // ------------------------------------------------------------- messaging --
@@ -1312,6 +1609,36 @@ async function browse(target) {
   return { ok: true, path: real, isGit: fs.existsSync(path.join(real, '.git')), crumbs, folders }
 }
 
+// ------------------------------------------------------- hidden sessions --
+
+// A hidden session runs in Claude Code's own background service (`claude --bg`):
+// no terminal window opens, and the dashboard is how it is reached. `claude
+// attach <id>` opens it in a terminal at any time; `claude stop <id>` ends it.
+function claudeBinary() {
+  for (const candidate of [path.join(HOME, '.local', 'bin', 'claude'), '/opt/homebrew/bin/claude', '/usr/local/bin/claude']) {
+    if (fs.existsSync(candidate)) return candidate
+  }
+  return 'claude'
+}
+const stripAnsi = text => String(text).replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')
+async function startHidden(cwd, args) {
+  const result = await run(claudeBinary(), ['--bg', ...args], { cwd, timeout: 60000 })
+  const output = stripAnsi(result.stdout + '\n' + result.stderr)
+  const jobId = output.match(/backgrounded\s*·\s*([0-9a-f]{6,})/i)?.[1]
+  if (result.code === 0 && jobId) {
+    setTimeout(() => void scanRegistry(), 1500)
+    return { ok: true, where: 'hidden', jobId }
+  }
+  const reason = output.split('\n').map(line => line.trim()).filter(line => line && !/^Starting background/i.test(line))[0]
+  return { ok: false, reason: reason || 'The hidden session did not start.' }
+}
+async function attachHidden(sessionId) {
+  const session = live.get(sessionId)
+  if (!session) return { ok: false, reason: 'That session is no longer running.' }
+  if (!session.hidden) return focusTab(sessionId)
+  return openInTerminal(`${shellQuote(claudeBinary())} attach ${shellQuote(session.jobId)}`)
+}
+
 async function startSession(body) {
   const folderPath = insideHome(body.folder)
   if (!folderPath || isExcludedPath(folderPath)) return { ok: false, reason: 'Pick a folder inside your home folder.' }
@@ -1325,6 +1652,7 @@ async function startSession(body) {
     model ? `--model ${shellQuote(model)}` : '',
     name ? `--name ${shellQuote(name)}` : '',
   ].filter(Boolean).join(' ')
+  if (body.hidden === true) return startHidden(folder.path, [...(model ? ['--model', model] : []), ...(name ? ['--name', name] : [])])
   return openInTerminal(command)
 }
 
@@ -1512,7 +1840,7 @@ async function listHistory(folderPath) {
 async function resumeSession(body) {
   const sessionId = String(body.sessionId || '')
   if (!SESSION_ID_PATTERN.test(sessionId)) return { ok: false, reason: 'Not a session id.' }
-  if (live.has(sessionId)) return { ok: false, reason: 'That session is already running: use Open tab.' }
+  if (live.has(sessionId)) return { ok: false, reason: live.get(sessionId).hidden ? 'That session is already running hidden: open it from its row.' : 'That session is already running: use Open tab.' }
   const model = String(body.model || '')
   if (model && !MODEL_IDS.has(model)) return { ok: false, reason: 'Unknown model.' }
   let found = ''
@@ -1530,6 +1858,7 @@ async function resumeSession(body) {
   const command = [`cd ${shellQuote(facts.cwd)} &&`, 'claude', `--resume ${sessionId}`, model ? `--model ${shellQuote(model)}` : '']
     .filter(Boolean)
     .join(' ')
+  if (body.hidden === true) return startHidden(facts.cwd, ['--resume', sessionId, ...(model ? ['--model', model] : [])])
   return openInTerminal(command)
 }
 
@@ -1722,9 +2051,111 @@ async function isAlive(pid) {
 // SIGTERM lets Claude Code finish writing its transcript, so the session can be
 // resumed later; `force` (SIGKILL) is for one that did not stop. The pid is
 // checked to still be a claude process, never just any pid the page names.
+// Closing the tab of an ended session: only when nothing but a shell is left on
+// it, so a tab still running something else (a server, an editor) stays open.
+// The shell is asked to exit first, which closes the tab without taking focus
+// when Terminal closes tabs whose shell exits; else the tab is closed directly.
+const SHELLS = /^-?(zsh|bash|fish|sh|login|tcsh|ksh)$/
+async function onlyShellsOn(tty) {
+  const listing = await run('ps', ['-t', tty, '-o', 'comm='])
+  return listing.stdout.split('\n').map(line => baseName(line.trim())).filter(Boolean).every(name => SHELLS.test(name))
+}
+const EXIT_TERMINAL_SHELL = `on run argv
+  if application "Terminal" is not running then return "notfound"
+  tell application "Terminal"
+    repeat with w in windows
+      repeat with t in tabs of w
+        if tty of t is (item 1 of argv) then
+          do script "exit" in t
+          return "ok"
+        end if
+      end repeat
+    end repeat
+  end tell
+  return "notfound"
+end run`
+const TERMINAL_TAB_EXISTS = `on run argv
+  if application "Terminal" is not running then return "no"
+  tell application "Terminal"
+    repeat with w in windows
+      repeat with t in tabs of w
+        if tty of t is (item 1 of argv) then return "yes"
+      end repeat
+    end repeat
+  end tell
+  return "no"
+end run`
+const CLOSE_TERMINAL_TAB = `on run argv
+  if application "Terminal" is not running then return "notfound"
+  tell application "Terminal"
+    repeat with w in windows
+      repeat with t in tabs of w
+        if tty of t is (item 1 of argv) then
+          if (count of tabs of w) is 1 then
+            close w
+            return "closed"
+          end if
+          set selected tab of w to t
+          set index of w to 1
+          activate
+          tell application "System Events" to tell process "Terminal" to keystroke "w" using command down
+          return "closed"
+        end if
+      end repeat
+    end repeat
+  end tell
+  return "notfound"
+end run`
+const CLOSE_ITERM_SESSION = `on run argv
+  if application "iTerm2" is not running then return "notfound"
+  tell application "iTerm2"
+    repeat with w in windows
+      repeat with t in tabs of w
+        repeat with s in sessions of t
+          if tty of s is (item 1 of argv) then
+            close s
+            return "closed"
+          end if
+        end repeat
+      end repeat
+    end repeat
+  end tell
+  return "notfound"
+end run`
+async function closeTab(tty) {
+  if (!tty) return { closed: false }
+  const device = `/dev/${tty}`
+  if (!(await onlyShellsOn(tty))) return { closed: false, reason: 'its tab still runs something else, so it was left open' }
+  if ((await osascript(CLOSE_ITERM_SESSION, device)).stdout.trim() === 'closed') return { closed: true }
+  if ((await osascript(EXIT_TERMINAL_SHELL, device)).stdout.trim() !== 'ok') return { closed: false }
+  for (let waited = 0; waited < 1500; waited += 250) {
+    await new Promise(resolve => setTimeout(resolve, 250))
+    if ((await osascript(TERMINAL_TAB_EXISTS, device)).stdout.trim() === 'no') return { closed: true }
+  }
+  // The shell exited but Terminal keeps tabs open after it: close the tab itself.
+  const result = await osascript(CLOSE_TERMINAL_TAB, device)
+  return { closed: result.stdout.trim() === 'closed', reason: result.stderr.includes('1002') || result.stderr.includes('assistive') ? 'closing the tab needs Terminal in Accessibility' : '' }
+}
+
+async function stopHidden(session) {
+  const result = await run(claudeBinary(), ['stop', session.jobId], { timeout: 20000 })
+  for (let waited = 0; waited < 8000 && (await isAlive(session.pid)); waited += 250) {
+    await new Promise(resolve => setTimeout(resolve, 250))
+  }
+  const ended = !(await isAlive(session.pid))
+  return { ended, reason: ended ? '' : stripAnsi(result.stderr || result.stdout).trim().split('\n')[0] || 'it is still running' }
+}
+
 async function endSession(body) {
   const session = live.get(String(body.sessionId || ''))
   if (!session) return { ok: false, reason: 'That session is no longer running.' }
+  if (session.hidden) {
+    const stopped = await stopHidden(session)
+    liveCache.at = 0
+    deliveries.push({ id: crypto.randomUUID(), sessionId: session.sessionId, name: session.name, text: 'ended the hidden session', at: Date.now(), isDelivered: stopped.ended, reason: stopped.reason, via: 'end' })
+    if (stopped.ended) await scanRegistry()
+    return stopped.ended ? { ok: true } : { ok: false, reason: `It did not stop: ${stopped.reason}` }
+  }
   const listing = await run('ps', ['-o', 'command=', '-p', String(session.pid)])
   if (!/(^|\/)claude(\s|$)/.test(listing.stdout.trim().split('\n')[0] || '')) {
     return { ok: false, reason: 'Its process is no longer a Claude session.' }
@@ -1751,7 +2182,9 @@ async function endSession(body) {
     via: 'end',
   })
   if (ended) await scanRegistry()
-  return ended ? { ok: true } : { ok: false, stillRunning: true, reason: 'It has not stopped yet. End it again to force it.' }
+  if (!ended) return { ok: false, stillRunning: true, reason: 'It has not stopped yet. End it again to force it.' }
+  const tab = body.closeTab === false ? { closed: false } : await closeTab(session.tty)
+  return { ok: true, tabClosed: tab.closed, tabNote: tab.reason || '' }
 }
 
 async function focusTab(sessionId) {
@@ -1907,6 +2340,16 @@ const server = http.createServer(async (request, response) => {
     if (request.method === 'GET' && url.pathname === '/api/options') {
       return send(response, 200, { root: newSessionRoot, folders: await listFolders(), models: MODELS })
     }
+    if (request.method === 'GET' && url.pathname === '/api/screen') return send(response, 200, await hiddenScreen(url.searchParams.get('sessionId') || ''))
+    if (request.method === 'GET' && url.pathname === '/api/asks/mode') {
+      const session = live.get(url.searchParams.get('sessionId') || '')
+      if (session?.hidden && mainFileIndex.version !== filesVersion) shellsOf(session, Date.now())
+      return send(response, 200, { hidden: Boolean(session?.hidden), permissionMode: (session && mainFileIndex.bySession.get(session.sessionId)?.permissionMode) || '' })
+    }
+    if (request.method === 'GET' && url.pathname === '/api/asks/wait') {
+      if (!hasToken(request)) return send(response, 401, { error: 'only a session waits for answers' })
+      return send(response, 200, await waitForAnswer(url.searchParams.get('id') || ''))
+    }
     if (request.method === 'GET' && url.pathname === '/api/inbox') {
       const sessionId = url.searchParams.get('sessionId') || ''
       return send(response, 200, { messages: claimFor(sessionId) })
@@ -1944,6 +2387,16 @@ const server = http.createServer(async (request, response) => {
     if (url.pathname === '/api/command') return send(response, 200, await runSessionCommand(body))
     if (url.pathname === '/api/resume') return send(response, 200, await resumeSession(body))
     if (url.pathname === '/api/end') return send(response, 200, await endSession(body))
+    if (url.pathname === '/api/attach') return send(response, 200, await attachHidden(String(body.sessionId || '')))
+    if (url.pathname === '/api/asks') {
+      if (!hasToken(request)) return send(response, 401, { error: 'only a session asks' })
+      return send(response, 200, createAsk(body))
+    }
+    if (url.pathname === '/api/asks/cancel') {
+      if (!hasToken(request)) return send(response, 401, { error: 'only a session cancels its question' })
+      return send(response, 200, cancelAsk(body))
+    }
+    if (url.pathname === '/api/asks/answer') return send(response, 200, answerAsk(body))
     if (url.pathname === '/api/send') {
       const text = stripControls(String(body.text || '')).trim()
       const targets = Array.isArray(body.sessionIds) ? body.sessionIds.map(String) : []
