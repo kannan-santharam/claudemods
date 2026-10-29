@@ -1,8 +1,8 @@
 // What is drawn over the room: lines between a hovered person and their
-// family, project signs, the "!", thinking and chat bubbles, the "z z" over
+// family, the "!", thinking and chat bubbles, the "z z" over
 // nappers, and name labels stepped apart so none covers another.
 
-import { toScreen, truncate } from './helpers.js'
+import { truncate } from './helpers.js'
 import { block, disc, polygon } from './primitives.js'
 import { isReduced } from './scene.js'
 
@@ -25,25 +25,7 @@ export function drawOverlays(scene) {
   pen.textAlign = 'center'
   const placed = []
   const overlaps = box => placed.some(other => box.x < other.x + other.width && box.x + box.width > other.x && box.y < other.y + other.height && box.y + box.height > other.y)
-  // Project signs at the front corner of each rug.
-  if (scene.showNames) {
-    pen.font = '700 10px -apple-system, system-ui, sans-serif'
-    for (const segment of scene.layout.segments) {
-      if (!segment.isFirst) continue
-      const anchor = toScreen(segment.x0 - 0.85, segment.gy + 1.4)
-      const text = truncate(segment.label, 22) + (segment.count > 1 ? ` · ${segment.count}` : '')
-      const width = pen.measureText(text).width + 22
-      const box = { x: anchor.x - 4, y: anchor.y + 2, width, height: 16 }
-      placed.push(box)
-      block(scene, box.x, box.y, width, 16, 4, colors.label)
-      pen.strokeStyle = segment.color; pen.lineWidth = 1.2
-      pen.beginPath(); pen.roundRect(box.x, box.y, width, 16, 4); pen.stroke()
-      disc(scene, box.x + 9, box.y + 8, 3.5, 3.5, segment.color)
-      pen.fillStyle = colors.text; pen.textAlign = 'left'
-      pen.fillText(text, box.x + 16, box.y + 11.5)
-      pen.textAlign = 'center'
-    }
-  }
+  // Project names are lettered on their rugs (floor.js), so nothing floats over the room for them.
   const ordered = [...scene.people.values()].filter(person => person.headX != null && person.alpha >= 0.3)
     .sort((first, second) => rank(first) - rank(second))
   function rank(person) { return person.key === scene.hoveredKey ? 0 : person.activity === 'waiting' ? 1 : person.kind === 'helper' ? 3 : 2 }

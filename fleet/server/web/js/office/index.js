@@ -1,13 +1,14 @@
 // The Office tab: every session as a person in an isometric office, drawn on a
 // canvas with no image assets. Sessions sit with their project: each folder is
-// a row of desks on its own coloured rug. A working session sits at its desk
-// and its screen shows what it is doing (code for edits, a page for reads, a
-// terminal for commands), with a paper pile that grows with its context; one
-// waiting for you stands up with a "!"; idle ones are in the lounge, on the
-// sofa, at the ping-pong or snooker table or fetching coffee, and those idle
-// for ten minutes or more nap in the nap room. What a session wears says
-// which model it runs. Commits fly to the outbox as parcels, pushes leave by
-// the window as paper planes and a compaction is a trip to the shredder.
+// a row of desks on its own coloured rug with its name lettered on it. A
+// working session sits at its desk and its screen shows what it is doing (code
+// for edits, a page for reads, a terminal for commands), with a paper pile
+// that grows with its context; one waiting for you stands up with a "!"; idle
+// ones are in the lounge, on the sofa, at the ping-pong or snooker table or
+// fetching coffee, and those idle for ten minutes or more nap in the nap room.
+// What a session wears says which model it runs. Commits fly to the outbox as
+// parcels, pushes leave by the window as paper planes and a compaction is a
+// trip to the shredder.
 // Running subagents are small helpers on stools beside their session, and a
 // headless session started by another is a robot at the server racks. The
 // room is lit by the local time of day, and the dark theme is night.

@@ -1,9 +1,9 @@
-// The floor, cached: planks, sunlight from the windows, the rugs, the nap
-// room's carpet, the walls, the door and the zone names, redrawn only when
-// something they show changes.
+// The floor, cached: planks, sunlight from the windows, the rugs with each
+// project's name lettered on them, the nap room's carpet, the walls, the door
+// and the zone names, redrawn only when something they show changes.
 
 import { alpha, mix } from './colors.js'
-import { LOUNGE_WIDTH, WALL_HEIGHT } from './constants.js'
+import { LOUNGE_WIDTH, SLANT, TILE_X, TILE_Y, WALL_HEIGHT } from './constants.js'
 import { hashOf, toScreen } from './helpers.js'
 import { worldTransform } from './layout.js'
 import { disc, floorQuad, polygon, prism } from './primitives.js'
@@ -13,7 +13,7 @@ import { disc, floorQuad, polygon, prism } from './primitives.js'
 export function renderFloor(scene) {
   const colors = scene.colors
   const hourBucket = Math.floor(Date.now() / 600_000)
-  const key = [scene.layout.key, scene.view.cssWidth, scene.view.cssHeight, scene.view.ratio, scene.view.scale.toFixed(4), scene.view.offsetX.toFixed(1), scene.view.offsetY.toFixed(1), colors.isDark, colors.floorA, hourBucket].join('|')
+  const key = [scene.layout.key, scene.view.cssWidth, scene.view.cssHeight, scene.view.ratio, scene.view.scale.toFixed(4), scene.view.offsetX.toFixed(1), scene.view.offsetY.toFixed(1), colors.isDark, colors.floorA, hourBucket, scene.showNames].join('|')
   if (scene.floorCache && key === scene.floorCacheKey) return
   scene.floorCacheKey = key
   scene.floorCache = scene.floorCache || document.createElement('canvas')
@@ -66,11 +66,12 @@ export function renderFloor(scene) {
   for (let gx = Math.floor(utilityX); gx < floorWidth; gx++) {
     for (let gy = 0; gy < Math.ceil(scene.layout.rackDepth + 1.4); gy++) floorQuad(scene, Math.max(gx, utilityX - 0.2), gy, gx + 1, gy + 1, (gx + gy) % 2 ? mix(colors.floorA, colors.metal[2], 0.24) : mix(colors.floorB, colors.metal[2], 0.3))
   }
-  // One rug per project, in its colour.
+  // One rug per project, in its colour, with a band at the front for its name.
   for (const segment of scene.layout.segments) {
     const tint = mix(colors.floorA, segment.color, colors.isDark ? 0.26 : 0.2)
-    floorQuad(scene, segment.x0 - 0.95, segment.gy - 0.7, segment.x1 + 0.95, segment.gy + 1.5, mix(tint, segment.color, 0.25))
-    floorQuad(scene, segment.x0 - 0.85, segment.gy - 0.6, segment.x1 + 0.85, segment.gy + 1.4, tint)
+    floorQuad(scene, segment.x0 - 0.95, segment.gy - 0.7, segment.x1 + 0.95, segment.gy + 1.75, mix(tint, segment.color, 0.25))
+    floorQuad(scene, segment.x0 - 0.85, segment.gy - 0.6, segment.x1 + 0.85, segment.gy + 1.65, tint)
+    if (scene.showNames) letterRug(scene, target, segment)
   }
   // Walls: the left one along gy, the back one along gx, with a skirting board.
   polygon(scene, [toScreen(0, 0), toScreen(0, floorDepth), toScreen(0, floorDepth, WALL_HEIGHT), toScreen(0, 0, WALL_HEIGHT)], colors.wallLeft, colors.border)
@@ -94,4 +95,38 @@ export function renderFloor(scene) {
   const rackLabel = toScreen(utilityX + 1.5, scene.layout.rackDepth + 1.75)
   target.fillText('Server racks', rackLabel.x, rackLabel.y)
   scene.pen = scene.mainPen
+}
+// The project's name lettered flat on the front of its rug, like a mat,
+// running along the rug's long edge, cut short with an ellipsis when it is
+// longer than the rug, with the number of sessions small beside it when that
+// fits. Only with Names on, so snapshots without names stay private.
+function letterRug(scene, target, segment) {
+  const colors = scene.colors
+  const start = segment.x0 - 0.78, room = (segment.x1 - segment.x0 + 1.56) * SLANT
+  // Light lettering on the dark theme's rugs, dark on the light theme's, both
+  // in the rug's own hue so they read as part of it and survive the night.
+  const ink = colors.isDark ? mix(segment.color, '#ffffff', 0.72) : mix(segment.color, '#000000', 0.55)
+  const origin = toScreen(start, segment.gy + 1.56)
+  target.save()
+  // Text x runs along +gx and text y (down) along +gy, flat on the floor.
+  target.transform(TILE_X / SLANT, TILE_Y / SLANT, -TILE_X / SLANT, TILE_Y / SLANT, origin.x, origin.y)
+  target.textAlign = 'left'
+  target.fillStyle = alpha(ink, 0.9)
+  // A smaller size before an ellipsis, so a one-desk rug still shows a short name whole.
+  target.font = '700 10px -apple-system, system-ui, sans-serif'
+  let name = segment.label
+  if (target.measureText(name).width > room) target.font = '700 8px -apple-system, system-ui, sans-serif'
+  if (target.measureText(name).width > room) {
+    while (name.length > 1 && target.measureText(name + '…').width > room) name = name.slice(0, -1)
+    name += '…'
+  }
+  target.fillText(name, 0, 0)
+  const nameWidth = target.measureText(name).width
+  target.font = '600 7.5px -apple-system, system-ui, sans-serif'
+  const count = segment.isFirst && segment.count > 1 ? `· ${segment.count}` : ''
+  if (count && nameWidth + 4 + target.measureText(count).width <= room) {
+    target.fillStyle = alpha(ink, 0.7)
+    target.fillText(count, nameWidth + 4, 0)
+  }
+  target.restore()
 }
