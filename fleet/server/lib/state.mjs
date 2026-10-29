@@ -52,5 +52,6 @@ export const terminal = { queue: Promise.resolve() }
 export const watchedModelSwitches = new Set()
 
 export const loginCodes = new Map() // code -> expiry
-// The page's files that may be served (URL path -> file), and a listing in progress.
-export const webState = { files: new Map(), scan: null }
+// The page's files that may be served (URL path -> file), a listing in progress
+// and when the last one finished.
+export const webState = { files: new Map(), scan: null, scannedAt: 0 }

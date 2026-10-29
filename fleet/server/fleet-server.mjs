@@ -32,9 +32,9 @@ import { live, registryState, secrets } from './lib/state.mjs'
 import { scanTranscripts } from './lib/transcripts.mjs'
 import { deliverTyped } from './lib/typing.mjs'
 import { log } from './lib/utils.mjs'
-import { scanWebFiles } from './lib/web-files.mjs'
+import { loadWebFiles } from './lib/web-files.mjs'
 
-scanWebFiles()
+loadWebFiles()
 
 const server = http.createServer(handleRequest)
 

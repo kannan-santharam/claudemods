@@ -11,6 +11,7 @@ import { webState } from './state.mjs'
 
 const WEB_FILE_NAME = /^[a-z0-9-]+\.(css|js)$/
 const WEB_FOLDER_NAME = /^[a-z0-9-]+$/
+const RESCAN_INTERVAL_MS = 2000
 const WEB_TYPES = { html: 'text/html; charset=utf-8', css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8' }
 
 async function listWebFolder(folder, urlPrefix, extension, depth, found) {
@@ -31,8 +32,9 @@ async function listWebFolder(folder, urlPrefix, extension, depth, found) {
 
 // Each file is read when listed and again only when it changes, so a plugin
 // update that removes the old folder never leaves this server unable to serve
-// the page: a listing that finds no web/ at all keeps what it had.
-export async function scanWebFiles() {
+// the page: a listing that finds no web/ at all keeps what it had, and one that
+// finds no index.html keeps the page already in memory.
+async function scanWebFiles() {
   const found = new Map()
   try {
     if ((await fsp.lstat(path.join(WEB_DIR, 'index.html'))).isFile()) {
@@ -45,27 +47,48 @@ export async function scanWebFiles() {
   for (const [urlPath, entry] of found) {
     const kept = webState.files.get(urlPath)
     if (kept && kept.file === entry.file) found.set(urlPath, kept)
-    else await refreshWebFile(entry)
+    else if (!(await refreshWebFile(entry))) found.delete(urlPath)
   }
+  if (!found.has('/') && webState.files.has('/')) found.set('/', webState.files.get('/'))
   webState.files = found
 }
 
+// Lists web/ unless a listing is already running, in which case the caller
+// waits for that one. Called once at start-up and again on a miss.
+export function loadWebFiles() {
+  webState.scan ||= scanWebFiles().finally(() => {
+    webState.scan = null
+    webState.scannedAt = Date.now()
+  })
+  return webState.scan
+}
+
+// Re-reads a file whose modification time changed. A file that cannot be read
+// (gone halfway through a plugin update) keeps the body already in memory; one
+// that is no longer a regular file, a symlink put in its place, is false and
+// is dropped by the caller.
 async function refreshWebFile(entry) {
   try {
-    const stat = await fsp.stat(entry.file)
+    const stat = await fsp.lstat(entry.file)
+    if (!stat.isFile()) return false
     if (stat.mtimeMs !== entry.mtimeMs) Object.assign(entry, { mtimeMs: stat.mtimeMs, body: await fsp.readFile(entry.file) })
   } catch {}
+  return true
 }
 
 // A path not in the list is looked for once more, so a file added to web/
-// is served without a restart. Only paths shaped like the page's are.
+// is served without a restart. Only paths shaped like the page's are, and at
+// most one listing every two seconds, so unknown paths cannot keep re-listing
+// the folder. Until index.html has been read once, / is an empty page, not a 404.
 export async function readWebFile(urlPath) {
   if (!webState.files.has(urlPath) && (urlPath === '/' || /^\/(css|js)\//.test(urlPath))) {
-    webState.scan ||= scanWebFiles().finally(() => { webState.scan = null })
-    await webState.scan
+    if (webState.scan || Date.now() - webState.scannedAt >= RESCAN_INTERVAL_MS) await loadWebFiles()
   }
-  const entry = webState.files.get(urlPath)
-  if (!entry) return null
-  await refreshWebFile(entry)
-  return entry.body ? entry : null
+  let entry = webState.files.get(urlPath)
+  if (entry && !(await refreshWebFile(entry))) {
+    if (webState.files.get(urlPath) === entry) webState.files.delete(urlPath)
+    entry = null
+  }
+  if (urlPath === '/' && !entry?.body) return { type: WEB_TYPES.html, body: '' }
+  return entry?.body ? entry : null
 }
