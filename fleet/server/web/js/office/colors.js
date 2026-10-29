@@ -50,6 +50,11 @@ export function refreshColors(scene) {
     sofa: isDark ? ['#4f7470', '#3e5c59', '#344d4a'] : ['#93bbb6', '#7aa59f', '#6a928c'],
     pot: isDark ? ['#8a5a40', '#6e4632', '#5b3a2a'] : ['#c9805c', '#b06a48', '#985a3c'],
     table: isDark ? ['#2f6b4f', '#24543e', '#1d4533'] : ['#3f8f69', '#337a58', '#2a684a'],
+    baize: isDark ? ['#2e7d43', '#246436', '#1d532c'] : ['#3d9b52', '#327f43', '#296a37'],
+    rail: isDark ? ['#6e3f28', '#58311f', '#472819'] : ['#9a5b3b', '#80492f', '#6b3c26'],
+    // The nap room's carpet and walls: the room's own, pulled toward a dusky blue so it reads as dim.
+    napFloor: mix(floor, '#28305a', isDark ? 0.45 : 0.42),
+    napWall: mix(cssVariable('--surface-1'), '#28305a', isDark ? 0.4 : 0.3),
     paper: isDark ? ['#d8d6cf', '#bdbab2', '#a9a69e'] : ['#fbfaf6', '#e4e1d9', '#d2cfc6'],
     leaf: isDark ? '#3f7d4f' : '#4f9a62',
     leafDark: isDark ? '#2f6440' : '#3d7f4f',

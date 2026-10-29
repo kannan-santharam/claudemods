@@ -1,8 +1,9 @@
-// The floor, cached: planks, sunlight from the windows, the rugs, the walls,
-// the door and the zone names, redrawn only when something they show changes.
+// The floor, cached: planks, sunlight from the windows, the rugs, the nap
+// room's carpet, the walls, the door and the zone names, redrawn only when
+// something they show changes.
 
 import { alpha, mix } from './colors.js'
-import { WALL_HEIGHT } from './constants.js'
+import { LOUNGE_WIDTH, WALL_HEIGHT } from './constants.js'
 import { hashOf, toScreen } from './helpers.js'
 import { worldTransform } from './layout.js'
 import { disc, floorQuad, polygon, prism } from './primitives.js'
@@ -51,11 +52,17 @@ export function renderFloor(scene) {
     }
     scene.pen.globalAlpha = 1
   }
-  // The lounge rug with a border, and the tiled floor of the utility corner.
+  // The lounge rug with a border under both halves of the lounge, the nap
+  // room's dim carpet over its back corner, and the tiled floor of the
+  // utility corner.
   const rug = mix(colors.floorA, colors.accent, colors.isDark ? 0.18 : 0.14)
-  floorQuad(scene, 0.6, 2.75, 4.5, corridorY - 0.5, mix(rug, colors.text, 0.12))
-  floorQuad(scene, 0.72, 2.87, 4.38, corridorY - 0.62, rug)
-  floorQuad(scene, 0.95, 3.1, 4.15, corridorY - 0.85, null, alpha(colors.label, 0.55))
+  const rugRight = LOUNGE_WIDTH - 0.3
+  floorQuad(scene, 0.6, 2.75, rugRight, corridorY - 0.5, mix(rug, colors.text, 0.12))
+  floorQuad(scene, 0.72, 2.87, rugRight - 0.12, corridorY - 0.62, rug)
+  floorQuad(scene, 0.95, 3.1, rugRight - 0.35, corridorY - 0.85, null, alpha(colors.label, 0.55))
+  const napRoom = scene.layout.napRoom
+  floorQuad(scene, napRoom.x0, 0, napRoom.x1, napRoom.depth, colors.napFloor)
+  floorQuad(scene, napRoom.x0 + 0.15, 0.15, napRoom.x1 - 0.15, napRoom.depth - 0.15, null, alpha(colors.text, 0.12))
   for (let gx = Math.floor(utilityX); gx < floorWidth; gx++) {
     for (let gy = 0; gy < Math.ceil(scene.layout.rackDepth + 1.4); gy++) floorQuad(scene, Math.max(gx, utilityX - 0.2), gy, gx + 1, gy + 1, (gx + gy) % 2 ? mix(colors.floorA, colors.metal[2], 0.24) : mix(colors.floorB, colors.metal[2], 0.3))
   }
@@ -70,6 +77,8 @@ export function renderFloor(scene) {
   polygon(scene, [toScreen(0, 0), toScreen(floorWidth, 0), toScreen(floorWidth, 0, WALL_HEIGHT), toScreen(0, 0, WALL_HEIGHT)], colors.wallBack, colors.border)
   polygon(scene, [toScreen(0, 0), toScreen(floorWidth, 0), toScreen(floorWidth, 0, 4), toScreen(0, 0, 4)], mix(colors.wallBack, colors.text, 0.12))
   polygon(scene, [toScreen(0, 0), toScreen(0, floorDepth), toScreen(0, floorDepth, 4), toScreen(0, 0, 4)], mix(colors.wallLeft, colors.text, 0.1))
+  // The nap room's stretch of the back wall, painted its own dusky colour.
+  polygon(scene, [toScreen(napRoom.x0, 0, 4), toScreen(napRoom.x1, 0, 4), toScreen(napRoom.x1, 0, WALL_HEIGHT), toScreen(napRoom.x0, 0, WALL_HEIGHT)], mix(colors.napWall, colors.wallBack, 0.35))
   polygon(scene, [toScreen(0, 0, WALL_HEIGHT), toScreen(floorWidth, 0, WALL_HEIGHT), toScreen(floorWidth, -0.25, WALL_HEIGHT), toScreen(-0.25, -0.25, WALL_HEIGHT), toScreen(-0.25, floorDepth, WALL_HEIGHT), toScreen(0, floorDepth, WALL_HEIGHT)], colors.wallTop)
   // The door, in the left wall at the corridor.
   polygon(scene, [toScreen(0, corridorY - 0.55), toScreen(0, corridorY + 0.55), toScreen(0, corridorY + 0.55, 58), toScreen(0, corridorY - 0.55, 58)], colors.wood[1], colors.border)

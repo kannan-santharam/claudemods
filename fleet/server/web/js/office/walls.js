@@ -1,5 +1,6 @@
 // What hangs on the walls: windows onto a skyline that follows the time of
-// day, the clock, the plan usage board, the whiteboard and a framed poster.
+// day, the clock, the plan usage board, the whiteboard, a framed poster and
+// the nap room's sign.
 
 import { resetsIn } from '../tiles.js'
 import { mix } from './colors.js'
@@ -187,5 +188,22 @@ export function drawPoster(scene) {
     disc(scene, width * 0.35, 13, 6, 6, colors.shirts[3])
     block(scene, width * 0.5, 7, 9, 12, 1, colors.shirts[0])
     polygon(scene, [{ x: width * 0.62, y: 20 }, { x: width * 0.86, y: 20 }, { x: width * 0.74, y: 6 }], colors.shirts[2])
+  })
+}
+export function drawNapSign(scene) {
+  // A small sign with a moon above the beds, so the dim corner reads as the nap room.
+  const pen = scene.pen
+  const colors = scene.colors
+  const room = scene.layout.napRoom
+  const from = room.x0 + 0.25, to = room.x1 - 0.25
+  const width = (to - from) * SLANT
+  onBackWall(scene, from, 74, () => {
+    block(scene, 0, 0, width, 15, 3, colors.isDark ? '#1c2038' : '#3a4066')
+    disc(scene, 11, 7.5, 4, 4, '#f3d98b')
+    disc(scene, 12.8, 6.2, 3.4, 3.4, colors.isDark ? '#1c2038' : '#3a4066')
+    pen.fillStyle = '#e8e6f4'
+    pen.font = '700 8.5px -apple-system, system-ui, sans-serif'
+    pen.textAlign = 'left'
+    pen.fillText('Nap room', 20, 10.5)
   })
 }

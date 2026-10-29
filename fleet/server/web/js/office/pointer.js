@@ -8,7 +8,7 @@ import { isListView } from '../sessions/list-view.js'
 import { STATUS } from '../sessions/tree.js'
 import { tip } from '../tooltip.js'
 import { setCamera, zoomAround } from './camera.js'
-import { ACTIVITY_LABEL, OUTFIT_LABEL, TRIP_LABEL } from './constants.js'
+import { ACTIVITY_LABEL, IDLE_SPOT_LABEL, OUTFIT_LABEL, TRIP_LABEL } from './constants.js'
 import { draw } from './frame.js'
 import { truncate } from './helpers.js'
 import { isReduced, isWallMode } from './scene.js'
@@ -31,7 +31,9 @@ function describe(scene, person) {
     return `${agent.description}\n${agent.agentType || 'Subagent'} helping ${session.name}\nRunning for ${timeAgo(agent.startedAt)}\nClick to open ${session.name}`
   }
   const statusLabel = STATUS[session.status]?.label || session.status
-  const doing = person.trip ? TRIP_LABEL[person.trip.kind] : person.errand?.kind === 'shred' ? 'shredding its old context' : ACTIVITY_LABEL[person.activity] || person.activity
+  // An idle session says where in the lounge it is: the sofa, a game, or napping.
+  const idleSpot = person.activity === 'idle' && person.home?.zone !== 'desk' ? IDLE_SPOT_LABEL[person.home?.pose] : ''
+  const doing = person.trip ? TRIP_LABEL[person.trip.kind] : person.errand?.kind === 'shred' ? 'shredding its old context' : idleSpot || ACTIVITY_LABEL[person.activity] || person.activity
   const status = person.leaving ? 'Session ended' : person.activity === 'waiting' ? statusLabel + (person.isUrgent ? ` for ${timeAgo(scene.waitingSince.get(session.sessionId))}` : '') : `${statusLabel} · ${doing}`
   const helpers = session.subagents.filter(agent => agent.isRunning).length
   const shells = session.shells || []

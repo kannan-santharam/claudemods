@@ -1,10 +1,31 @@
 // Where everything stands: the room plan built from the projects and the
-// racks in use, the world bounds, fitting the view into the canvas, and the
-// transform from the floor grid to device pixels.
+// racks in use, the lounge's spots for the idle (sofa, ping-pong, snooker,
+// standing and the nap room), the world bounds, fitting the view into the
+// canvas, and the transform from the floor grid to device pixels.
 
-import { DESK_STEP_X, DESK_STEP_Y, GROUP_GAP, LOUNGE_WIDTH, TILE_X, TILE_Y, UTILITY_WIDTH, WALL_HEIGHT } from './constants.js'
+import { DESK_STEP_X, DESK_STEP_Y, GROUP_GAP, LOUNGE_SPLIT_X, LOUNGE_WIDTH, TILE_X, TILE_Y, UTILITY_WIDTH, WALL_HEIGHT } from './constants.js'
 import { isWallMode } from './scene.js'
 
+// The nap room sits in the back corner of the lounge's right half, against
+// the back wall, so its own back wall is the room's and nothing hides it; its
+// door faces the snooker table. The snooker table stands in front of it.
+// Both are fixed, like the sofa and the ping-pong table on the left.
+const NAP_ROOM = { x0: LOUNGE_SPLIT_X + 0.2, x1: LOUNGE_WIDTH - 0.6, depth: 3.2, doorFrom: 5.95, doorTo: 6.65 }
+const SNOOKER_TABLE = { gx: 5.3, gy: 4.55, width: 2.0, depth: 1.0 }
+function napRoomPlan() {
+  const { x0, x1, depth, doorFrom, doorTo } = NAP_ROOM
+  const doorX = (doorFrom + doorTo) / 2
+  // Sleepers go in and out by the door: from just outside it, to just inside.
+  const via = [{ gx: doorX, gy: depth + 0.45 }, { gx: doorX, gy: depth - 0.45 }]
+  const beds = [{ gx: x0 + 0.2, gy: 0.15 }, { gx: x0 + 1.45, gy: 0.15 }].map(bed => ({ ...bed, width: 0.75, depth: 1.45 }))
+  // The bean bags stand back from the low front wall so it never hides them.
+  const beanbags = [{ gx: x0 + 0.5, gy: depth - 1.05 }, { gx: x1 - 0.45, gy: depth - 1.0 }]
+  const spots = [
+    ...beds.map(bed => ({ gx: bed.gx + bed.width / 2, gy: bed.gy + 0.8, pose: 'bed', facing: 'front', corner: 'nap', zone: 'nap', via })),
+    ...beanbags.map(beanbag => ({ ...beanbag, pose: 'beanbag', facing: 'front', corner: 'nap', zone: 'nap', via })),
+  ]
+  return { x0, x1, depth, doorFrom, doorTo, beds, beanbags, nightLight: { gx: (beds[0].gx + beds[0].width + beds[1].gx) / 2, gy: 0.3 }, spots }
+}
 // The lounge is on the left, then the projects: each folder gets a run of
 // desks on its own rug, packed into rows, in the order the folders first
 // appeared, so a project keeps its place as others come and go. The
@@ -44,13 +65,27 @@ export function buildLayout(groups, rackCount) {
   const floorDepth = Math.ceil(Math.max(8.4, 1.6 + rows * DESK_STEP_Y + 0.6, rackBottom + 3.2))
   const floorWidth = Math.ceil(utilityX + UTILITY_WIDTH)
   const corridorY = floorDepth - 0.65
+  // Every lounge spot names its corner, which is what an idle session's id picks (see sync.js).
+  const napRoom = napRoomPlan()
+  const snooker = SNOOKER_TABLE
   const lounge = []
-  for (const gx of [1.75, 2.55, 3.35]) lounge.push({ gx, gy: 2.05, pose: 'sofa', facing: 'front' })
-  lounge.push({ gx: 1.1, gy: 3.9, pose: 'pong', facing: 'front', side: 0 }, { gx: 3.95, gy: 3.9, pose: 'pong', facing: 'front', side: 1 })
-  // Standing spots fill every other row first, staggered, so a crowd spreads over the rug.
+  for (const gx of [1.75, 2.55, 3.35]) lounge.push({ gx, gy: 2.05, pose: 'sofa', facing: 'front', corner: 'sofa' })
+  lounge.push({ gx: 1.1, gy: 3.9, pose: 'pong', facing: 'front', side: 0, corner: 'pong' }, { gx: 3.95, gy: 3.9, pose: 'pong', facing: 'front', side: 1, corner: 'pong' })
+  // One snooker player in front of the table looking in, the other behind it looking out.
+  lounge.push(
+    { gx: snooker.gx + 0.65, gy: snooker.gy + snooker.depth + 0.45, pose: 'snooker', facing: 'back', side: 0, corner: 'snooker' },
+    { gx: snooker.gx + 1.4, gy: snooker.gy - 0.43, pose: 'snooker', facing: 'front', side: 1, corner: 'snooker' },
+  )
+  lounge.push(...napRoom.spots)
+  // Standing spots fill every other row first, staggered, so a crowd spreads
+  // over the rug: on the left from below the ping-pong table, on the right
+  // from below the snooker table.
   const standing = []
   for (let line = 0, gy = 5.1; gy <= corridorY - 0.9; line++, gy += 1.05) {
-    for (const gx of line % 2 ? [1.9, 3.3] : [1.2, 2.6, 4.0]) standing.push({ gx, gy, pose: 'stand', facing: 'front', line })
+    for (const gx of line % 2 ? [1.9, 3.3] : [1.2, 2.6, 4.0]) standing.push({ gx, gy, pose: 'stand', facing: 'front', corner: 'stand', line })
+  }
+  for (let line = 0, gy = snooker.gy + snooker.depth + 1.35; gy <= corridorY - 0.9; line++, gy += 1.05) {
+    for (const gx of line % 2 ? [6.4] : [5.5, 7.1]) standing.push({ gx, gy, pose: 'stand', facing: 'front', corner: 'stand', line })
   }
   standing.sort((first, second) => (first.line % 2) - (second.line % 2) || first.line - second.line)
   lounge.push(...standing)
@@ -61,7 +96,7 @@ export function buildLayout(groups, rackCount) {
   const printer = { gx: utilityX + 0.25, gy: rackBottom + 0.1 }
   const shredder = { gx: utilityX + 1.6, gy: rackBottom + 0.25 }
   return {
-    rows, perRow, deskBySession, segments, racks, lounge, floorWidth, floorDepth, corridorY, deskStartX, utilityX,
+    rows, perRow, deskBySession, segments, racks, lounge, napRoom, snooker, floorWidth, floorDepth, corridorY, deskStartX, utilityX,
     rackDepth: rackBottom, backWindows, leftWindows, printer, shredder,
     bookshelf: { gx: utilityX + 0.1, gy: 0.06 },
     globe: { gx: utilityX + 2.3, gy: 0.75 },

@@ -23,6 +23,7 @@ export function createScene(emptyLayout) {
     people: new Map(), // key -> person (a session, a helper or a robot)
     rackOf: new Map(), // sessionId -> rack slot
     loungeOf: new Map(), // sessionId -> lounge spot, while idle
+    idleSince: new Map(), // sessionId -> when it went idle, so the long idle go and nap
     tripOf: new Map(), // sessionId -> { kind, slot }
     groupOrder: new Map(), // folder -> first seen order, so projects keep their place
     memberOrder: new Map(), // sessionId -> first seen order within the office

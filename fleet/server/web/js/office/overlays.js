@@ -1,6 +1,6 @@
 // What is drawn over the room: lines between a hovered person and their
-// family, project signs, the "!", thinking and chat bubbles, and name labels
-// stepped apart so none covers another.
+// family, project signs, the "!", thinking and chat bubbles, the "z z" over
+// nappers, and name labels stepped apart so none covers another.
 
 import { toScreen, truncate } from './helpers.js'
 import { block, disc, polygon } from './primitives.js'
@@ -63,6 +63,24 @@ export function drawOverlays(scene) {
       block(scene, person.headX + 2, bubbleY - 6, 16, 9, 4.5, colors.label)
       pen.fillStyle = colors.muted; pen.font = '700 9px -apple-system, system-ui, sans-serif'
       pen.fillText('…', person.headX + 10, bubbleY + 1)
+    } else if (person.activity === 'idle' && (person.target?.pose === 'bed' || person.target?.pose === 'beanbag') && !person.path.length) {
+      // Asleep in the nap room: letters drifting up and fading, or still ones without motion.
+      pen.fillStyle = colors.text
+      if (isReduced(scene)) {
+        pen.font = '700 9px -apple-system, system-ui, sans-serif'
+        pen.fillText('z z', person.headX + 10, person.headY - 2)
+      } else {
+        for (let letter = 0; letter < 3; letter++) {
+          const drift = (scene.clockSeconds * 0.45 + letter / 3 + person.phase) % 1
+          pen.globalAlpha = person.alpha * 0.85 * (drift < 0.15 ? drift / 0.15 : 1 - (drift - 0.15) / 0.85)
+          pen.font = `700 ${8 + drift * 4}px -apple-system, system-ui, sans-serif`
+          pen.fillText('z', person.headX + 6 + drift * 8, person.headY + 2 - drift * 16)
+        }
+        pen.globalAlpha = 1
+      }
+      // Keep the name clear of the letters.
+      placed.push({ x: person.headX + 4, y: person.headY - 16, width: 20, height: 18 })
+      labelY = person.headY - 17
     } else if (person.activity === 'idle' && person.target?.pose !== 'sofa' && !person.path.length && !person.errand && !isReduced(scene)) {
       // Chat in the lounge: neighbours take turns.
       const neighbour = ordered.some(other => other !== person && other.activity === 'idle' && Math.hypot(other.gx - person.gx, other.gy - person.gy) < 1.7)

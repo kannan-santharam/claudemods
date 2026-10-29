@@ -1,10 +1,13 @@
 // People: a session or helper drawn as a person whose outfit says its model
-// and whose pose and arms say what it is doing, a headless session drawn as a
-// robot, and the hit box each figure leaves for the pointer.
+// and whose pose and arms say what it is doing (a snooker player leaning in
+// to shoot or waiting with the cue, a napper on a bean bag or tucked up in
+// bed), a headless session drawn as a robot, and the hit box each figure
+// leaves for the pointer.
 
 import { mix, shade } from './colors.js'
+import { snookerTurn } from './furniture.js'
 import { toScreen } from './helpers.js'
-import { block, disc, polygon } from './primitives.js'
+import { block, disc, polygon, prism } from './primitives.js'
 import { isReduced } from './scene.js'
 
 function drawOutfitBack(scene, person, torsoTop, headY, bob) {
@@ -72,8 +75,10 @@ function drawHuman(scene, person, facing, pose, mirror) {
   const colors = scene.colors
   const time = scene.clockSeconds + person.phase
   const still = isReduced(scene)
-  const sitting = pose === 'sit' || pose === 'sofa' || pose === 'stool'
-  const hipY = sitting ? -12 : -14
+  const sitting = pose === 'sit' || pose === 'sofa' || pose === 'stool' || pose === 'beanbag'
+  const hipY = pose === 'beanbag' ? -8 : sitting ? -12 : -14
+  // The snooker player whose turn it is bends over the table.
+  const isShooting = pose === 'snooker' && snookerTurn(scene).shooter === person.target.side
   const breathe = still ? 0 : Math.sin(time * 2) * 0.4
   const shirt = person.shirt, sleeve = shade(person.shirt, 0.12)
   disc(scene, 0, 0, 9, 3.6, colors.shadow)
@@ -81,14 +86,17 @@ function drawHuman(scene, person, facing, pose, mirror) {
     const swing = still ? 0 : Math.sin(time * 11) * 3
     block(scene, -5 + swing * 0.5, hipY, 4, -hipY, 1.5, colors.pants)
     block(scene, 1 - swing * 0.5, hipY, 4, -hipY, 1.5, colors.pants)
-  } else if (pose === 'stand' || pose === 'pong') {
+  } else if (pose === 'stand' || pose === 'pong' || pose === 'snooker') {
     block(scene, -5, hipY, 4, -hipY, 1.5, colors.pants)
     block(scene, 1, hipY, 4, -hipY, 1.5, colors.pants)
   } else if (pose === 'sofa') {
     block(scene, -6, hipY, 5, 8, 2, colors.pants)
     block(scene, 1, hipY, 5, 8, 2, colors.pants)
+  } else if (pose === 'beanbag') {
+    block(scene, -7, hipY, 5, 9, 2, colors.pants)
+    block(scene, 2, hipY, 5, 9, 2, colors.pants)
   }
-  const torsoTop = hipY - 15 + breathe
+  const torsoTop = hipY - 15 + breathe + (isShooting ? 6 : 0)
   const bob = !still && person.activity === 'reading' && sitting ? Math.sin(time * 1.4) * 0.8 : 0
   const headY = torsoTop - 7
   block(scene, -8, torsoTop, 16, 15, 5, shirt)
@@ -109,6 +117,22 @@ function drawHuman(scene, person, facing, pose, mirror) {
     disc(scene, 0, 13, 3.6, 3.6, colors.critical)
     block(scene, -0.8, 9.5, 1.6, 3, 0.5, colors.wood[2])
     pen.restore()
+  } else if (pose === 'snooker') {
+    if (isShooting) {
+      // Both hands low and forward on the cue (the cue itself is drawn with the table).
+      block(scene, -11, torsoTop + 3, 4, 9, 2, sleeve)
+      block(scene, 7, torsoTop + 3, 4, 9, 2, sleeve)
+    } else {
+      // Waiting a turn, the cue held upright at the side.
+      block(scene, -11, torsoTop + 2, 4, 12, 2, sleeve)
+      pen.strokeStyle = colors.rail[0]; pen.lineWidth = 1.4; pen.lineCap = 'round'
+      pen.beginPath(); pen.moveTo(12, -1); pen.lineTo(10.5, torsoTop - 13); pen.stroke()
+      pen.strokeStyle = '#f3e7c9'; pen.lineWidth = 1.1
+      pen.beginPath(); pen.moveTo(10.6, torsoTop - 11.5); pen.lineTo(10.5, torsoTop - 13); pen.stroke()
+      pen.lineCap = 'butt'
+      block(scene, 7, torsoTop + 2, 4, 9, 2, sleeve)
+      disc(scene, 10.8, torsoTop + 11, 2.2, 2.2, person.skin)
+    }
   } else if (facing === 'back' && sitting && ['typing', 'terminal', 'thinking', 'reading', 'supervising'].includes(activity)) {
     const speed = activity === 'terminal' ? 20 : activity === 'typing' ? 15 : 0
     const tapLeft = still || !speed ? 0 : Math.sin(time * speed) * 1.3
@@ -124,7 +148,7 @@ function drawHuman(scene, person, facing, pose, mirror) {
     block(scene, -2, 0, 4, 12, 2, sleeve)
     disc(scene, 0, 13, 2.4, 2.4, person.skin)
     pen.restore()
-  } else if ((activity === 'idle' && !person.carrying) && facing === 'front' && pose !== 'walk') {
+  } else if ((activity === 'idle' && !person.carrying) && facing === 'front' && pose !== 'walk' && pose !== 'beanbag') {
     block(scene, -11, torsoTop + 2, 4, 12, 2, sleeve)
     disc(scene, -9, torsoTop + 15, 2.2, 2.2, person.skin)
     block(scene, 7, torsoTop + 2, 4, 7, 2, sleeve)
@@ -153,9 +177,16 @@ function drawHuman(scene, person, facing, pose, mirror) {
     pen.fillStyle = person.hair
     pen.fill()
     const look = pose === 'walk' ? (mirror ? -1.6 : 1.6) : 0
-    disc(scene, bob - 2.6 + look, headY + 0.8, 0.95, 1.1, '#1b1b1b')
-    disc(scene, bob + 2.6 + look, headY + 0.8, 0.95, 1.1, '#1b1b1b')
-    if (activity === 'idle' && !still && Math.floor(time * 0.7) % 4 === 0) {
+    if (pose === 'beanbag') {
+      // Asleep: closed eyes.
+      pen.strokeStyle = '#1b1b1b'; pen.lineWidth = 0.8
+      pen.beginPath(); pen.arc(bob - 2.6, headY + 0.4, 1.3, 0.25, Math.PI - 0.25); pen.stroke()
+      pen.beginPath(); pen.arc(bob + 2.6, headY + 0.4, 1.3, 0.25, Math.PI - 0.25); pen.stroke()
+    } else {
+      disc(scene, bob - 2.6 + look, headY + 0.8, 0.95, 1.1, '#1b1b1b')
+      disc(scene, bob + 2.6 + look, headY + 0.8, 0.95, 1.1, '#1b1b1b')
+    }
+    if (activity === 'idle' && pose !== 'beanbag' && !still && Math.floor(time * 0.7) % 4 === 0) {
       pen.strokeStyle = '#1b1b1b'; pen.lineWidth = 0.7
       pen.beginPath(); pen.arc(bob + look * 0.5, headY + 3, 1.6, 0.2, Math.PI - 0.2); pen.stroke()
     }
@@ -206,10 +237,38 @@ function drawRobot(scene, person, facing, pose) {
     block(scene, -4, -24, 8, 6, 1, deep)
   }
 }
+// Tucked up in bed, seen from above: a blanket in the shirt's colour over
+// the body and the head on the pillow, eyes closed. Drawn on the floor grid
+// rather than as an upright figure, so it lies along the bed.
+function drawSleeper(scene, person) {
+  const pen = scene.pen
+  const { gx, gy } = person
+  const blanket = mix(person.shirt, scene.colors.napWall, 0.2)
+  const rise = isReduced(scene) ? 0 : (Math.sin((scene.clockSeconds + person.phase) * 1.3) + 1) * 0.35
+  pen.save()
+  pen.globalAlpha = person.alpha
+  prism(scene, gx - 0.31, gy - 0.32, 0.62, 0.82, 3 + rise, 10, [mix(blanket, '#ffffff', 0.08), shade(blanket, 0.14), shade(blanket, 0.24)])
+  const head = toScreen(gx, gy - 0.47, 14.5)
+  disc(scene, head.x, head.y, 5.6, 5.2, person.skin)
+  pen.beginPath(); pen.ellipse(head.x, head.y - 1.2, 5.9, 4.6, 0, Math.PI, Math.PI * 2); pen.fillStyle = person.hair; pen.fill()
+  pen.strokeStyle = '#1b1b1b'; pen.lineWidth = 0.7
+  pen.beginPath(); pen.arc(head.x - 2, head.y + 0.8, 1, 0.25, Math.PI - 0.25); pen.stroke()
+  pen.beginPath(); pen.arc(head.x + 2, head.y + 0.8, 1, 0.25, Math.PI - 0.25); pen.stroke()
+  if (person.key === scene.hoveredKey) {
+    pen.strokeStyle = scene.colors.accent; pen.lineWidth = 1.6
+    pen.beginPath(); pen.ellipse(head.x, head.y + 8, 15, 8, 0, 0, Math.PI * 2); pen.stroke()
+  }
+  pen.restore()
+  const headTop = head.y - 8
+  scene.hitBoxes.push({ key: person.key, x: head.x - 14, y: headTop, width: 28, height: 26 })
+  person.headX = head.x
+  person.headY = headTop
+}
 export function drawPerson(scene, person) {
   const pen = scene.pen
   const base = toScreen(person.gx, person.gy, person.elevation || 0)
   const walking = person.path.length > 0
+  if (!walking && person.target.pose === 'bed' && person.kind !== 'robot') { drawSleeper(scene, person); return }
   let facing = person.target.facing
   let mirror = person.target.pose === 'pong' && person.target.side === 1
   if (walking) {
@@ -231,7 +290,7 @@ export function drawPerson(scene, person) {
   if (person.kind === 'robot') drawRobot(scene, person, facing, pose)
   else drawHuman(scene, person, facing, pose, mirror)
   pen.restore()
-  const headTop = base.y - (pose === 'walk' || pose === 'stand' || pose === 'pong' ? 50 : 47) * person.size
+  const headTop = base.y - (pose === 'walk' || pose === 'stand' || pose === 'pong' || pose === 'snooker' ? 50 : pose === 'beanbag' ? 43 : 47) * person.size
   scene.hitBoxes.push({ key: person.key, x: base.x - 12 * person.size, y: headTop, width: 24 * person.size, height: base.y - headTop + 4 })
   person.headX = base.x
   person.headY = headTop

@@ -4,7 +4,8 @@
 // and its screen shows what it is doing (code for edits, a page for reads, a
 // terminal for commands), with a paper pile that grows with its context; one
 // waiting for you stands up with a "!"; idle ones are in the lounge, on the
-// sofa, at the ping-pong table or fetching coffee. What a session wears says
+// sofa, at the ping-pong or snooker table or fetching coffee, and those idle
+// for ten minutes or more nap in the nap room. What a session wears says
 // which model it runs. Commits fly to the outbox as parcels, pushes leave by
 // the window as paper planes and a compaction is a trip to the shredder.
 // Running subagents are small helpers on stools beside their session, and a

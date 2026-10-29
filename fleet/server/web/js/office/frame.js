@@ -8,13 +8,13 @@ import { drawChair, drawDesk, drawRack } from './desks.js'
 import { drawEffects } from './effects.js'
 import { drawPerson } from './figures.js'
 import { renderFloor } from './floor.js'
-import { drawBookshelf, drawFloorLamp, drawGlobe, drawLounge, drawPingPong, drawPlant, drawPrinter, drawShredder, drawTallPlant, drawWaterCooler } from './furniture.js'
+import { drawBookshelf, drawFloorLamp, drawGlobe, drawLounge, drawPingPong, drawPlant, drawPrinter, drawShredder, drawSnooker, drawTallPlant, drawWaterCooler, napRoomDrawables } from './furniture.js'
 import { fitView, worldTransform } from './layout.js'
 import { applyLighting, drawVignette, nightnessNow } from './lighting.js'
 import { maybeStartErrand, runErrand } from './movement.js'
 import { drawOverlays } from './overlays.js'
 import { isReduced } from './scene.js'
-import { drawClock, drawPoster, drawWhiteboard, drawWindows } from './walls.js'
+import { drawClock, drawNapSign, drawPoster, drawWhiteboard, drawWindows } from './walls.js'
 
 export function draw(scene, fitCanvas = () => fitView(scene)) {
   if (!scene.colors) refreshColors(scene)
@@ -32,6 +32,7 @@ export function draw(scene, fitCanvas = () => fitView(scene)) {
   drawClock(scene)
   drawWhiteboard(scene)
   drawPoster(scene)
+  drawNapSign(scene)
   const ownerOfDesk = new Map(), robotOfRack = new Map()
   for (const person of scene.people.values()) {
     if (person.kind === 'session' && person.desk) ownerOfDesk.set(person.sessionId, person)
@@ -43,7 +44,11 @@ export function draw(scene, fitCanvas = () => fitView(scene)) {
   drawables.push({ depth: 0.35 + 4.2, paint: () => drawWaterCooler(scene, 0.35, 4.2) })
   drawables.push({ depth: 4.4 + 2.05, paint: () => drawFloorLamp(scene, 4.4, 2.05) })
   drawables.push({ depth: 1.55 + 3.42 + 1.2, paint: () => drawPingPong(scene) })
-  drawables.push({ depth: 5.0 + 0.5, paint: () => drawTallPlant(scene, 5.0, 0.5) })
+  // The snooker table sorts by its front edge, so the player behind it is drawn first.
+  const snooker = scene.layout.snooker
+  drawables.push({ depth: snooker.gx + snooker.gy + snooker.depth + 0.6, paint: () => drawSnooker(scene) })
+  drawables.push(...napRoomDrawables(scene))
+  drawables.push({ depth: 4.5 + 0.45, paint: () => drawTallPlant(scene, 4.5, 0.45) })
   drawables.push({ depth: 0.45 + corridorY - 1.1, paint: () => drawPlant(scene, 0.45, corridorY - 1.1, 0.9) })
   drawables.push({ depth: floorWidth - 0.45 + corridorY - 0.3, paint: () => drawTallPlant(scene, floorWidth - 0.45, corridorY - 0.3) })
   drawables.push({ depth: utilityX + 0.1 + 0.48, paint: () => drawBookshelf(scene) })

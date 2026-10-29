@@ -1,8 +1,11 @@
 // The furniture outside the desks: the lounge with its coffee counter and
 // sofa, lamps, plants, the water cooler, the ping-pong table with its rally,
-// and the utility corner's bookshelf, globe, printer with outbox and shredder.
+// the snooker table with its turns and rolling balls, the nap room's walls,
+// beds, bean bags and night light, and the utility corner's bookshelf,
+// globe, printer with outbox and shredder.
 
 import { mix, shade } from './colors.js'
+import { SNOOKER_TURN_SECONDS } from './constants.js'
 import { hashOf, toScreen } from './helpers.js'
 import { block, disc, onFrontFace, polygon, prism } from './primitives.js'
 import { isReduced } from './scene.js'
@@ -157,4 +160,168 @@ export function drawShredder(scene) {
   }
   const light = toScreen(gx + 0.45, gy + 0.45, 18)
   disc(scene, light.x, light.y, 1, 1, shredding ? colors.good : colors.metal[2])
+}
+
+// Snooker takes turns: every SNOOKER_TURN_SECONDS the other player leans
+// over the table to shoot, and the shot is struck a little into the turn.
+// Without motion, or without two players, nobody's turn changes.
+export function snookerTurn(scene) {
+  const players = [...scene.people.values()].filter(person => person.target?.pose === 'snooker' && !person.path.length && !person.leaving)
+  const isPlaying = players.length === 2
+  if (!isPlaying || isReduced(scene)) return { isPlaying, turn: 0, phase: 0, shooter: isPlaying ? 0 : -1 }
+  const turn = Math.floor(scene.clockSeconds / SNOOKER_TURN_SECONDS)
+  return { isPlaying, turn, phase: scene.clockSeconds - turn * SNOOKER_TURN_SECONDS, shooter: turn % 2 }
+}
+const SHOT_AT = 1.6 // seconds into a turn
+const easeOut = (from, to, progress) => { const clamped = Math.max(0, Math.min(1, progress)); return from + (to - from) * (1 - (1 - clamped) * (1 - clamped)) }
+// Where the cue ball rests at the start of a turn: on the shooter's side,
+// side 0 in front and side 1 behind, so each shot sends it across the table.
+function cueBallAt(table, turn) {
+  const seed = hashOf('snooker-cue:' + turn)
+  return { gx: table.gx + 0.35 + ((seed % 1000) / 1000) * (table.width - 0.7), gy: turn % 2 ? table.gy + 0.28 : table.gy + table.depth - 0.28 }
+}
+// The ball the cue ball strikes, resting in the middle band of the table.
+function objectBallAt(table, turn) {
+  const seed = hashOf('snooker-object:' + turn)
+  return { gx: table.gx + 0.4 + ((seed % 1000) / 1000) * (table.width - 0.8), gy: table.gy + 0.38 + (((seed >> 10) % 100) / 100) * 0.24 }
+}
+export function drawSnooker(scene) {
+  const pen = scene.pen
+  const colors = scene.colors
+  const table = scene.layout.snooker
+  const { gx, gy, width, depth } = table
+  for (const [legX, legY] of [[0.08, 0.08], [width - 0.2, 0.08], [0.08, depth - 0.2], [width - 0.2, depth - 0.2], [width / 2 - 0.06, depth - 0.2]]) prism(scene, gx + legX, gy + legY, 0.12, 0.12, 12, 0, colors.rail)
+  // The wooden body; its top shows as the rails round the green baize.
+  prism(scene, gx, gy, width, depth, 4.5, 12, colors.rail)
+  const surface = 17.2
+  prism(scene, gx + 0.1, gy + 0.1, width - 0.2, depth - 0.2, 0.6, 16.5, colors.baize)
+  // The baulk line and its D, then the six pockets.
+  const baulkX = gx + 0.5
+  const lineFrom = toScreen(baulkX, gy + 0.1, surface), lineTo = toScreen(baulkX, gy + depth - 0.1, surface)
+  pen.strokeStyle = 'rgba(255,255,255,.45)'; pen.lineWidth = 0.5
+  pen.beginPath(); pen.moveTo(lineFrom.x, lineFrom.y); pen.lineTo(lineTo.x, lineTo.y); pen.stroke()
+  for (const [pocketX, pocketY] of [[0.12, 0.12], [width / 2, 0.1], [width - 0.12, 0.12], [0.12, depth - 0.12], [width / 2, depth - 0.1], [width - 0.12, depth - 0.12]]) {
+    const pocket = toScreen(gx + pocketX, gy + pocketY, surface)
+    disc(scene, pocket.x, pocket.y, 2.4, 1.4, '#101010')
+  }
+  const ball = (point, fill) => {
+    const center = toScreen(point.gx, point.gy, surface + 1.3)
+    disc(scene, center.x, center.y + 1.2, 1.6, 0.7, 'rgba(0,0,0,.3)')
+    disc(scene, center.x, center.y, 1.5, 1.5, fill)
+    disc(scene, center.x - 0.5, center.y - 0.5, 0.45, 0.45, 'rgba(255,255,255,.7)')
+  }
+  // The colours on their spots and the reds racked toward the far end.
+  ball({ gx: baulkX, gy: gy + depth * 0.32 }, '#e0c22c')
+  ball({ gx: baulkX, gy: gy + depth / 2 }, '#8a5a2b')
+  ball({ gx: baulkX, gy: gy + depth * 0.68 }, '#2f8f3f')
+  ball({ gx: gx + width * 0.72, gy: gy + depth / 2 }, '#e58fb0')
+  ball({ gx: gx + width - 0.2, gy: gy + depth / 2 }, '#151515')
+  for (const [rowIndex, count] of [[0, 1], [1, 2], [2, 3]]) {
+    for (let index = 0; index < count; index++) ball({ gx: gx + width * 0.76 + rowIndex * 0.075, gy: gy + depth / 2 + (index - (count - 1) / 2) * 0.085 }, '#c8262b')
+  }
+  // The shot: the cue ball runs across to the other side and knocks the blue on a little.
+  const { isPlaying, turn, phase, shooter } = snookerTurn(scene)
+  const cueStart = cueBallAt(table, turn), cueEnd = cueBallAt(table, turn + 1)
+  const objectStart = objectBallAt(table, turn), objectEnd = objectBallAt(table, turn + 1)
+  const rolling = (phase - SHOT_AT) / 1.2, knocked = (phase - SHOT_AT - 0.4) / 1.4
+  ball({ gx: easeOut(objectStart.gx, objectEnd.gx, knocked), gy: easeOut(objectStart.gy, objectEnd.gy, knocked) }, '#2b5fc0')
+  ball({ gx: easeOut(cueStart.gx, cueEnd.gx, rolling), gy: easeOut(cueStart.gy, cueEnd.gy, rolling) }, '#f6f4ec')
+  // The shooter's cue, drawn with the table so the baize never covers it: from
+  // behind the player's hands to just short of the cue ball, drawn back and
+  // forth before the shot and pushed through at it.
+  const spot = scene.layout.lounge.find(candidate => candidate.pose === 'snooker' && candidate.side === shooter)
+  if (isPlaying && spot) {
+    const towardX = cueStart.gx - spot.gx, towardY = cueStart.gy - spot.gy
+    const length = Math.hypot(towardX, towardY) || 1
+    const unitX = towardX / length, unitY = towardY / length
+    const drawnBack = phase < SHOT_AT ? 0.12 + Math.sin(phase * 5) * 0.06 : phase < SHOT_AT + 0.15 ? 0.12 * (1 - (phase - SHOT_AT) / 0.15) : 0
+    const tipGap = phase >= SHOT_AT ? 0.03 : 0.08 + drawnBack
+    const tip = toScreen(cueStart.gx - unitX * tipGap, cueStart.gy - unitY * tipGap, surface + 1.6)
+    const butt = toScreen(spot.gx - unitX * (0.45 + drawnBack), spot.gy - unitY * (0.45 + drawnBack), surface + 9)
+    pen.lineCap = 'round'
+    pen.strokeStyle = colors.rail[0]; pen.lineWidth = 1.6
+    pen.beginPath(); pen.moveTo(butt.x, butt.y); pen.lineTo(tip.x, tip.y); pen.stroke()
+    pen.strokeStyle = '#f3e7c9'; pen.lineWidth = 1.1
+    pen.beginPath(); pen.moveTo(tip.x + (butt.x - tip.x) * 0.06, tip.y + (butt.y - tip.y) * 0.06); pen.lineTo(tip.x, tip.y); pen.stroke()
+    pen.lineCap = 'butt'
+  } else if (!isPlaying) {
+    // A cue left lying along the rail.
+    const from = toScreen(gx + 0.3, gy + depth - 0.05, 16.8), to = toScreen(gx + width - 0.5, gy + depth - 0.05, 16.8)
+    pen.strokeStyle = colors.rail[0]; pen.lineWidth = 1.4; pen.lineCap = 'round'
+    pen.beginPath(); pen.moveTo(from.x, from.y); pen.lineTo(to.x, to.y); pen.stroke()
+    pen.lineCap = 'butt'
+  }
+}
+
+// The nap room: low partitions so the beds stay in view, a full-height wall
+// only on its far (left) side, the beds against the back wall, two bean bags
+// by the door and a night light between the beds.
+const NAP_WALL_HEIGHT = 46, NAP_RAIL_HEIGHT = 12, NAP_WALL_THICKNESS = 0.1, NAP_SLICE = 0.4
+// A partition is drawn in short slices, each at its own depth, because a long
+// wall has no single depth: it must hide what is behind it and nothing in front.
+function partitionSlices(scene, from, to, along, fixed, height, face) {
+  const slices = []
+  for (let start = from; start < to - 0.01; start += NAP_SLICE) {
+    const length = Math.min(NAP_SLICE, to - start)
+    const isLast = start + length >= to - 0.01
+    slices.push({
+      depth: start + fixed,
+      paint: () => {
+        const colors = scene.colors
+        const top = colors.wallTop, end = mix(face, colors.text, 0.12)
+        if (along === 'gy') prism(scene, fixed - NAP_WALL_THICKNESS / 2, start, NAP_WALL_THICKNESS, length, height, 0, [top, isLast ? end : face, face])
+        else prism(scene, start, fixed - NAP_WALL_THICKNESS / 2, length, NAP_WALL_THICKNESS, height, 0, [top, face, isLast ? end : face])
+      },
+    })
+  }
+  return slices
+}
+function drawBed(scene, bed, isTaken) {
+  const colors = scene.colors
+  const { gx, gy, width, depth } = bed
+  prism(scene, gx, gy, width, 0.08, 20, 0, colors.wood)
+  prism(scene, gx, gy + 0.08, width, depth - 0.08, 6, 0, colors.wood)
+  prism(scene, gx + 0.04, gy + 0.1, width - 0.08, depth - 0.14, 4, 6, colors.paper)
+  prism(scene, gx + 0.1, gy + 0.14, width - 0.2, 0.32, 2.5, 10, [colors.paper[0], colors.paper[1], colors.paper[2]])
+  if (!isTaken) {
+    // A folded blanket at the foot of an empty bed.
+    const blanket = mix(colors.napWall, colors.accent, 0.35)
+    prism(scene, gx + 0.06, gy + depth - 0.45, width - 0.12, 0.36, 2.5, 10, [blanket, shade(blanket, 0.12), shade(blanket, 0.22)])
+  }
+}
+function drawBeanbag(scene, spot, index) {
+  const colors = scene.colors
+  const fill = mix(['#c98a4b', '#8c6bb1'][index % 2], colors.napWall, colors.isDark ? 0.35 : 0.15)
+  const center = toScreen(spot.gx - 0.08, spot.gy - 0.1, 0)
+  disc(scene, center.x, center.y, 13, 5.5, colors.shadow)
+  disc(scene, center.x, center.y - 6, 12.5, 8, shade(fill, 0.18))
+  disc(scene, center.x - 1, center.y - 9, 10.5, 7, fill)
+  disc(scene, center.x + 3, center.y - 15, 6.5, 5, mix(fill, '#ffffff', 0.1))
+}
+function drawNightLight(scene) {
+  const colors = scene.colors
+  const { gx, gy } = scene.layout.napRoom.nightLight
+  prism(scene, gx - 0.16, gy - 0.12, 0.32, 0.26, 11, 0, colors.wood)
+  const bulb = toScreen(gx, gy, 15)
+  disc(scene, bulb.x, bulb.y + 2, 3.2, 1.4, colors.dark[1])
+  disc(scene, bulb.x, bulb.y - 1, 2.6, 3, '#f5c97a')
+  scene.lights.push({ x: bulb.x, y: bulb.y + 10, radius: 46, strength: 0.5, warm: true })
+}
+export function napRoomDrawables(scene) {
+  const colors = scene.colors
+  const room = scene.layout.napRoom
+  const sleepers = new Set([...scene.people.values()].filter(person => person.target?.pose === 'bed' && !person.path.length && !person.leaving).map(person => `${person.target.gx}:${person.target.gy}`))
+  const drawables = [
+    ...partitionSlices(scene, 0, room.depth, 'gy', room.x0, NAP_WALL_HEIGHT, colors.napWall),
+    ...partitionSlices(scene, room.x0, room.doorFrom, 'gx', room.depth, NAP_RAIL_HEIGHT, colors.wallBack),
+    ...partitionSlices(scene, room.doorTo, room.x1, 'gx', room.depth, NAP_RAIL_HEIGHT, colors.wallBack),
+    ...partitionSlices(scene, 0, room.depth, 'gy', room.x1, NAP_RAIL_HEIGHT, colors.wallLeft),
+    { depth: room.nightLight.gx + room.nightLight.gy, paint: () => drawNightLight(scene) },
+  ]
+  for (const bed of room.beds) {
+    const center = { gx: bed.gx + bed.width / 2, gy: bed.gy + 0.8 }
+    drawables.push({ depth: center.gx + center.gy - 0.1, paint: () => drawBed(scene, bed, sleepers.has(`${center.gx}:${center.gy}`)) })
+  }
+  room.beanbags.forEach((beanbag, index) => drawables.push({ depth: beanbag.gx + beanbag.gy - 0.05, paint: () => drawBeanbag(scene, beanbag, index) }))
+  return drawables
 }

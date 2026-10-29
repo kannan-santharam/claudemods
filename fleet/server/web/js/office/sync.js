@@ -1,12 +1,13 @@
 // Turning the live sessions into the office: what each is doing, who sits
-// where, who goes on a trip, who arrives, waits or leaves, and the ticker
-// events for what changed since the last sync.
+// where, which lounge corner the idle go to and who naps, who goes on a trip,
+// who arrives, waits or leaves, and the ticker events for what changed since
+// the last sync.
 
 import { $ } from '../core/dom.js'
 import { sessionTree } from '../sessions/tree.js'
 import { focusOn } from './camera.js'
 import { refreshColors } from './colors.js'
-import { DELEGATE_TOOLS, EDIT_TOOLS, LONG_COMMAND_MS, READ_TOOLS, SHELL_TOOLS, TRIP_COOLDOWN_MS, TRIP_MIN_MS, WAIT_ALERT_MS, WEB_TOOLS } from './constants.js'
+import { DELEGATE_TOOLS, EDIT_TOOLS, LONG_COMMAND_MS, NAP_AFTER_MS, READ_TOOLS, SHELL_TOOLS, TRIP_COOLDOWN_MS, TRIP_MIN_MS, WAIT_ALERT_MS, WEB_TOOLS } from './constants.js'
 import { launch } from './effects.js'
 import { draw, wake } from './frame.js'
 import { firstFree, folderOf, hashOf, outfitOf, truncate } from './helpers.js'
@@ -101,12 +102,11 @@ export function sync(scene, live) {
   else scene.layout.deskBySession = nextLayout.deskBySession
   // Lounge spots for the idle, kept while they stay idle.
   const activities = new Map(sessions.map(session => [session.sessionId, activityOf(session, belowOf.get(session.sessionId))]))
-  for (const [sessionId] of scene.loungeOf) if (activities.get(sessionId) !== 'idle' || isRobot(byId.get(sessionId) || {})) scene.loungeOf.delete(sessionId)
-  for (const session of sessions) {
-    const key = session.sessionId
-    if (!isRobot(session) && activities.get(key) === 'idle' && !scene.loungeOf.has(key) && scene.loungeOf.size < scene.layout.lounge.length) scene.loungeOf.set(key, firstFree(scene.loungeOf))
-  }
-  pairUpPingPong(scene)
+  for (const [sessionId, spot] of scene.loungeOf) if (activities.get(sessionId) !== 'idle' || isRobot(byId.get(sessionId) || {}) || spot >= scene.layout.lounge.length) scene.loungeOf.delete(sessionId)
+  for (const [sessionId] of scene.idleSince) if (activities.get(sessionId) !== 'idle') scene.idleSince.delete(sessionId)
+  for (const session of sessions) if (!isRobot(session) && activities.get(session.sessionId) === 'idle') placeIdle(scene, session)
+  pairUpGame(scene, 'pong')
+  pairUpGame(scene, 'snooker')
   // Trips for long commands and web searches, kept a little while so nobody paces back and forth.
   const now = Date.now()
   for (const [sessionId, trip] of scene.tripOf) {
@@ -125,7 +125,7 @@ export function sync(scene, live) {
     if (slot >= 0) scene.tripOf.set(session.sessionId, { kind, slot, since: now })
   }
   const wanted = new Set()
-  let countAtDesks = 0, countLounge = 0, countHelpers = 0, countRobots = 0, countTrips = 0
+  let countAtDesks = 0, countLounge = 0, countNapping = 0, countHelpers = 0, countRobots = 0, countTrips = 0
   scene.today = { commits: 0, pushes: 0, prompts: 0, working: 0 }
   for (const session of sessions) {
     const key = session.sessionId
@@ -147,8 +147,9 @@ export function sync(scene, live) {
       else if (activity === 'supervising' && session.status !== 'busy') home = { gx: desk.gx - 0.05, gy: desk.gy + 1.5, pose: 'stand', facing: 'back', zone: 'desk' }
       else if (activity === 'idle' && scene.loungeOf.has(key)) {
         const spot = scene.layout.lounge[scene.loungeOf.get(key)]
-        home = { gx: spot.gx, gy: spot.gy, pose: spot.pose, facing: spot.facing, side: spot.side, zone: 'lounge' }
-        countLounge++
+        home = { gx: spot.gx, gy: spot.gy, pose: spot.pose, facing: spot.facing, side: spot.side, zone: spot.zone || 'lounge', via: spot.via }
+        if (spot.corner === 'nap') countNapping++
+        else countLounge++
       } else {
         if (activity === 'idle') activity = 'relaxing'
         home = { gx: desk.gx, gy: desk.gy + 0.88, pose: 'sit', facing: 'back', zone: 'desk' }
@@ -218,6 +219,7 @@ export function sync(scene, live) {
   const waiting = sessions.filter(session => session.status === 'waiting').length
   const summary = [
     `${countAtDesks} working at desks`, waiting ? `${waiting} waiting for you` : '', `${countLounge} in the lounge`,
+    countNapping ? `${countNapping} napping` : '',
     countTrips ? `${countTrips} away from their desk` : '',
     countHelpers ? `${countHelpers} helper${countHelpers > 1 ? 's' : ''} (subagents)` : '', countRobots ? `${countRobots} robot${countRobots > 1 ? 's' : ''} (headless sessions)` : '',
     groups.length ? `${groups.length} project${groups.length > 1 ? 's' : ''}` : '',
@@ -229,17 +231,62 @@ export function sync(scene, live) {
   renderTicker(scene)
   if (scene.isActive) (isReduced(scene) ? draw(scene) : wake(scene))
 }
-// Ping-pong needs two: a lone player goes back to standing, and a second
-// idle person joins one who is waiting at the table.
-function pairUpPingPong(scene) {
-  const pongSlots = scene.layout.lounge.map((spot, index) => (spot.pose === 'pong' ? index : -1)).filter(index => index >= 0)
-  const holders = pongSlots.map(slot => [...scene.loungeOf].find(([, index]) => index === slot)?.[0])
+// The lounge spot of one corner that this session's id points at, or the
+// next free one after it; -1 when the corner is full.
+function freeSpotIn(scene, corner, sessionId) {
+  const indexes = scene.layout.lounge.map((spot, index) => (spot.corner === corner ? index : -1)).filter(index => index >= 0)
+  const taken = new Set(scene.loungeOf.values())
+  const start = hashOf(sessionId) % Math.max(1, indexes.length)
+  for (let step = 0; step < indexes.length; step++) {
+    const index = indexes[(start + step) % indexes.length]
+    if (!taken.has(index)) return index
+  }
+  return -1
+}
+// An idle session's lounge spot. Its id picks a corner (the sofa, the
+// ping-pong table, the snooker table or a standing spot) so the idle spread
+// over the lounge, and it keeps that spot while it stays idle. Idle for
+// NAP_AFTER_MS or more, it goes to the nap room instead, while a bed or a
+// bean bag is free, so the nap room reads as the ones resting. When every
+// spot it could have is taken it stays at its desk, relaxing.
+function placeIdle(scene, session) {
+  const key = session.sessionId
+  const now = Date.now()
+  // When the server last saw it do anything is when it went idle; a session
+  // seen idle on the page's first sync may have been idle for hours.
+  if (!scene.idleSince.has(key)) scene.idleSince.set(key, Math.min(now, session.lastActivityAt || session.updatedAt || now))
+  const isSleepy = now - scene.idleSince.get(key) >= NAP_AFTER_MS
+  const current = scene.loungeOf.get(key)
+  const isNapping = current !== undefined && scene.layout.lounge[current]?.corner === 'nap'
+  if (isNapping || (current !== undefined && !isSleepy)) return
+  if (isSleepy) {
+    const bed = freeSpotIn(scene, 'nap', key)
+    if (bed >= 0) { scene.loungeOf.set(key, bed); return }
+  }
+  if (current !== undefined) return
+  const corners = ['sofa', 'pong', 'snooker', 'stand']
+  // Other bits of the hash than the spot within the corner uses.
+  const first = (hashOf(key) >>> 7) % corners.length
+  for (let step = 0; step < corners.length; step++) {
+    const spot = freeSpotIn(scene, corners[(first + step) % corners.length], key)
+    if (spot >= 0) { scene.loungeOf.set(key, spot); return }
+  }
+}
+// A table game needs two: a second idle person from the standing spots joins
+// one who is waiting at the table, and with nobody standing the lone player
+// goes back to standing (or the sofa) instead.
+function pairUpGame(scene, corner) {
+  const lounge = scene.layout.lounge
+  const sides = lounge.map((spot, index) => (spot.corner === corner ? index : -1)).filter(index => index >= 0)
+  const holders = sides.map(slot => [...scene.loungeOf].find(([, index]) => index === slot)?.[0])
   if (holders.filter(Boolean).length !== 1) return
-  const lonelySlot = pongSlots[holders[0] ? 1 : 0]
-  const standing = [...scene.loungeOf].find(([, index]) => scene.layout.lounge[index]?.pose === 'stand')
+  const lonelySlot = sides[holders.findIndex(holder => !holder)]
+  const standing = [...scene.loungeOf].find(([, index]) => lounge[index]?.corner === 'stand')
   if (standing) { scene.loungeOf.set(standing[0], lonelySlot); return }
   const loner = holders.find(Boolean)
   scene.loungeOf.delete(loner)
-  const free = scene.layout.lounge.findIndex((spot, index) => spot.pose !== 'pong' && ![...scene.loungeOf.values()].includes(index))
+  const taken = new Set(scene.loungeOf.values())
+  const freeIn = wanted => lounge.findIndex((spot, index) => spot.corner === wanted && !taken.has(index))
+  const free = freeIn('stand') >= 0 ? freeIn('stand') : freeIn('sofa')
   if (free >= 0) scene.loungeOf.set(loner, free)
 }

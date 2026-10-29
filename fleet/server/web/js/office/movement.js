@@ -1,8 +1,8 @@
 // How people move: errands (coffee, a book, the shredder), routes along the
-// aisles and the corridor, walking to where someone belongs, leaving by the
-// door, and making a new person.
+// aisles and the corridor and through the nap room's door, walking to where
+// someone belongs, leaving by the door, and making a new person.
 
-import { HAIR_COLORS, LOUNGE_WIDTH, SKIN_TONES } from './constants.js'
+import { HAIR_COLORS, LOUNGE_SPLIT_X, LOUNGE_WIDTH, SKIN_TONES } from './constants.js'
 import { hashOf } from './helpers.js'
 import { isReduced } from './scene.js'
 
@@ -46,20 +46,30 @@ function spotZone(scene, spot) {
 function exitX(scene, point, zone) {
   if (zone === 'desk') return point.gx + 1.2
   if (zone === 'rack' || zone === 'utility') return scene.layout.utilityX - 0.25
-  if (zone === 'lounge') return LOUNGE_WIDTH - 0.3
+  // Each half of the lounge has its own aisle, so nobody walks through the
+  // nap room to reach the sofa or across the snooker table to reach a spot.
+  if (zone === 'lounge') return point.gx < LOUNGE_SPLIT_X ? LOUNGE_SPLIT_X - 0.3 : LOUNGE_WIDTH - 0.3
+  if (zone === 'nap') return LOUNGE_WIDTH - 0.3
   return point.gx
 }
 function route(scene, person, destination) {
-  const from = { gx: person.gx, gy: person.gy }
-  if (Math.hypot(destination.gx - from.gx, destination.gy - from.gy) < 1.6) return [destination]
+  const here = { gx: person.gx, gy: person.gy }
+  if (Math.hypot(destination.gx - here.gx, destination.gy - here.gy) < 1.6) return [destination]
+  // A room with a door (the nap room) is entered and left through it: its
+  // spots carry the way in, and the way out is the way in reversed.
+  const wayOut = person.path.length ? [] : [...(person.target?.via || [])].reverse()
+  const wayIn = destination.via || []
+  const from = wayOut.length ? wayOut[wayOut.length - 1] : here
+  const to = wayIn.length ? wayIn[0] : destination
   const corridor = scene.layout.corridorY
-  const fromAisle = exitX(scene, from, person.zone), toAisle = exitX(scene, destination, destination.zone)
+  const fromAisle = exitX(scene, from, person.zone), toAisle = exitX(scene, to, destination.zone)
   // Along one aisle there is no need to go round by the corridor.
-  const waypoints = Math.abs(fromAisle - toAisle) < 0.05
-    ? [{ gx: fromAisle, gy: from.gy }, { gx: toAisle, gy: destination.gy }, destination]
-    : [{ gx: fromAisle, gy: from.gy }, { gx: fromAisle, gy: corridor }, { gx: toAisle, gy: corridor }, { gx: toAisle, gy: destination.gy }, destination]
+  const between = Math.abs(fromAisle - toAisle) < 0.05
+    ? [{ gx: fromAisle, gy: from.gy }, { gx: toAisle, gy: to.gy }]
+    : [{ gx: fromAisle, gy: from.gy }, { gx: fromAisle, gy: corridor }, { gx: toAisle, gy: corridor }, { gx: toAisle, gy: to.gy }]
+  const waypoints = [...wayOut, ...between, ...wayIn, destination]
   return waypoints.filter((point, index) => {
-    const previousPoint = index ? waypoints[index - 1] : from
+    const previousPoint = index ? waypoints[index - 1] : here
     return Math.hypot(point.gx - previousPoint.gx, point.gy - previousPoint.gy) > 0.02
   })
 }
