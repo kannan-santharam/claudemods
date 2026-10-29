@@ -1,7 +1,7 @@
 // The Switch model dialog.
 
 import { $, toast } from '../core/dom.js'
-import { fmtTokens, shortModel } from '../core/format.js'
+import { formatTokens, shortModel } from '../core/format.js'
 import { sessionById, state } from '../core/state.js'
 import { sessionCommand } from '../sessions/actions.js'
 
@@ -17,7 +17,7 @@ export function askToSwitchModel(sessionId, model) {
   const label = (state.options?.models || []).find(option => option.id === model)?.label || shortModel(model)
   $('#model-title').textContent = `Switch ${session.name} to ${label}?`
   $('#model-text').textContent = session.contextTokens
-    ? `Its conversation is cached for ${shortModel(session.model)}. On ${label}, the full history (${fmtTokens(session.contextTokens)} tokens) is read again with its next message, so that reply is slower and uses more tokens. Later replies are cached again.`
+    ? `Its conversation is cached for ${shortModel(session.model)}. On ${label}, the full history (${formatTokens(session.contextTokens)} tokens) is read again with its next message, so that reply is slower and uses more tokens. Later replies are cached again.`
     : `It switches to ${label} for its next message.`
   $('#model-confirm').textContent = `Switch to ${label}`
   $('#model-dialog').hidden = false

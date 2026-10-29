@@ -1,18 +1,18 @@
 // The Reports tab's charts, drawn with Chart.js in the theme's colours.
 
-import { $, css } from '../core/dom.js'
-import { fmtCost, fmtTokens, shortModel } from '../core/format.js'
+import { $, cssVariable } from '../core/dom.js'
+import { formatCost, formatTokens, shortModel } from '../core/format.js'
 import { MODEL_SLOTS, modelColor } from '../core/models.js'
 import { state } from '../core/state.js'
 
 function baseOptions(horizontal) {
-  const grid = css('--grid'), muted = css('--text-muted'), text = css('--text-secondary')
+  const grid = cssVariable('--grid'), muted = cssVariable('--text-muted'), text = cssVariable('--text-secondary')
   return {
     responsive: true, maintainAspectRatio: false, animation: false,
     indexAxis: horizontal ? 'y' : 'x',
     plugins: {
       legend: { display: false },
-      tooltip: { backgroundColor: css('--text-primary'), titleColor: css('--bg'), bodyColor: css('--bg'), footerColor: css('--bg'), padding: 9, cornerRadius: 7, boxPadding: 4 },
+      tooltip: { backgroundColor: cssVariable('--text-primary'), titleColor: cssVariable('--bg'), bodyColor: cssVariable('--bg'), footerColor: cssVariable('--bg'), padding: 9, cornerRadius: 7, boxPadding: 4 },
     },
     scales: {
       x: { grid: { color: horizontal ? grid : 'transparent', drawTicks: false }, border: { display: false }, ticks: { color: muted, padding: 6, font: { size: 11 } } },
@@ -30,7 +30,7 @@ function upsertChart(id, config) {
   state.charts[id] = new Chart(canvas, config)
 }
 function horizontalBars(id, labels, values, format) {
-  const color = css('--series-1')
+  const color = cssVariable('--series-1')
   const options = baseOptions(true)
   options.scales.x.ticks.callback = value => format(value)
   options.plugins.tooltip.callbacks = { label: item => ' ' + format(item.raw) }
@@ -45,29 +45,29 @@ export function renderCharts() {
   const report = state.report
   if (!report) return
   const measure = state.measure
-  const known = MODEL_SLOTS.filter(m => report.models.includes(m))
-  const other = report.models.filter(m => !MODEL_SLOTS.includes(m))
-  const series = [...known.map(m => ({ label: shortModel(m), color: modelColor(m), keys: [m] })), ...(other.length ? [{ label: 'Other', color: css('--series-other'), keys: other }] : [])]
-  const fmt = measure === 'cost' ? fmtCost : fmtTokens
+  const known = MODEL_SLOTS.filter(model => report.models.includes(model))
+  const other = report.models.filter(model => !MODEL_SLOTS.includes(model))
+  const series = [...known.map(model => ({ label: shortModel(model), color: modelColor(model), keys: [model] })), ...(other.length ? [{ label: 'Other', color: cssVariable('--series-other'), keys: other }] : [])]
+  const formatValue = measure === 'cost' ? formatCost : formatTokens
   const options = baseOptions(false)
   options.scales.x.stacked = true
   options.scales.y.stacked = true
-  options.scales.y.ticks.callback = value => fmt(value)
-  options.plugins.legend = { display: series.length > 1, position: 'top', align: 'end', labels: { color: css('--text-secondary'), usePointStyle: true, pointStyle: 'rectRounded', boxWidth: 8, boxHeight: 8, padding: 14, font: { size: 12 } } }
+  options.scales.y.ticks.callback = value => formatValue(value)
+  options.plugins.legend = { display: series.length > 1, position: 'top', align: 'end', labels: { color: cssVariable('--text-secondary'), usePointStyle: true, pointStyle: 'rectRounded', boxWidth: 8, boxHeight: 8, padding: 14, font: { size: 12 } } }
   options.plugins.tooltip.callbacks = {
-    label: item => ` ${item.dataset.label}: ${fmt(item.raw)}`,
-    footer: items => 'Total ' + fmt(items.reduce((sum, item) => sum + item.raw, 0)),
+    label: item => ` ${item.dataset.label}: ${formatValue(item.raw)}`,
+    footer: items => 'Total ' + formatValue(items.reduce((sum, item) => sum + item.raw, 0)),
   }
   options.interaction = { mode: 'index', intersect: false }
   upsertChart('chart-days', {
     type: 'bar',
     data: {
-      labels: report.days.map(d => new Date(d.day + 'T12:00').toLocaleDateString([], { weekday: 'short', day: 'numeric' })),
-      datasets: series.map(s => ({
-        label: s.label,
-        data: report.days.map(d => s.keys.reduce((sum, key) => sum + ((d.byModel[key] || {})[measure] || 0), 0)),
-        backgroundColor: s.color, hoverBackgroundColor: s.color,
-        borderColor: css('--surface-1'), borderWidth: { top: 2 }, borderSkipped: 'bottom', borderRadius: 3, maxBarThickness: 46,
+      labels: report.days.map(day => new Date(day.day + 'T12:00').toLocaleDateString([], { weekday: 'short', day: 'numeric' })),
+      datasets: series.map(seriesEntry => ({
+        label: seriesEntry.label,
+        data: report.days.map(day => seriesEntry.keys.reduce((sum, key) => sum + ((day.byModel[key] || {})[measure] || 0), 0)),
+        backgroundColor: seriesEntry.color, hoverBackgroundColor: seriesEntry.color,
+        borderColor: cssVariable('--surface-1'), borderWidth: { top: 2 }, borderSkipped: 'bottom', borderRadius: 3, maxBarThickness: 46,
       })),
     },
     options,
@@ -75,9 +75,9 @@ export function renderCharts() {
   $('#usage-title').textContent = measure === 'cost' ? 'Estimated cost per day, by model' : 'Tokens per day, by model'
 
   const projects = report.projects.slice(0, 8)
-  horizontalBars('chart-projects', projects.map(p => p.project), projects.map(p => p.cost), fmtCost)
+  horizontalBars('chart-projects', projects.map(project => project.project), projects.map(project => project.cost), formatCost)
   const sessions = report.sessions.slice(0, 8)
-  horizontalBars('chart-sessions', sessions.map(s => (s.isLive ? '● ' : '') + s.name), sessions.map(s => s.tokens), fmtTokens)
+  horizontalBars('chart-sessions', sessions.map(session => (session.isLive ? '● ' : '') + session.name), sessions.map(session => session.tokens), formatTokens)
   const tools = report.tools.slice(0, 10)
-  horizontalBars('chart-tools', tools.map(t => t.tool), tools.map(t => t.count), v => Math.round(v).toLocaleString())
+  horizontalBars('chart-tools', tools.map(usage => usage.tool), tools.map(usage => usage.count), value => Math.round(value).toLocaleString())
 }

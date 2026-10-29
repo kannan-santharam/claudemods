@@ -1,9 +1,9 @@
 // Formatting for display: HTML escaping, tokens, money, times and durations,
 // model names, and a small Markdown reader for Claude's replies.
 
-export const esc = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]))
-export const fmtTokens = tokens => tokens >= 1e9 ? (tokens / 1e9).toFixed(2) + 'B' : tokens >= 1e6 ? (tokens / 1e6).toFixed(1) + 'M' : tokens >= 1e3 ? Math.round(tokens / 1e3) + 'k' : String(Math.round(tokens || 0))
-export const fmtCost = dollars => dollars == null ? '—' : dollars >= 100 ? '$' + Math.round(dollars).toLocaleString() : '$' + dollars.toFixed(2)
+export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]))
+export const formatTokens = tokens => tokens >= 1e9 ? (tokens / 1e9).toFixed(2) + 'B' : tokens >= 1e6 ? (tokens / 1e6).toFixed(1) + 'M' : tokens >= 1e3 ? Math.round(tokens / 1e3) + 'k' : String(Math.round(tokens || 0))
+export const formatCost = dollars => dollars == null ? '—' : dollars >= 100 ? '$' + Math.round(dollars).toLocaleString() : '$' + dollars.toFixed(2)
 export const clock = time => new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 // A small Markdown reader for replies: the text is escaped first, so only the
 // tags written here can appear. Code fences, inline code, bold, italics,
@@ -17,7 +17,7 @@ function inlineMarkdown(text) {
     .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
 }
 export function markdown(source) {
-  const parts = esc(source).split(/^```[^\n]*\n?/m)
+  const parts = escapeHtml(source).split(/^```[^\n]*\n?/m)
   return parts.map((part, index) => {
     if (index % 2 === 1) return `<pre><code>${part.replace(/\n$/, '')}</code></pre>`
     return part.split('\n').map(line => {
@@ -31,7 +31,7 @@ export function markdown(source) {
     }).join('\n')
   }).join('')
 }
-export function ago(time) {
+export function timeAgo(time) {
   if (!time) return '—'
   const seconds = Math.max(0, Math.round((Date.now() - time) / 1000))
   if (seconds < 60) return seconds + 's'
@@ -40,8 +40,8 @@ export function ago(time) {
   const hours = Math.round(minutes / 60)
   return hours < 48 ? hours + 'h' : Math.round(hours / 24) + 'd'
 }
-export function duration(ms) {
-  const minutes = Math.max(1, Math.round(ms / 60000))
+export function duration(milliseconds) {
+  const minutes = Math.max(1, Math.round(milliseconds / 60000))
   return minutes < 60 ? minutes + 'm' : Math.floor(minutes / 60) + 'h ' + (minutes % 60) + 'm'
 }
 export function shortModel(model) {

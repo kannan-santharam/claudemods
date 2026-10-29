@@ -4,7 +4,7 @@
 import type { EngineInterface, MatchedHook } from 'claude-code'
 
 import type { FleetSession } from '../../types'
-import { ago, fit, meter, shortTokens } from './format'
+import { fitToWidth, meter, shortTokens, timeAgo } from './format'
 import { sendTo } from './messages'
 import { scan } from './scan'
 import { openBrowserDashboard } from './server'
@@ -34,13 +34,13 @@ export async function openPane($: EngineInterface): Promise<void> {
   await $.ui.open({ id: PANE, title: 'Fleet', focus: true, columns: 72 })
 }
 
-export const markPaneClosed: MatchedHook<'ui.close', { id: typeof PANE }> = async ($, e, next) => {
+export const markPaneClosed: MatchedHook<'ui.close', { id: typeof PANE }> = async ($, event, next) => {
   await writeIsOpen($, false)
-  return next(e)
+  return next(event)
 }
 
-export const renderPane: MatchedHook<'ui.render', { component: 'Pane'; requestId: typeof PANE }> = async ($, e) => {
-  const table = $.ui.resolve(e)
+export const renderPane: MatchedHook<'ui.render', { component: 'Pane'; requestId: typeof PANE }> = async ($, event) => {
+  const table = $.ui.resolve(event)
   const { Box, Text, Button } = table
   // The mobile surface draws no text field: it reads and focuses only.
   const Input = 'Input' in table ? table.Input : undefined
@@ -49,7 +49,7 @@ export const renderPane: MatchedHook<'ui.render', { component: 'Pane'; requestId
   const sends = await readLastSend($)
   const scannedAt = await readScannedAt($)
   const now = await $.clock.now()
-  const width = Math.max(24, e.props.bodyColumns)
+  const width = Math.max(24, event.props.bodyColumns)
 
   const counts = { waiting: 0, busy: 0, idle: 0 }
   for (const session of sessions) {
@@ -69,7 +69,7 @@ export const renderPane: MatchedHook<'ui.render', { component: 'Pane'; requestId
         <Text color="warning">{counts.busy} working</Text>
         <Text dimColor> · </Text>
         <Text color="success">{counts.idle} idle</Text>
-        <Text dimColor>{scannedAt ? `  ${ago(now, scannedAt)} ago` : '  scanning…'}</Text>
+        <Text dimColor>{scannedAt ? `  ${timeAgo(now, scannedAt)} ago` : '  scanning…'}</Text>
       </Text>
       <Box flexDirection="row" gap={1}>
         <Button
@@ -113,15 +113,15 @@ export const renderPane: MatchedHook<'ui.render', { component: 'Pane'; requestId
             >
               <Text color={look.color}>{look.mark}</Text>{' '}
               <Text weight={isSelected ? 'bold' : 'regular'}>
-                {fit(session.name, Math.max(8, width - 26))}
+                {fitToWidth(session.name, Math.max(8, width - 26))}
               </Text>
               {session.isSelf ? <Text dimColor> (this)</Text> : ''}
               <Text color={look.color}> {look.label}</Text>
-              <Text dimColor> {ago(now, session.updatedAt)}</Text>
+              <Text dimColor> {timeAgo(now, session.updatedAt)}</Text>
             </Button>
             <Text dimColor wrap="truncate-end">
               {'  '}
-              {fit(meta, Math.max(8, width - 18))}
+              {fitToWidth(meta, Math.max(8, width - 18))}
               {'  '}
               <Text color={contextColor}>
                 ctx {meter(percent, 8)} {percent}% {shortTokens(session.contextTokens)}
@@ -134,12 +134,12 @@ export const renderPane: MatchedHook<'ui.render', { component: 'Pane'; requestId
                 </Text>
                 <Text dimColor>
                   pid {session.pid} · {session.tty || 'no tty'} · v{session.version} · up{' '}
-                  {ago(now, session.startedAt)}
+                  {timeAgo(now, session.startedAt)}
                 </Text>
                 {session.lastPrompt && (
                   <Text wrap="truncate-end">
                     <Text dimColor>last: </Text>
-                    {fit(session.lastPrompt, width * 2)}
+                    {fitToWidth(session.lastPrompt, width * 2)}
                   </Text>
                 )}
                 <Box flexDirection="row" gap={1} marginTop={1}>

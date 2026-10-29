@@ -3,7 +3,7 @@
 
 import { api } from '../core/api.js'
 import { toast } from '../core/dom.js'
-import { ago, esc, markdown } from '../core/format.js'
+import { escapeHtml, markdown, timeAgo } from '../core/format.js'
 import { fieldValue, state } from '../core/state.js'
 import { refreshLive } from '../refresh.js'
 import { renderLive } from './live.js'
@@ -24,35 +24,35 @@ export function permissionCard(ask) {
   const summary = askSummary(ask)
   const isPlan = ask.toolName === 'ExitPlanMode'
   return `
-    <div class="ask-head">${isPlan ? 'Approve this plan?' : `Allow ${esc(ask.toolName)}?`}<span>${esc(ago(ask.createdAt))} ago</span></div>
-    ${summary.note || ask.reason ? `<div class="ask-note">${esc(summary.note || ask.reason)}</div>` : ''}
-    ${summary.markdown ? `<div class="ask-plan md">${markdown(summary.markdown)}</div>` : summary.text ? `<pre class="ask-input">${esc(summary.text)}</pre>` : ''}
-    <input class="ask-reason" data-field="ask:${esc(ask.id)}:message" maxlength="500" placeholder="${isPlan ? 'What to change (sent with Keep planning)' : 'Why not, or what to do instead (sent with Deny)'}" value="${esc(fieldValue('ask:' + ask.id + ':message', ''))}">
+    <div class="ask-head">${isPlan ? 'Approve this plan?' : `Allow ${escapeHtml(ask.toolName)}?`}<span>${escapeHtml(timeAgo(ask.createdAt))} ago</span></div>
+    ${summary.note || ask.reason ? `<div class="ask-note">${escapeHtml(summary.note || ask.reason)}</div>` : ''}
+    ${summary.markdown ? `<div class="ask-plan md">${markdown(summary.markdown)}</div>` : summary.text ? `<pre class="ask-input">${escapeHtml(summary.text)}</pre>` : ''}
+    <input class="ask-reason" data-field="ask:${escapeHtml(ask.id)}:message" maxlength="500" placeholder="${isPlan ? 'What to change (sent with Keep planning)' : 'Why not, or what to do instead (sent with Deny)'}" value="${escapeHtml(fieldValue('ask:' + ask.id + ':message', ''))}">
     <div class="ask-actions">
-      <button class="btn small primary" data-ask-answer="${esc(ask.id)}" data-choice="allow">${isPlan ? 'Approve' : 'Allow'}</button>
-      ${!isPlan ? `<button class="btn small" data-ask-answer="${esc(ask.id)}" data-choice="always" title="Allow this and every later ${esc(ask.toolName)} call until the session ends">Allow ${esc(ask.toolName)} for this session</button>` : ''}
-      <button class="btn small danger" data-ask-answer="${esc(ask.id)}" data-choice="deny">${isPlan ? 'Keep planning' : 'Deny'}</button>
+      <button class="btn small primary" data-ask-answer="${escapeHtml(ask.id)}" data-choice="allow">${isPlan ? 'Approve' : 'Allow'}</button>
+      ${!isPlan ? `<button class="btn small" data-ask-answer="${escapeHtml(ask.id)}" data-choice="always" title="Allow this and every later ${escapeHtml(ask.toolName)} call until the session ends">Allow ${escapeHtml(ask.toolName)} for this session</button>` : ''}
+      <button class="btn small danger" data-ask-answer="${escapeHtml(ask.id)}" data-choice="deny">${isPlan ? 'Keep planning' : 'Deny'}</button>
     </div>`
 }
 export function questionCard(ask) {
   const picked = index => { try { return JSON.parse(fieldValue(`ask:${ask.id}:${index}`, '[]')) } catch { return [] } }
   return `
-    <div class="ask-head">${ask.questions.length > 1 ? `${ask.questions.length} questions for you` : 'A question for you'}<span>${esc(ago(ask.createdAt))} ago</span></div>
+    <div class="ask-head">${ask.questions.length > 1 ? `${ask.questions.length} questions for you` : 'A question for you'}<span>${escapeHtml(timeAgo(ask.createdAt))} ago</span></div>
     ${ask.questions.map((question, index) => `
       <div class="ask-question">
-        ${question.header ? `<div class="ask-chip">${esc(question.header)}</div>` : ''}
-        <div class="ask-text">${esc(question.question)}${question.multiSelect ? ' <i>(pick any)</i>' : ''}</div>
+        ${question.header ? `<div class="ask-chip">${escapeHtml(question.header)}</div>` : ''}
+        <div class="ask-text">${escapeHtml(question.question)}${question.multiSelect ? ' <i>(pick any)</i>' : ''}</div>
         <div class="ask-options">${question.options.map(option => `
-          <button type="button" class="ask-option" data-ask-pick="${esc(ask.id)}" data-question="${index}" data-label="${esc(option.label)}" data-multi="${question.multiSelect}" aria-pressed="${picked(index).includes(option.label)}">
-            <b>${esc(option.label)}</b>${option.description ? `<span>${esc(option.description)}</span>` : ''}
+          <button type="button" class="ask-option" data-ask-pick="${escapeHtml(ask.id)}" data-question="${index}" data-label="${escapeHtml(option.label)}" data-multi="${question.multiSelect}" aria-pressed="${picked(index).includes(option.label)}">
+            <b>${escapeHtml(option.label)}</b>${option.description ? `<span>${escapeHtml(option.description)}</span>` : ''}
           </button>`).join('')}
         </div>
-        <input class="ask-reason" data-field="ask:${esc(ask.id)}:${index}:other" maxlength="2000" placeholder="Or type your own answer" value="${esc(fieldValue(`ask:${ask.id}:${index}:other`, ''))}">
+        <input class="ask-reason" data-field="ask:${escapeHtml(ask.id)}:${index}:other" maxlength="2000" placeholder="Or type your own answer" value="${escapeHtml(fieldValue(`ask:${ask.id}:${index}:other`, ''))}">
       </div>`).join('')}
-    <div class="ask-actions"><button class="btn small primary" data-ask-answer="${esc(ask.id)}" data-choice="submit">Send answer${ask.questions.length > 1 ? 's' : ''}</button></div>`
+    <div class="ask-actions"><button class="btn small primary" data-ask-answer="${escapeHtml(ask.id)}" data-choice="submit">Send answer${ask.questions.length > 1 ? 's' : ''}</button></div>`
 }
 export async function answerAsk(askId, choice) {
-  const ask = (state.live?.sessions || []).flatMap(s => s.asks || []).find(item => item.id === askId)
+  const ask = (state.live?.sessions || []).flatMap(session => session.asks || []).find(item => item.id === askId)
   if (!ask) return toast('That question is no longer open')
   let answer
   if (ask.kind === 'permission') {

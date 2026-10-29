@@ -10,7 +10,7 @@ export function shortTokens(tokens: number): string {
   return String(tokens)
 }
 
-export function ago(now: number, then: number): string {
+export function timeAgo(now: number, then: number): string {
   if (!then) return ''
   const seconds = Math.max(0, Math.round((now - then) / 1000))
   if (seconds < 60) return `${seconds}s`
@@ -21,7 +21,7 @@ export function ago(now: number, then: number): string {
   return `${Math.round(hours / 24)}d`
 }
 
-export function fit(text: string, width: number): string {
+export function fitToWidth(text: string, width: number): string {
   if (width <= 1) return ''
   return text.length <= width ? text : `${text.slice(0, width - 1)}…`
 }

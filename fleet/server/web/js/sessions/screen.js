@@ -1,16 +1,16 @@
 // A hidden session's terminal screen, shown in its pane.
 
 import { api } from '../core/api.js'
-import { ago, esc } from '../core/format.js'
+import { escapeHtml, timeAgo } from '../core/format.js'
 import { sessionById, state } from '../core/state.js'
 
 // A hidden session's terminal screen, read every 2 seconds while it is shown.
-export function screenHtml(s) {
-  const screen = state.screens[s.sessionId]
+export function screenHtml(session) {
+  const screen = state.screens[session.sessionId]
   if (!screen) return '<div class="screen-note">Reading its screen…</div>'
-  if (screen.error) return `<div class="screen-note">${esc(screen.error)}</div>`
-  const lines = screen.lines.map(runs => runs.map(run => `<span${run.fg || run.bold ? ` style="${run.fg ? 'color:' + esc(run.fg) + ';' : ''}${run.bold ? 'font-weight:700' : ''}"` : ''}>${esc(run.text)}</span>`).join('')).join('\n')
-  return `<pre class="screen">${lines}</pre><div class="screen-note">What its terminal shows, read ${esc(ago(screen.at))} ago. To type into it, use Open in terminal.</div>`
+  if (screen.error) return `<div class="screen-note">${escapeHtml(screen.error)}</div>`
+  const lines = screen.lines.map(runs => runs.map(run => `<span${run.fg || run.bold ? ` style="${run.fg ? 'color:' + escapeHtml(run.fg) + ';' : ''}${run.bold ? 'font-weight:700' : ''}"` : ''}>${escapeHtml(run.text)}</span>`).join('')).join('\n')
+  return `<pre class="screen">${lines}</pre><div class="screen-note">What its terminal shows, read ${escapeHtml(timeAgo(screen.at))} ago. To type into it, use Open in terminal.</div>`
 }
 let isReadingScreens = false
 export async function refreshScreens() {

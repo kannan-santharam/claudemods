@@ -6,15 +6,15 @@ import { state } from '../core/state.js'
 // Which sessions the table lists: the segment picked above it and the search box.
 const FILTERS = [
   ['all', 'All', () => true],
-  ['waiting', 'Needs you', s => s.status === 'waiting'],
-  ['working', 'Working', s => s.status === 'busy'],
-  ['idle', 'Idle', s => s.status === 'idle' || s.status === 'shell'],
-  ['hidden', 'Hidden', s => s.hidden],
+  ['waiting', 'Needs you', session => session.status === 'waiting'],
+  ['working', 'Working', session => session.status === 'busy'],
+  ['idle', 'Idle', session => session.status === 'idle' || session.status === 'shell'],
+  ['hidden', 'Hidden', session => session.hidden],
 ]
-export function matchesFilter(s) {
+export function matchesFilter(session) {
   const test = (FILTERS.find(filter => filter[0] === state.filter) || FILTERS[0])[2]
   const query = state.search.trim().toLowerCase()
-  return test(s) && (!query || `${s.name} ${s.folder} ${s.branch || ''} ${s.jobId || ''}`.toLowerCase().includes(query))
+  return test(session) && (!query || `${session.name} ${session.folder} ${session.branch || ''} ${session.jobId || ''}`.toLowerCase().includes(query))
 }
 export function renderFilters(sessions) {
   const html = FILTERS.map(([key, label, test]) => {

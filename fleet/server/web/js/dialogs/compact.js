@@ -2,7 +2,7 @@
 
 import { api } from '../core/api.js'
 import { $, toast } from '../core/dom.js'
-import { fmtTokens } from '../core/format.js'
+import { formatTokens } from '../core/format.js'
 import { sessionById } from '../core/state.js'
 import { refreshLive } from '../refresh.js'
 
@@ -13,7 +13,7 @@ export function askToCompact(sessionId) {
   if (!session) return
   compactingId = sessionId
   $('#compact-title').textContent = `Compact ${session.name}?`
-  $('#compact-text').textContent = `Its context is ${session.contextPercent}% full (${fmtTokens(session.contextTokens)} of ${fmtTokens(session.contextWindow)}). Compacting replaces the conversation so far with a summary, so it can keep working with room to spare. ` +
+  $('#compact-text').textContent = `Its context is ${session.contextPercent}% full (${formatTokens(session.contextTokens)} of ${formatTokens(session.contextWindow)}). Compacting replaces the conversation so far with a summary, so it can keep working with room to spare. ` +
     (session.status === 'busy' ? 'It is working now, so it compacts as soon as it is idle.' : session.hasMod ? 'It runs right away.' : 'It is typed into its tab while it is idle.')
   $('#compact-focus').value = ''
   $('#compact-dialog').hidden = false

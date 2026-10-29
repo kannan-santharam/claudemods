@@ -11,8 +11,8 @@
 // headless session started by another is a robot at the server racks. The
 // room is lit by the local time of day, and the dark theme is night.
 
-import { $, css, toast } from './core/dom.js'
-import { ago, shortModel } from './core/format.js'
+import { $, cssVariable, toast } from './core/dom.js'
+import { shortModel, timeAgo } from './core/format.js'
 import { sessionById, state } from './core/state.js'
 import { remember, remembered } from './core/storage.js'
 import { focusTab } from './sessions/actions.js'
@@ -91,7 +91,7 @@ function createOffice() {
   let orderCounter = 0
 
   const isReduced = () => motionQuery.matches
-  const hashOf = text => { let hash = 2166136261; for (const ch of String(text)) hash = Math.imul(hash ^ ch.charCodeAt(0), 16777619); return hash >>> 0 }
+  const hashOf = text => { let hash = 2166136261; for (const character of String(text)) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619); return hash >>> 0 }
   const toScreen = (gx, gy, height = 0) => ({ x: (gx - gy) * TILE_X, y: (gx + gy) * TILE_Y - height })
   const firstFree = (used, from = 0) => { const taken = new Set(used.values()); let index = from; while (taken.has(index)) index++; return index }
   const truncate = (text, length) => (text.length > length ? text.slice(0, length - 1) + '…' : text)
@@ -105,44 +105,44 @@ function createOffice() {
   // ------------------------------------------------------------- colour --
   function parseHex(hex) {
     const value = String(hex).replace('#', '')
-    const full = value.length === 3 ? value.split('').map(ch => ch + ch).join('') : value
+    const full = value.length === 3 ? value.split('').map(character => character + character).join('') : value
     return [0, 2, 4].map(start => parseInt(full.slice(start, start + 2), 16) || 0)
   }
   function mix(first, second, ratio) {
     const [red1, green1, blue1] = parseHex(first), [red2, green2, blue2] = parseHex(second)
-    const blend = (one, two) => Math.round(one + (two - one) * ratio).toString(16).padStart(2, '0')
+    const blend = (fromChannel, toChannel) => Math.round(fromChannel + (toChannel - fromChannel) * ratio).toString(16).padStart(2, '0')
     return '#' + blend(red1, red2) + blend(green1, green2) + blend(blue1, blue2)
   }
   const shade = (hex, ratio) => mix(hex, '#000000', ratio)
   const alpha = (hex, opacity) => { const [red, green, blue] = parseHex(hex); return `rgba(${red},${green},${blue},${opacity})` }
   // The Office keeps its colours when the page around it goes grey: --office-* wins where set.
-  const officeCss = name => css(name.replace(/^--/, '--office-')) || css(name)
+  const officeCssVariable = name => cssVariable(name.replace(/^--/, '--office-')) || cssVariable(name)
   function refreshColors() {
-    const background = parseHex(css('--bg') || '#f4f4f2')
+    const background = parseHex(cssVariable('--bg') || '#f4f4f2')
     const isDark = (background[0] * 0.299 + background[1] * 0.587 + background[2] * 0.114) / 255 < 0.45
-    const floor = css('--surface-2')
+    const floor = cssVariable('--surface-2')
     const wood = isDark ? ['#7a654b', '#5f4e3a', '#4d3f2f'] : ['#e6d4b4', '#cfb68f', '#bba077']
     colors = {
       isDark,
       floorA: floor,
-      floorB: mix(floor, css('--surface-3'), 0.6),
+      floorB: mix(floor, cssVariable('--surface-3'), 0.6),
       plankA: mix(floor, wood[0], isDark ? 0.32 : 0.38),
       plankB: mix(floor, wood[1], isDark ? 0.32 : 0.34),
       plankLine: mix(floor, wood[2], isDark ? 0.5 : 0.5),
-      floorEdge: [floor, shade(css('--surface-3'), 0.08), shade(css('--surface-3'), 0.16)],
-      wallLeft: css('--surface-1'),
-      wallBack: mix(css('--surface-1'), css('--surface-3'), 0.55),
-      wallTop: css('--border'),
-      border: css('--border'),
-      text: css('--text-primary'),
-      muted: css('--text-muted'),
-      label: css('--surface-1'),
-      accent: officeCss('--accent'),
-      accentSoft: officeCss('--accent-soft'),
-      critical: officeCss('--critical'),
-      warning: officeCss('--series-4'),
-      good: officeCss('--good'),
-      shirts: SHIRT_TOKENS.map(name => officeCss(name)),
+      floorEdge: [floor, shade(cssVariable('--surface-3'), 0.08), shade(cssVariable('--surface-3'), 0.16)],
+      wallLeft: cssVariable('--surface-1'),
+      wallBack: mix(cssVariable('--surface-1'), cssVariable('--surface-3'), 0.55),
+      wallTop: cssVariable('--border'),
+      border: cssVariable('--border'),
+      text: cssVariable('--text-primary'),
+      muted: cssVariable('--text-muted'),
+      label: cssVariable('--surface-1'),
+      accent: officeCssVariable('--accent'),
+      accentSoft: officeCssVariable('--accent-soft'),
+      critical: officeCssVariable('--critical'),
+      warning: officeCssVariable('--series-4'),
+      good: officeCssVariable('--good'),
+      shirts: SHIRT_TOKENS.map(name => officeCssVariable(name)),
       wood,
       metal: isDark ? ['#4a4d52', '#3a3c40', '#2e3033'] : ['#cfd2d6', '#b3b7bd', '#9fa4ab'],
       dark: isDark ? ['#33363b', '#232528', '#1a1b1e'] : ['#43464c', '#2f3136', '#25272b'],
@@ -740,10 +740,10 @@ function createOffice() {
     // Painted in the unit square of the monitor's face, v pointing up.
     pen.fillStyle = SCREEN[mode] || SCREEN.off
     pen.fillRect(0.05, 0.1, 0.9, 0.84)
-    const t = clockSeconds
+    const time = clockSeconds
     if (mode === 'code' || mode === 'terminal') {
       const palette = mode === 'code' ? ['#7fb4ff', '#c3e88d', '#f78c6c', '#d6d6d6', '#c792ea'] : ['#3fb950', '#3fb950', '#8b949e', '#3fb950']
-      const scroll = isReduced() ? 0 : Math.floor(t * (mode === 'terminal' ? 5 : 2.5))
+      const scroll = isReduced() ? 0 : Math.floor(time * (mode === 'terminal' ? 5 : 2.5))
       for (let line = 0; line < 7; line++) {
         const lineSeed = hashOf(seed + ':' + (line + scroll))
         const indent = mode === 'code' ? ((lineSeed >> 3) % 3) * 0.08 : 0
@@ -751,18 +751,18 @@ function createOffice() {
         pen.fillStyle = palette[lineSeed % palette.length]
         pen.fillRect(0.1 + indent, 0.84 - line * 0.1, Math.min(0.8 - indent, length), 0.045)
       }
-      if (!isReduced() && Math.floor(t * 2) % 2) { pen.fillStyle = '#e6e6e6'; pen.fillRect(0.12, 0.84 - 7 * 0.1 + 0.02, 0.05, 0.05) }
+      if (!isReduced() && Math.floor(time * 2) % 2) { pen.fillStyle = '#e6e6e6'; pen.fillRect(0.12, 0.84 - 7 * 0.1 + 0.02, 0.05, 0.05) }
     } else if (mode === 'read') {
       for (let line = 0; line < 7; line++) {
         pen.fillStyle = '#b9b9b4'
         pen.fillRect(0.12, 0.84 - line * 0.1, 0.5 + ((hashOf(seed + line) >> 4) % 25) / 100, 0.04)
       }
-      const band = isReduced() ? 0.5 : 0.84 - ((t * 0.12) % 0.7)
+      const band = isReduced() ? 0.5 : 0.84 - ((time * 0.12) % 0.7)
       pen.fillStyle = 'rgba(42,120,214,.25)'
       pen.fillRect(0.08, band - 0.03, 0.84, 0.1)
     } else if (mode === 'think') {
       for (let dot = 0; dot < 3; dot++) {
-        pen.fillStyle = `rgba(200,210,230,${isReduced() ? 0.8 : 0.35 + 0.65 * Math.max(0, Math.sin(t * 4 - dot * 0.8))})`
+        pen.fillStyle = `rgba(200,210,230,${isReduced() ? 0.8 : 0.35 + 0.65 * Math.max(0, Math.sin(time * 4 - dot * 0.8))})`
         pen.fillRect(0.34 + dot * 0.12, 0.48, 0.07, 0.08)
       }
     } else if (mode === 'waiting') {
@@ -774,12 +774,12 @@ function createOffice() {
       pen.restore()
     } else if (mode === 'supervise') {
       const cells = [[0.1, 0.55], [0.52, 0.55], [0.1, 0.17], [0.52, 0.17]]
-      cells.forEach(([u, v], index) => {
+      cells.forEach(([cellLeft, cellBottom], index) => {
         pen.fillStyle = index % 2 ? '#25344a' : '#2a3d2f'
-        pen.fillRect(u, v, 0.38, 0.34)
+        pen.fillRect(cellLeft, cellBottom, 0.38, 0.34)
         pen.fillStyle = index % 2 ? '#7fb4ff' : '#3fb950'
-        const progress = isReduced() ? 0.6 : (t * 0.2 + index * 0.27) % 1
-        pen.fillRect(u + 0.04, v + 0.05, 0.3 * progress, 0.04)
+        const progress = isReduced() ? 0.6 : (time * 0.2 + index * 0.27) % 1
+        pen.fillRect(cellLeft + 0.04, cellBottom + 0.05, 0.3 * progress, 0.04)
       })
     }
     if (mode !== 'off' && contextPercent > 0) {
@@ -956,15 +956,15 @@ function createOffice() {
     }
   }
   function drawHuman(person, facing, pose, mirror) {
-    const t = clockSeconds + person.phase
+    const time = clockSeconds + person.phase
     const still = isReduced()
     const sitting = pose === 'sit' || pose === 'sofa' || pose === 'stool'
     const hipY = sitting ? -12 : -14
-    const breathe = still ? 0 : Math.sin(t * 2) * 0.4
+    const breathe = still ? 0 : Math.sin(time * 2) * 0.4
     const shirt = person.shirt, sleeve = shade(person.shirt, 0.12)
     disc(0, 0, 9, 3.6, colors.shadow)
     if (pose === 'walk') {
-      const swing = still ? 0 : Math.sin(t * 11) * 3
+      const swing = still ? 0 : Math.sin(time * 11) * 3
       block(-5 + swing * 0.5, hipY, 4, -hipY, 1.5, colors.pants)
       block(1 - swing * 0.5, hipY, 4, -hipY, 1.5, colors.pants)
     } else if (pose === 'stand' || pose === 'pong') {
@@ -975,7 +975,7 @@ function createOffice() {
       block(1, hipY, 5, 8, 2, colors.pants)
     }
     const torsoTop = hipY - 15 + breathe
-    const bob = !still && person.activity === 'reading' && sitting ? Math.sin(t * 1.4) * 0.8 : 0
+    const bob = !still && person.activity === 'reading' && sitting ? Math.sin(time * 1.4) * 0.8 : 0
     const headY = torsoTop - 7
     block(-8, torsoTop, 16, 15, 5, shirt)
     if (facing === 'front') drawOutfitFront(person, torsoTop)
@@ -997,8 +997,8 @@ function createOffice() {
       pen.restore()
     } else if (facing === 'back' && sitting && ['typing', 'terminal', 'thinking', 'reading', 'supervising'].includes(activity)) {
       const speed = activity === 'terminal' ? 20 : activity === 'typing' ? 15 : 0
-      const tapLeft = still || !speed ? 0 : Math.sin(t * speed) * 1.3
-      const tapRight = still || !speed ? 0 : Math.sin(t * speed + 2) * 1.3
+      const tapLeft = still || !speed ? 0 : Math.sin(time * speed) * 1.3
+      const tapRight = still || !speed ? 0 : Math.sin(time * speed + 2) * 1.3
       block(-11, torsoTop + 2 + tapLeft, 4, 9, 2, sleeve)
       block(7, torsoTop + 2 + tapRight, 4, 9, 2, sleeve)
     } else if (activity === 'waiting' && facing === 'front' && pose !== 'walk') {
@@ -1006,7 +1006,7 @@ function createOffice() {
       pen.save()
       pen.translate(9, torsoTop + 3)
       const urgent = person.isUrgent && !still
-      pen.rotate(-2.6 + (still ? 0 : Math.sin(t * (urgent ? 11 : 7)) * (urgent ? 0.55 : 0.35)))
+      pen.rotate(-2.6 + (still ? 0 : Math.sin(time * (urgent ? 11 : 7)) * (urgent ? 0.55 : 0.35)))
       block(-2, 0, 4, 12, 2, sleeve)
       disc(0, 13, 2.4, 2.4, person.skin)
       pen.restore()
@@ -1020,12 +1020,12 @@ function createOffice() {
         pen.strokeStyle = 'rgba(160,160,160,.5)'
         pen.lineWidth = 0.8
         pen.beginPath()
-        const drift = Math.sin(t * 2.5) * 1.2
+        const drift = Math.sin(time * 2.5) * 1.2
         pen.moveTo(3.5, torsoTop + 2); pen.quadraticCurveTo(5 + drift, torsoTop - 1, 3 - drift, torsoTop - 4)
         pen.stroke()
       }
     } else {
-      const swing = pose === 'walk' && !still ? Math.sin(t * 11) * 2 : 0
+      const swing = pose === 'walk' && !still ? Math.sin(time * 11) * 2 : 0
       block(-11, torsoTop + 2 - swing * 0.3, 4, 12, 2, sleeve)
       block(7, torsoTop + 2 + swing * 0.3, 4, 12, 2, sleeve)
       if (facing === 'front') { disc(-9, torsoTop + 15, 2.2, 2.2, person.skin); disc(9, torsoTop + 15, 2.2, 2.2, person.skin) }
@@ -1041,7 +1041,7 @@ function createOffice() {
       const look = pose === 'walk' ? (mirror ? -1.6 : 1.6) : 0
       disc(bob - 2.6 + look, headY + 0.8, 0.95, 1.1, '#1b1b1b')
       disc(bob + 2.6 + look, headY + 0.8, 0.95, 1.1, '#1b1b1b')
-      if (activity === 'idle' && !still && Math.floor(t * 0.7) % 4 === 0) {
+      if (activity === 'idle' && !still && Math.floor(time * 0.7) % 4 === 0) {
         pen.strokeStyle = '#1b1b1b'; pen.lineWidth = 0.7
         pen.beginPath(); pen.arc(bob + look * 0.5, headY + 3, 1.6, 0.2, Math.PI - 0.2); pen.stroke()
       }
@@ -1065,23 +1065,23 @@ function createOffice() {
     }
   }
   function drawRobot(person, facing, pose) {
-    const t = clockSeconds + person.phase
+    const time = clockSeconds + person.phase
     const still = isReduced()
-    const [light, mid, deep] = colors.robot
+    const [light, middle, deep] = colors.robot
     disc(0, 0, 9, 3.6, colors.shadow)
-    const step = pose === 'walk' && !still ? Math.sin(t * 11) * 2 : 0
-    block(-5, -12 + Math.max(0, step), 4, 12, 1, deep)
-    block(1, -12 + Math.max(0, -step), 4, 12, 1, deep)
-    block(-8, -28, 16, 16, 3, mid)
+    const legSwing = pose === 'walk' && !still ? Math.sin(time * 11) * 2 : 0
+    block(-5, -12 + Math.max(0, legSwing), 4, 12, 1, deep)
+    block(1, -12 + Math.max(0, -legSwing), 4, 12, 1, deep)
+    block(-8, -28, 16, 16, 3, middle)
     const working = person.activity !== 'idle' && person.activity !== 'waiting'
-    const reach = working && !still ? Math.sin(t * 16) * 1.5 : 0
+    const reach = working && !still ? Math.sin(time * 16) * 1.5 : 0
     block(-11, -26 + reach, 3, 11, 1.5, deep)
     block(8, -26 - reach, 3, 11, 1.5, deep)
     block(-7, -41, 14, 12, 3, light)
     pen.strokeStyle = deep; pen.lineWidth = 1
     pen.beginPath(); pen.moveTo(0, -41); pen.lineTo(0, -46); pen.stroke()
-    const tip = person.activity === 'waiting' ? colors.warning : working ? '#3fb950' : colors.muted
-    disc(0, -47, 1.8, 1.8, still || !working || Math.sin(t * 6) > 0 ? tip : deep)
+    const antennaColor = person.activity === 'waiting' ? colors.warning : working ? '#3fb950' : colors.muted
+    disc(0, -47, 1.8, 1.8, still || !working || Math.sin(time * 6) > 0 ? antennaColor : deep)
     if (facing === 'front') {
       block(-5, -38, 10, 5, 2, '#1b1d21')
       disc(-2.2, -35.5, 1.1, 1.1, colors.accent)
@@ -1308,9 +1308,9 @@ function createOffice() {
     if (!urgent) return
     const strength = isReduced() ? 0.16 : 0.12 + 0.1 * (Math.sin(clockSeconds * 3) + 1) / 2
     const outline = roomOutline()
-    const xs = outline.map(point => point.x), ys = outline.map(point => point.y)
-    const centerX = (Math.min(...xs) + Math.max(...xs)) / 2, centerY = (Math.min(...ys) + Math.max(...ys)) / 2
-    const reach = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / 2
+    const outlineXs = outline.map(point => point.x), outlineYs = outline.map(point => point.y)
+    const centerX = (Math.min(...outlineXs) + Math.max(...outlineXs)) / 2, centerY = (Math.min(...outlineYs) + Math.max(...outlineYs)) / 2
+    const reach = Math.max(Math.max(...outlineXs) - Math.min(...outlineXs), Math.max(...outlineYs) - Math.min(...outlineYs)) / 2
     pen.save()
     pen.beginPath()
     outline.forEach((point, index) => (index ? pen.lineTo(point.x, point.y) : pen.moveTo(point.x, point.y)))
@@ -1325,9 +1325,9 @@ function createOffice() {
   }
 
   // --------------------------------------------------------------- frame --
-  function draw(fit = fitView) {
+  function draw(fitCanvas = fitView) {
     if (!colors) refreshColors()
-    if (!fit()) return
+    if (!fitCanvas()) return
     nightness = nightnessNow()
     renderFloor()
     pen = mainPen
@@ -1550,10 +1550,10 @@ function createOffice() {
     if (!holder) return
     const recent = events.slice(0, isWallMode() ? 12 : 6)
     if (!recent.length) { holder.innerHTML = '<span class="ticker-empty">Things that happen in the office show up here: someone needing you, commits, pushes, compactions, people coming and going.</span>'; return }
-    const items = recent.map(event => `<span class="ticker-item kind-${event.kind}"><b>${escapeHtml(event.text)}</b> <i>${escapeHtml(ago(event.at))}</i></span>`).join('')
+    const items = recent.map(event => `<span class="ticker-item kind-${event.kind}"><b>${escapeHtml(event.text)}</b> <i>${escapeHtml(timeAgo(event.at))}</i></span>`).join('')
     holder.innerHTML = isWallMode() && !isReduced() ? `<span class="ticker-track">${items}${items}</span>` : items
   }
-  function escapeHtml(text) { return String(text).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])) }
+  function escapeHtml(text) { return String(text).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character])) }
   function chime() {
     if (!soundOn) return
     try {
@@ -1561,15 +1561,15 @@ function createOffice() {
       const start = audio.currentTime
       ;[660, 880].forEach((frequency, index) => {
         const oscillator = audio.createOscillator(), gain = audio.createGain()
-        const at = start + index * 0.16
+        const noteAt = start + index * 0.16
         oscillator.type = 'sine'
         oscillator.frequency.value = frequency
-        gain.gain.setValueAtTime(0.0001, at)
-        gain.gain.exponentialRampToValueAtTime(0.16, at + 0.02)
-        gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.5)
+        gain.gain.setValueAtTime(0.0001, noteAt)
+        gain.gain.exponentialRampToValueAtTime(0.16, noteAt + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.0001, noteAt + 0.5)
         oscillator.connect(gain).connect(audio.destination)
-        oscillator.start(at)
-        oscillator.stop(at + 0.55)
+        oscillator.start(noteAt)
+        oscillator.stop(noteAt + 0.55)
       })
     } catch {}
   }
@@ -1828,11 +1828,11 @@ function createOffice() {
     if (!session) return person.label || ''
     if (person.kind === 'helper') {
       const agent = person.agent
-      return `${agent.description}\n${agent.agentType || 'Subagent'} helping ${session.name}\nRunning for ${ago(agent.startedAt)}\nClick to open ${session.name}`
+      return `${agent.description}\n${agent.agentType || 'Subagent'} helping ${session.name}\nRunning for ${timeAgo(agent.startedAt)}\nClick to open ${session.name}`
     }
     const statusLabel = STATUS[session.status]?.label || session.status
     const doing = person.trip ? TRIP_LABEL[person.trip.kind] : person.errand?.kind === 'shred' ? 'shredding its old context' : ACTIVITY_LABEL[person.activity] || person.activity
-    const status = person.leaving ? 'Session ended' : person.activity === 'waiting' ? statusLabel + (person.isUrgent ? ` for ${ago(waitingSince.get(session.sessionId))}` : '') : `${statusLabel} · ${doing}`
+    const status = person.leaving ? 'Session ended' : person.activity === 'waiting' ? statusLabel + (person.isUrgent ? ` for ${timeAgo(waitingSince.get(session.sessionId))}` : '') : `${statusLabel} · ${doing}`
     const helpers = session.subagents.filter(agent => agent.isRunning).length
     const shells = session.shells || []
     return [
@@ -1915,7 +1915,7 @@ function createOffice() {
   }
 
   // -------------------------------------------------------------- toolbar --
-  const stamp = () => { const date = new Date(); const pad = value => String(value).padStart(2, '0'); return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}` }
+  const stamp = () => { const date = new Date(); const twoDigits = value => String(value).padStart(2, '0'); return `${date.getFullYear()}${twoDigits(date.getMonth() + 1)}${twoDigits(date.getDate())}-${twoDigits(date.getHours())}${twoDigits(date.getMinutes())}` }
   function download(blob, name) {
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
@@ -1967,8 +1967,8 @@ function createOffice() {
     card.requestFullscreen().catch(error => toast('Full screen was refused: ' + error.message))
   }
   document.addEventListener('fullscreenchange', () => {
-    const on = isWallMode()
-    $('#office-wall').textContent = on ? 'Exit wall mode' : 'Wall mode'
+    const isWall = isWallMode()
+    $('#office-wall').textContent = isWall ? 'Exit wall mode' : 'Wall mode'
     cameraGoal = { zoom: 1, x: 0, y: 0 }
     camera = { ...cameraGoal }
     cameraReturnAt = 0

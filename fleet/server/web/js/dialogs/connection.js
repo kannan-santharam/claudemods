@@ -2,7 +2,7 @@
 // the header.
 
 import { $ } from '../core/dom.js'
-import { ago } from '../core/format.js'
+import { timeAgo } from '../core/format.js'
 import { state } from '../core/state.js'
 import { refreshLive, refreshReport } from '../refresh.js'
 
@@ -53,6 +53,6 @@ export function initConnection() {
     const stale = Date.now() - state.lastLiveOk > 8000
     if (stale && connection === 'ok') setConnection('down')
     $('#pulse').classList.toggle('stale', stale)
-    $('#updated').textContent = stale ? 'Server not answering — is a Claude session running?' : 'Live · updated ' + ago(state.lastLiveOk) + ' ago'
+    $('#updated').textContent = stale ? 'Server not answering — is a Claude session running?' : 'Live · updated ' + timeAgo(state.lastLiveOk) + ' ago'
   }, 1000)
 }

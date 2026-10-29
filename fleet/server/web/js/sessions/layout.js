@@ -33,8 +33,8 @@ export function drawOfficeMini() {
   const mini = $('#office-mini')
   if (!isListView() || $('#view-sessions').hidden || document.visibilityState !== 'visible' || !mini.clientWidth) return
   const sessions = state.live?.sessions || []
-  const waiting = sessions.filter(s => s.status === 'waiting').length
-  $('#office-mini-hint').textContent = waiting ? `${waiting} waiting for you` : `${sessions.filter(s => s.status === 'busy').length} at their desks`
+  const waiting = sessions.filter(session => session.status === 'waiting').length
+  $('#office-mini-hint').textContent = waiting ? `${waiting} waiting for you` : `${sessions.filter(session => session.status === 'busy').length} at their desks`
   office.drawMini(mini)
 }
 // The split fills the window below the header and the figures.

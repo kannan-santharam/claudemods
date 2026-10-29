@@ -19,7 +19,7 @@ export async function refreshLive() {
   try {
     state.live = await api('/api/live')
     state.lastLiveOk = Date.now()
-    const ids = new Set(state.live.sessions.map(s => s.sessionId))
+    const ids = new Set(state.live.sessions.map(session => session.sessionId))
     for (const id of [...state.selected]) if (!ids.has(id)) state.selected.delete(id)
     office.sync(state.live)
     renderTiles(); renderContextBars(); renderFeed()

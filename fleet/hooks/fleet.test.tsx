@@ -37,18 +37,18 @@ const SESSION = {
 // What a scan stored, read back as the engine's state would answer it.
 function seed(on: any, selected: string, sent: string[]) {
   on('clock.now', () => ({ value: 120_000 }))
-  on('state.get', ($: unknown, e: any, next: any) => {
-    if (e.key === 'sessions') {
+  on('state.get', ($: unknown, event: any, next: any) => {
+    if (event.key === 'sessions') {
       return { value: { value: { shape: 'sessions-1', value: [SESSION] }, version: 1 } }
     }
-    if (e.key === 'selected') return { value: { value: selected, version: 1 } }
-    return next(e)
+    if (event.key === 'selected') return { value: { value: selected, version: 1 } }
+    return next(event)
   })
   // The dashboard server stands beneath: it answers health and takes the send.
   on('env.get', () => ({ value: '/home/test' }))
   on('fs.read', () => ({ value: 'token' }))
-  on('http.fetch', (_: unknown, e: any) => {
-    if (String(e.url).endsWith('/api/send')) sent.push(JSON.parse(e.init.body).text)
+  on('http.fetch', (_: unknown, event: any) => {
+    if (String(event.url).endsWith('/api/send')) sent.push(JSON.parse(event.init.body).text)
     return { value: { status: 200, ok: true, headers: {}, text: '{"queued":1,"ok":true}' } }
   })
 }

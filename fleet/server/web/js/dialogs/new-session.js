@@ -2,7 +2,7 @@
 
 import { api } from '../core/api.js'
 import { $, toast } from '../core/dom.js'
-import { esc } from '../core/format.js'
+import { escapeHtml } from '../core/format.js'
 import { state } from '../core/state.js'
 import { remember, remembered } from '../core/storage.js'
 import { createPicker, rememberFolder } from './picker.js'
@@ -13,14 +13,14 @@ import { loadOptions } from '../sessions/actions.js'
 const newPicker = createPicker($('#new-picker'), () => newPreview())
 function newPreview() {
   const folder = newPicker.path, name = $('#new-name').value.trim(), model = $('#new-model').value
-  const q = text => `'${text.replace(/'/g, `'\\''`)}'`
-  $('#new-preview').textContent = folder ? `cd ${q(folder)} && claude${runMode() === 'hidden' ? ' --bg' : ''}${model ? ' --model ' + model : ''}${name ? ' --name ' + q(name) : ''}` : ''
+  const shellQuote = text => `'${text.replace(/'/g, `'\\''`)}'`
+  $('#new-preview').textContent = folder ? `cd ${shellQuote(folder)} && claude${runMode() === 'hidden' ? ' --bg' : ''}${model ? ' --model ' + model : ''}${name ? ' --name ' + shellQuote(name) : ''}` : ''
 }
 async function openNewDialog() {
   await loadOptions()
   const options = state.options || { folders: [], models: [] }
   await newPicker.go(remembered('fleet-new-folder'))
-  $('#new-model').innerHTML = options.models.map(m => `<option value="${esc(m.id)}">${esc(m.label)}</option>`).join('')
+  $('#new-model').innerHTML = options.models.map(model => `<option value="${escapeHtml(model.id)}">${escapeHtml(model.label)}</option>`).join('')
   $('#new-name').value = ''
   showRunMode('new-run')
   newPreview()

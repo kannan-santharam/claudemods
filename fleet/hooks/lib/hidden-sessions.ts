@@ -48,24 +48,24 @@ async function askDashboard($: EngineInterface, ask: Record<string, unknown>, si
 // from the page. Plugin PermissionRequest hooks are not run for these asks, so
 // the verdict is caught one step earlier, where the mode and rules settle it.
 // In auto mode the classifier settles asks itself, so those are left to it.
-export const askPermissionOnDashboard: HookOf<'tool.check'> = async ($, e, next) => {
-  const verdict = await next(e)
-  if (verdict.decision !== 'ask' || !e.tool_use_id || e.agentId) return verdict
-  if (allowedForSession.has(e.tool)) return { ...verdict, decision: 'allow' as const }
+export const askPermissionOnDashboard: HookOf<'tool.check'> = async ($, event, next) => {
+  const verdict = await next(event)
+  if (verdict.decision !== 'ask' || !event.tool_use_id || event.agentId) return verdict
+  if (allowedForSession.has(event.tool)) return { ...verdict, decision: 'allow' as const }
   const mode = await sessionMode($)
   if (!mode.hidden || mode.permissionMode === 'auto') return verdict
-  const answer = await askDashboard($, { kind: 'permission', toolName: e.tool, toolInput: e.input, reason: verdict.reason ?? '' }, next.signal)
+  const answer = await askDashboard($, { kind: 'permission', toolName: event.tool, toolInput: event.input, reason: verdict.reason ?? '' }, next.signal)
   if (!answer) return verdict
-  if (answer.allow && answer.remember) allowedForSession.add(e.tool)
+  if (answer.allow && answer.remember) allowedForSession.add(event.tool)
   return answer.allow
     ? { ...verdict, decision: 'allow' as const, reason: 'Allowed from the Fleet dashboard' }
     : { ...verdict, decision: 'deny' as const, reason: answer.message || 'Declined from the Fleet dashboard.' }
 }
 
 // A question Claude puts to you, in a hidden session: answered on the page.
-export const askQuestionOnDashboard: MatchedHook<'tool.call', { tool: 'AskUserQuestion' }> = async ($, e, next) => {
-  if (!(await isHiddenSession($))) return next(e)
-  const answer = await askDashboard($, { kind: 'question', toolName: 'AskUserQuestion', questions: e.questions }, next.signal)
-  if (!answer) return next(e)
-  return { result: { questions: e.questions, answers: answer.answers ?? {}, ...(answer.response ? { response: answer.response } : {}) } }
+export const askQuestionOnDashboard: MatchedHook<'tool.call', { tool: 'AskUserQuestion' }> = async ($, event, next) => {
+  if (!(await isHiddenSession($))) return next(event)
+  const answer = await askDashboard($, { kind: 'question', toolName: 'AskUserQuestion', questions: event.questions }, next.signal)
+  if (!answer) return next(event)
+  return { result: { questions: event.questions, answers: answer.answers ?? {}, ...(answer.response ? { response: answer.response } : {}) } }
 }

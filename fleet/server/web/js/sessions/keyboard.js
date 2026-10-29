@@ -11,8 +11,8 @@ export function initKeyboard() {
     if (event.target.closest('input, textarea, select, [contenteditable]') || !(event.key === 'j' || event.key === 'k')) return
     const list = state.visible
     if (!list.length) return
-    const at = list.indexOf([...state.open][0])
-    const next = list[Math.max(0, Math.min(list.length - 1, at + (event.key === 'j' ? 1 : -1)))]
+    const currentIndex = list.indexOf([...state.open][0])
+    const next = list[Math.max(0, Math.min(list.length - 1, currentIndex + (event.key === 'j' ? 1 : -1)))]
     if (next) { event.preventDefault(); selectSession(next) }
   })
 }

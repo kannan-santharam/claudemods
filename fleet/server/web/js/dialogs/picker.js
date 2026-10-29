@@ -2,7 +2,7 @@
 
 import { api } from '../core/api.js'
 import { toast } from '../core/dom.js'
-import { esc } from '../core/format.js'
+import { escapeHtml } from '../core/format.js'
 
 // The folder you are in is the one picked: click a subfolder to go into it,
 // a crumb to go back up, a recent folder to jump straight there.
@@ -17,14 +17,14 @@ export function createPicker(container, onChange) {
   function render(result) {
     const recent = recentFolders().filter(entry => entry !== result.path)
     container.innerHTML = `
-      ${recent.length ? `<div class="recent">${recent.map(entry => `<button type="button" data-path="${esc(entry)}" title="${esc(entry)}">${esc(entry.split('/').pop())}</button>`).join('')}</div>` : ''}
+      ${recent.length ? `<div class="recent">${recent.map(entry => `<button type="button" data-path="${escapeHtml(entry)}" title="${escapeHtml(entry)}">${escapeHtml(entry.split('/').pop())}</button>`).join('')}</div>` : ''}
       <div class="crumbs">${result.crumbs.map((crumb, index) => index === result.crumbs.length - 1
-        ? `<b>${esc(crumb.name)}</b>`
-        : `<button type="button" data-path="${esc(crumb.path)}">${esc(crumb.name)}</button><span class="sep">›</span>`).join('')}</div>
-      <div class="list">${result.folders.map(folder => `<button type="button" data-path="${esc(folder.path)}"><span class="glyph">▸</span>${esc(folder.name)}${folder.isGit ? '<span class="tag">git</span>' : ''}<span class="go">›</span></button>`).join('') || '<div class="empty">No subfolders here</div>'}</div>
-      <div class="chosen">Selected: <code>${esc(tilde(result.path))}</code>${result.isGit ? ' · git repository' : ''}</div>`
+        ? `<b>${escapeHtml(crumb.name)}</b>`
+        : `<button type="button" data-path="${escapeHtml(crumb.path)}">${escapeHtml(crumb.name)}</button><span class="sep">›</span>`).join('')}</div>
+      <div class="list">${result.folders.map(folder => `<button type="button" data-path="${escapeHtml(folder.path)}"><span class="glyph">▸</span>${escapeHtml(folder.name)}${folder.isGit ? '<span class="tag">git</span>' : ''}<span class="go">›</span></button>`).join('') || '<div class="empty">No subfolders here</div>'}</div>
+      <div class="chosen">Selected: <code>${escapeHtml(tilde(result.path))}</code>${result.isGit ? ' · git repository' : ''}</div>`
   }
-  async function go(target) {
+  async function browseTo(target) {
     try {
       const result = await api('/api/browse?path=' + encodeURIComponent(target || ''))
       if (!result.ok) return toast(result.reason)
@@ -37,8 +37,8 @@ export function createPicker(container, onChange) {
   }
   container.addEventListener('click', event => {
     const target = event.target.closest('[data-path]')
-    if (target) go(target.dataset.path)
+    if (target) browseTo(target.dataset.path)
   })
-  picker.go = go
+  picker.go = browseTo
   return picker
 }

@@ -3,7 +3,7 @@
 
 import { api } from '../core/api.js'
 import { $, toast } from '../core/dom.js'
-import { esc } from '../core/format.js'
+import { escapeHtml } from '../core/format.js'
 import { sessionById, state } from '../core/state.js'
 import { refreshLive } from '../refresh.js'
 import { renderLive } from '../sessions/live.js'
@@ -18,11 +18,11 @@ export function renderBulkbar() {
 export function askToEnd(sessionIds, force = false) {
   const list = (Array.isArray(sessionIds) ? sessionIds : [sessionIds]).map(sessionById).filter(Boolean)
   if (!list.length) return
-  ending.sessionIds = list.map(s => s.sessionId)
+  ending.sessionIds = list.map(session => session.sessionId)
   ending.force = force
   const ids = new Set(ending.sessionIds)
-  const children = (state.live?.sessions || []).filter(s => ids.has(s.parentSessionId) && !ids.has(s.sessionId)).length
-  const busy = list.filter(s => s.status === 'busy').length
+  const children = (state.live?.sessions || []).filter(session => ids.has(session.parentSessionId) && !ids.has(session.sessionId)).length
+  const busy = list.filter(session => session.status === 'busy').length
   const many = list.length > 1
   const subject = many ? `${list.length} sessions` : list[0].name
   $('#end-title').textContent = force ? `Force-end ${subject}?` : `End ${subject}?`
@@ -31,7 +31,7 @@ export function askToEnd(sessionIds, force = false) {
     : `This stops ${many ? 'these Claude sessions' : 'the Claude session'}${busy ? ` (${busy === list.length && !many ? 'it is' : busy + ' are'} in the middle of work)` : ''} and closes ${many ? 'their terminal tabs' : list[0].hidden ? 'it in the background' : 'its terminal tab'}. Conversations are kept, so you can bring them back later with Resume session.`) +
     (children ? ` The ${children} session${children > 1 ? 's' : ''} they started keep running.` : '')
   $('#end-list').hidden = !many
-  $('#end-list').innerHTML = many ? list.map(s => `<li>${esc(s.name)}</li>`).join('') : ''
+  $('#end-list').innerHTML = many ? list.map(session => `<li>${escapeHtml(session.name)}</li>`).join('') : ''
   $('#end-confirm').textContent = force ? 'Force end' : many ? `End ${list.length} sessions` : 'End session'
   $('#end-dialog').hidden = false
   $('#end-cancel').focus()

@@ -3,7 +3,7 @@
 
 import { api } from '../core/api.js'
 import { $, toast } from '../core/dom.js'
-import { ago, esc, shortModel } from '../core/format.js'
+import { escapeHtml, shortModel, timeAgo } from '../core/format.js'
 import { state } from '../core/state.js'
 import { remember, remembered } from '../core/storage.js'
 import { createPicker, rememberFolder } from './picker.js'
@@ -15,12 +15,12 @@ const resumePicker = createPicker($('#resume-picker'), picker => { remember('fle
 const resume = { sessions: [], chosen: '' }
 function renderHistory() {
   const filter = $('#resume-search').value.trim().toLowerCase()
-  const list = resume.sessions.filter(s => !filter || (s.name + ' ' + s.firstPrompt + ' ' + s.lastPrompt).toLowerCase().includes(filter))
-  $('#resume-list').innerHTML = list.map(s => `
-    <div class="item ${s.isLive ? 'live' : ''}" role="option" data-resume="${esc(s.sessionId)}" aria-selected="${resume.chosen === s.sessionId}">
-      <span class="title">${esc(s.name)}</span>
-      <span class="meta">${s.isLive ? '<b>running</b> · ' : ''}${ago(s.lastAt)} ago${s.model ? ' · ' + esc(shortModel(s.model)) : ''}</span>
-      <span class="snippet">${s.subfolder ? `<code>${esc(s.subfolder)}</code> · ` : ''}Last: ${esc(s.lastPrompt || s.firstPrompt)}</span>
+  const list = resume.sessions.filter(session => !filter || (session.name + ' ' + session.firstPrompt + ' ' + session.lastPrompt).toLowerCase().includes(filter))
+  $('#resume-list').innerHTML = list.map(session => `
+    <div class="item ${session.isLive ? 'live' : ''}" role="option" data-resume="${escapeHtml(session.sessionId)}" aria-selected="${resume.chosen === session.sessionId}">
+      <span class="title">${escapeHtml(session.name)}</span>
+      <span class="meta">${session.isLive ? '<b>running</b> · ' : ''}${timeAgo(session.lastAt)} ago${session.model ? ' · ' + escapeHtml(shortModel(session.model)) : ''}</span>
+      <span class="snippet">${session.subfolder ? `<code>${escapeHtml(session.subfolder)}</code> · ` : ''}Last: ${escapeHtml(session.lastPrompt || session.firstPrompt)}</span>
     </div>`).join('') || `<div class="empty">${resume.sessions.length ? 'Nothing matches the filter' : 'No past sessions in this folder'}</div>`
   $('#resume-start').disabled = !resume.chosen
 }
@@ -42,12 +42,12 @@ async function loadRecentlyClosed() {
     const result = await api('/api/recently-closed')
     const closed = result.sessions || []
     $('#closed-section').hidden = !closed.length
-    $('#closed-list').innerHTML = closed.map(s => `
+    $('#closed-list').innerHTML = closed.map(session => `
       <div class="item">
-        <span class="title">${esc(s.name)}</span>
-        <span class="meta">${esc(s.folder)} · closed ${ago(s.endedAt)} ago${s.model ? ' · ' + esc(shortModel(s.model)) : ''}</span>
-        <button type="button" class="btn small primary" data-resume-closed="${esc(s.sessionId)}">Resume</button>
-        <span class="snippet">${s.lastPrompt ? 'Last: ' + esc(s.lastPrompt) : '&nbsp;'}</span>
+        <span class="title">${escapeHtml(session.name)}</span>
+        <span class="meta">${escapeHtml(session.folder)} · closed ${timeAgo(session.endedAt)} ago${session.model ? ' · ' + escapeHtml(shortModel(session.model)) : ''}</span>
+        <button type="button" class="btn small primary" data-resume-closed="${escapeHtml(session.sessionId)}">Resume</button>
+        <span class="snippet">${session.lastPrompt ? 'Last: ' + escapeHtml(session.lastPrompt) : '&nbsp;'}</span>
       </div>`).join('')
   } catch { $('#closed-section').hidden = true }
 }
@@ -65,7 +65,7 @@ async function openResumeDialog() {
   await loadOptions()
   loadRecentlyClosed()
   const options = state.options || { folders: [], models: [] }
-  $('#resume-model').innerHTML = options.models.map(m => `<option value="${esc(m.id)}">${esc(m.id ? m.label : 'Keep its model')}</option>`).join('')
+  $('#resume-model').innerHTML = options.models.map(model => `<option value="${escapeHtml(model.id)}">${escapeHtml(model.id ? model.label : 'Keep its model')}</option>`).join('')
   $('#resume-search').value = ''
   showRunMode('resume-run')
   $('#resume-dialog').hidden = false
@@ -87,7 +87,7 @@ export function initResumeDialog() {
   $('#resume-list').addEventListener('click', event => {
     const item = event.target.closest('[data-resume]')
     if (!item) return
-    const session = resume.sessions.find(s => s.sessionId === item.dataset.resume)
+    const session = resume.sessions.find(candidate => candidate.sessionId === item.dataset.resume)
     if (!session) return
     if (session.isLive) { closeResumeDialog(); return focusTab(session.sessionId) }
     resume.chosen = session.sessionId

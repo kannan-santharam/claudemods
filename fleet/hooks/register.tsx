@@ -19,7 +19,7 @@ import { HEARTBEAT_MS, heartbeat } from './lib/status'
 const PANE = 'fleet'
 
 export const register: Register = on => {
-  on('session.start', async ($, e, next) => {
+  on('session.start', async ($, event, next) => {
     await $.command.register({
       name: 'fleet',
       description: 'Toggle the dashboard pane of every Claude Code session on this machine; /fleet web opens it in the browser',
@@ -57,7 +57,7 @@ export const register: Register = on => {
         // The next poll asks again; an unacknowledged message is offered again.
       }
     })
-    return next(e)
+    return next(event)
   })
 
   on('tool.check', askPermissionOnDashboard)
@@ -65,7 +65,7 @@ export const register: Register = on => {
   on('tool.call', { tool: 'AskUserQuestion' }, askQuestionOnDashboard)
 
   // Answered here, not passed on: the engine sees this hook answer its own command.
-  on('command.run', { command: 'fleet' }, async ($, e) => runFleetCommand($, e))
+  on('command.run', { command: 'fleet' }, async ($, event) => runFleetCommand($, event))
 
   on('ui.close', { id: PANE }, markPaneClosed)
 

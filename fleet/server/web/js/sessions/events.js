@@ -21,35 +21,35 @@ export function initSessionEvents() {
   $('#view-sessions').addEventListener('click', event => {
     const target = event.target
     // dataset keys are camelCase; their attributes are kebab-case (applyModel → data-apply-model).
-    const attr = name => target.closest(`[data-${name.replace(/[A-Z]/g, ch => '-' + ch.toLowerCase())}]`)?.dataset[name]
-    const focusId = attr('focus'), sendId = attr('send'), selectId = attr('select')
-    const compactId = attr('compact')
+    const dataAttribute = name => target.closest(`[data-${name.replace(/[A-Z]/g, letter => '-' + letter.toLowerCase())}]`)?.dataset[name]
+    const focusId = dataAttribute('focus'), sendId = dataAttribute('send'), selectId = dataAttribute('select')
+    const compactId = dataAttribute('compact')
     if (compactId) return askToCompact(compactId)
-    const endId = attr('end')
+    const endId = dataAttribute('end')
     if (endId) return askToEnd(endId)
-    const askId = attr('askAnswer')
+    const askId = dataAttribute('askAnswer')
     if (askId) return answerAsk(askId, target.closest('[data-ask-answer]').dataset.choice)
     const pick = target.closest('[data-ask-pick]')
     if (pick) return pickOption(pick)
-    const toggleId = attr('toggle')
+    const toggleId = dataAttribute('toggle')
     if (toggleId) {
       state.collapsed.has(toggleId) ? state.collapsed.delete(toggleId) : state.collapsed.add(toggleId)
       return renderLive()
     }
     if (focusId) return focusTab(focusId)
-    const attachId = attr('attach')
+    const attachId = dataAttribute('attach')
     if (attachId) return attachHidden(attachId)
-    const copyText = attr('copy')
+    const copyText = dataAttribute('copy')
     if (copyText) { navigator.clipboard?.writeText(copyText).then(() => toast(`Copied ${copyText}`), () => toast(copyText)); return }
     if (sendId) return sendFromDraft(sendId)
-    const modelId = attr('applyModel'), renameId = attr('applyRename')
+    const modelId = dataAttribute('applyModel'), renameId = dataAttribute('applyRename')
     if (modelId) { event.preventDefault(); return askToSwitchModel(modelId, fieldValue('model:' + modelId, sessionById(modelId)?.model || '')) }
     if (renameId) { event.preventDefault(); return sessionCommand(renameId, 'rename', fieldValue('rename:' + renameId, sessionById(renameId)?.name || '')) }
     if (selectId) {
       target.checked ? state.selected.add(selectId) : state.selected.delete(selectId)
       return renderLive()
     }
-    const menuId = attr('actionsMenu')
+    const menuId = dataAttribute('actionsMenu')
     if (menuId) { state.actionsMenu = state.actionsMenu === menuId ? '' : menuId; return renderLive() }
     if (state.actionsMenu && !target.closest('.actions-menu')) { state.actionsMenu = ''; renderLive() }
     const paneTab = target.closest('[data-pane-tab]')
@@ -101,7 +101,7 @@ export function initSessionEvents() {
   wideQuery.addEventListener('change', () => { placeTiles(); drawOfficeMini() })
   $('#select-all').addEventListener('change', event => {
     const sessions = state.live?.sessions || []
-    state.selected = event.target.checked ? new Set(sessions.map(s => s.sessionId)) : new Set()
+    state.selected = event.target.checked ? new Set(sessions.map(session => session.sessionId)) : new Set()
     renderLive()
   })
 }

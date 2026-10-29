@@ -10,8 +10,8 @@ import { readIsOpen, writeIsOpen } from './state'
 type FleetCommandEvent = Parameters<MatchedHook<'command.run', { command: 'fleet' }>>[1]
 
 // /fleet toggles the pane; /fleet close only closes it; /fleet web opens the browser.
-export async function runFleetCommand($: EngineInterface, e: FleetCommandEvent): Promise<{ text: string }> {
-  const args = String(e.args ?? '').trim()
+export async function runFleetCommand($: EngineInterface, event: FleetCommandEvent): Promise<{ text: string }> {
+  const args = String(event.args ?? '').trim()
   if (args === 'web') return { text: await openBrowserDashboard($) }
   if (args === 'close' || (args === '' && (await readIsOpen($)))) {
     await $.ui.close({ id: PANE })
