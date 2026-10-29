@@ -1,3 +1,5 @@
+// Questions and permission prompts from hidden sessions, and their answers.
+
 import { answerAsk, cancelAsk, createAsk, waitForAnswer } from '../asks.mjs'
 import { send } from '../http.mjs'
 import { shellsOf } from '../live-view.mjs'

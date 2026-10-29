@@ -1,11 +1,11 @@
+// A hidden session has no terminal to ask in. The Fleet mod sends its permission
+// prompts and questions here; the page shows them in the session's chat with
+// buttons; the mod long-polls /api/asks/wait and hands the answer to the session.
+
 import crypto from 'node:crypto'
 import { SESSION_ID_PATTERN } from './constants.mjs'
 import { askWaiters, asks, live, liveCache } from './state.mjs'
 import { cleanLine, log } from './utils.mjs'
-
-// A hidden session has no terminal to ask in. The Fleet mod sends its permission
-// prompts and questions here; the page shows them in the session's chat with
-// buttons; the mod long-polls /api/asks/wait and hands the answer to the session.
 
 const ASK_WAIT_MS = 25_000
 const ASK_TTL_MS = 12 * 60 * 60 * 1000

@@ -1,3 +1,6 @@
+// Messages from the page to sessions: queued here, collected by each session's
+// mod from its inbox and acknowledged once delivered.
+
 import crypto from 'node:crypto'
 import { send } from '../http.mjs'
 import { acknowledge, claimFor } from '../messaging.mjs'

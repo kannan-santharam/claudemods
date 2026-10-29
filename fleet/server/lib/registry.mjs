@@ -1,3 +1,7 @@
+// Who is running: Claude Code's session registry (~/.claude/sessions) joined
+// with `ps`, scanned every two seconds into the live map, with each status change
+// kept in an eight-day status log for the timeline.
+
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import path from 'node:path'
@@ -101,8 +105,8 @@ export async function scanRegistry() {
   // run, an SDK host) is filed under the session it descends from.
   const parentOf = new Map()
   const commandOf = new Map()
-  const table = await run('ps', ['-A', '-o', 'pid=,ppid=,command='])
-  for (const line of table.stdout.split('\n')) {
+  const processTable = await run('ps', ['-A', '-o', 'pid=,ppid=,command='])
+  for (const line of processTable.stdout.split('\n')) {
     const match = line.match(/^\s*(\d+)\s+(\d+)\s+(.*)$/)
     if (!match) continue
     parentOf.set(Number(match[1]), Number(match[2]))

@@ -1,3 +1,6 @@
+// Who may talk to the server: the Host check, the session token, the browser's
+// sign-in code and cookie, and the page's Content-Security-Policy.
+
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import { PORT } from './constants.mjs'
@@ -32,7 +35,7 @@ export const PAGE_POLICY = [
   "form-action 'self'",
 ].join('; ')
 
-// Signing the browser in: a session's mod (which holds TOKEN) asks for a code
+// Signing the browser in: a session's mod (which holds the token) asks for a code
 // good once for a minute, opens /auth?code=…, and the answer is an HttpOnly,
 // SameSite=Strict cookie. Another account on this Mac, or a page elsewhere,
 // gets nothing from loading the dashboard.

@@ -1,3 +1,6 @@
+// config.json: folders the fleet never reads and the root the folder pickers
+// start from. Every scan asks isExcludedPath before it reads a session or transcript.
+
 import fs from 'node:fs'
 import { CONFIG_FILE, DEFAULT_CONFIG, HOME } from './constants.mjs'
 import { excludedDirCache, files, live, settings } from './state.mjs'
@@ -52,5 +55,5 @@ export function isExcludedProjectDir(dirName, sampleFile) {
 }
 
 export function includedFiles() {
-  return [...files.values()].filter(state => !isExcludedPath(state.cwd))
+  return [...files.values()].filter(transcript => !isExcludedPath(transcript.cwd))
 }

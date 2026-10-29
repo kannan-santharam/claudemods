@@ -1,10 +1,10 @@
-import { deliveries, live, liveCache, messaging } from './state.mjs'
-import { guardLeading } from './typing.mjs'
-
 // The page queues a message here. A connected session's own fleet mod takes it
 // as a prompt (or runs its /command); a session without the mod has it typed
 // into its Terminal tab by this server once it is idle. Nothing is ever relayed
 // through another session.
+
+import { deliveries, live, liveCache, messaging } from './state.mjs'
+import { guardLeading } from './typing.mjs'
 
 export function claimFor(claimant) {
   const now = Date.now()

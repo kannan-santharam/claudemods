@@ -1,3 +1,6 @@
+// The folder picker: any folder under home can be browsed and picked; nothing
+// outside it, nothing excluded.
+
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import path from 'node:path'

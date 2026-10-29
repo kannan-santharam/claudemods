@@ -1,3 +1,6 @@
+// Per-session summaries built from the transcript tallies, and the Reports tab:
+// usage by day and model, projects, tools and the activity timeline.
+
 import { ACTIVITY_GAP_MIN, DAY_MS } from './constants.mjs'
 import { includedFiles } from './config.mjs'
 import { addTokens, costOf, emptyTokens } from './pricing.mjs'
@@ -6,11 +9,11 @@ import { baseName, dayKey } from './utils.mjs'
 
 export function sessionSummaries(sinceDay) {
   const sessions = new Map()
-  for (const state of includedFiles()) {
-    let summary = sessions.get(state.sessionId)
+  for (const transcript of includedFiles()) {
+    let summary = sessions.get(transcript.sessionId)
     if (!summary) {
       summary = {
-        sessionId: state.sessionId,
+        sessionId: transcript.sessionId,
         cwd: '',
         project: '',
         branch: '',
@@ -37,36 +40,36 @@ export function sessionSummaries(sinceDay) {
         tools: {},
         filesTouched: {},
       }
-      sessions.set(state.sessionId, summary)
+      sessions.set(transcript.sessionId, summary)
     }
-    if (state.isSubagent) summary.subagents++
+    if (transcript.isSubagent) summary.subagents++
     else {
-      summary.cwd = state.cwd || summary.cwd
-      summary.branch = state.branch || summary.branch
-      summary.model = state.model || summary.model
-      summary.title = state.title || summary.title
-      summary.agentName = state.agentName || summary.agentName
-      summary.firstPrompt = summary.firstPrompt || state.firstPrompt
-      if (state.lastPromptAt >= summary.lastPromptAt && state.lastPrompt) {
-        summary.lastPrompt = state.lastPrompt
-        summary.lastPromptAt = state.lastPromptAt
+      summary.cwd = transcript.cwd || summary.cwd
+      summary.branch = transcript.branch || summary.branch
+      summary.model = transcript.model || summary.model
+      summary.title = transcript.title || summary.title
+      summary.agentName = transcript.agentName || summary.agentName
+      summary.firstPrompt = summary.firstPrompt || transcript.firstPrompt
+      if (transcript.lastPromptAt >= summary.lastPromptAt && transcript.lastPrompt) {
+        summary.lastPrompt = transcript.lastPrompt
+        summary.lastPromptAt = transcript.lastPromptAt
       }
-      if (state.lastReplyAt >= summary.lastReplyAt && state.lastReply) {
-        summary.lastReply = state.lastReply
-        summary.lastReplyAt = state.lastReplyAt
+      if (transcript.lastReplyAt >= summary.lastReplyAt && transcript.lastReply) {
+        summary.lastReply = transcript.lastReply
+        summary.lastReplyAt = transcript.lastReplyAt
       }
-      if (state.lastToolAt >= summary.lastToolAt && state.lastTool) {
-        summary.lastTool = state.lastTool
-        summary.lastToolAt = state.lastToolAt
+      if (transcript.lastToolAt >= summary.lastToolAt && transcript.lastTool) {
+        summary.lastTool = transcript.lastTool
+        summary.lastToolAt = transcript.lastToolAt
       }
-      summary.contextTokens = state.contextTokens
-      summary.prompts += state.prompts
+      summary.contextTokens = transcript.contextTokens
+      summary.prompts += transcript.prompts
     }
-    summary.firstAt = summary.firstAt ? Math.min(summary.firstAt, state.firstAt || summary.firstAt) : state.firstAt
-    summary.lastAt = Math.max(summary.lastAt, state.lastAt)
-    summary.commits += state.commits
-    summary.pushes += state.pushes
-    for (const [day, byModel] of Object.entries(state.usage)) {
+    summary.firstAt = summary.firstAt ? Math.min(summary.firstAt, transcript.firstAt || summary.firstAt) : transcript.firstAt
+    summary.lastAt = Math.max(summary.lastAt, transcript.lastAt)
+    summary.commits += transcript.commits
+    summary.pushes += transcript.pushes
+    for (const [day, byModel] of Object.entries(transcript.usage)) {
       if (day < sinceDay) continue
       for (const [model, tokens] of Object.entries(byModel)) {
         addTokens(summary.tokens, tokens)
@@ -75,13 +78,13 @@ export function sessionSummaries(sinceDay) {
         summary.cost += costOf(model, tokens)
       }
     }
-    for (const [tool, count] of Object.entries(state.tools)) summary.tools[tool] = (summary.tools[tool] || 0) + count
-    for (const [file, count] of Object.entries(state.filesTouched))
+    for (const [tool, count] of Object.entries(transcript.tools)) summary.tools[tool] = (summary.tools[tool] || 0) + count
+    for (const [file, count] of Object.entries(transcript.filesTouched))
       summary.filesTouched[file] = (summary.filesTouched[file] || 0) + count
   }
   // A session known only from its subagents' files takes their cwd: one pass, not one per session.
   const cwdBySession = new Map()
-  for (const state of includedFiles()) if (state.cwd && !cwdBySession.has(state.sessionId)) cwdBySession.set(state.sessionId, state.cwd)
+  for (const transcript of includedFiles()) if (transcript.cwd && !cwdBySession.has(transcript.sessionId)) cwdBySession.set(transcript.sessionId, transcript.cwd)
   for (const summary of sessions.values()) {
     if (!summary.cwd) summary.cwd = cwdBySession.get(summary.sessionId) || ''
     summary.project = baseName(summary.cwd || 'unknown')
@@ -91,9 +94,9 @@ export function sessionSummaries(sinceDay) {
 
 function activitySegments(sessionId, since) {
   const minutes = []
-  for (const state of includedFiles()) {
-    if (state.sessionId !== sessionId) continue
-    for (const minute of state.activeMinutes) if (minute * 60000 >= since) minutes.push(minute)
+  for (const transcript of includedFiles()) {
+    if (transcript.sessionId !== sessionId) continue
+    for (const minute of transcript.activeMinutes) if (minute * 60000 >= since) minutes.push(minute)
   }
   minutes.sort((left, right) => left - right)
   const segments = []
@@ -132,8 +135,8 @@ export function buildReport(range) {
   const projects = {}
   const tools = {}
   const models = new Set()
-  for (const state of includedFiles()) {
-    for (const [day, byModel] of Object.entries(state.usage)) {
+  for (const transcript of includedFiles()) {
+    for (const [day, byModel] of Object.entries(transcript.usage)) {
       for (const [model, tokens] of Object.entries(byModel)) {
         if (perDay[day]) {
           const entry = (perDay[day][model] ||= { tokens: 0, cost: 0 })

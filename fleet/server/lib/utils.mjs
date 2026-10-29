@@ -1,3 +1,6 @@
+// Small helpers every module uses: running a command, private file writes,
+// day keys, log lines and the text cleaning applied before anything reaches a shell.
+
 import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 

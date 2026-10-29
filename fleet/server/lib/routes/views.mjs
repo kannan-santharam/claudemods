@@ -1,3 +1,6 @@
+// What the page reads: the live view, reports, recently closed sessions and a
+// hidden session's screen.
+
 import { send } from '../http.mjs'
 import { liveView } from '../live-view.mjs'
 import { listRecentlyClosed } from '../recently-closed.mjs'

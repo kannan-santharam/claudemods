@@ -1,3 +1,6 @@
+// The request handler: the Host check, the page's static files, then the routing
+// tables in a fixed order (see routes/index.mjs).
+
 import { PORT } from './constants.mjs'
 import { readBody, send } from './http.mjs'
 import { getRoutes, postRoutes, publicGetRoutes } from './routes/index.mjs'

@@ -1,3 +1,6 @@
+// /model, /rename and /compact: a connected session runs them itself; any other session
+// has them typed into its tab, which only works while it waits at an empty prompt.
+
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -6,12 +9,9 @@ import { HOME } from './constants.mjs'
 import { MODELS, MODEL_IDS } from './new-sessions.mjs'
 import { baseModel } from './pricing.mjs'
 import { hasMod } from './registry.mjs'
-import { heartbeats, live, messaging, modelSwitchesAnswering } from './state.mjs'
+import { heartbeats, live, messaging, watchedModelSwitches } from './state.mjs'
 import { MESSAGE_TTL_MS } from './typing.mjs'
 import { cleanLine } from './utils.mjs'
-
-// /model and /rename: a connected session runs them itself; any other session
-// has them typed into its tab, which only works while it waits at an empty prompt.
 
 export async function runSessionCommand(body) {
   const session = live.get(String(body.sessionId || ''))
@@ -34,12 +34,6 @@ export async function runSessionCommand(body) {
   return { ok: true, via: hasMod(session.sessionId) ? 'command' : 'typed' }
 }
 
-// /model asks "Switch model?" in the terminal when the conversation is cached
-// for the current model. The person already confirmed the switch in the
-// dashboard, which showed the same warning, so once that question is on screen
-// in the session's tab, offering exactly this model, Return picks its "Yes".
-// Nothing is pressed unless the question is there.
-
 // /model also saves the model as the default for new sessions. A switch from
 // the dashboard is for that one session, so the saved default is put back as
 // it was (only its "model" key; the rest of the file is left as it is).
@@ -49,19 +43,24 @@ function readDefaultModel() {
 }
 function restoreDefaultModel(model) {
   try {
-    const settings = JSON.parse(fs.readFileSync(USER_SETTINGS, 'utf8'))
-    if (settings.model === model) return false
-    if (model === undefined) delete settings.model
-    else settings.model = model
-    fs.writeFileSync(USER_SETTINGS, JSON.stringify(settings, null, 2) + '\n')
+    const userSettings = JSON.parse(fs.readFileSync(USER_SETTINGS, 'utf8'))
+    if (userSettings.model === model) return false
+    if (model === undefined) delete userSettings.model
+    else userSettings.model = model
+    fs.writeFileSync(USER_SETTINGS, JSON.stringify(userSettings, null, 2) + '\n')
     return true
   } catch {
     return false
   }
 }
+// /model asks "Switch model?" in the terminal when the conversation is cached
+// for the current model. The person already confirmed the switch in the
+// dashboard, which showed the same warning, so once that question is on screen
+// in the session's tab, offering exactly this model, Return picks its "Yes".
+// Nothing is pressed unless the question is there.
 async function answerModelQuestion(sessionId, model) {
-  if (modelSwitchesAnswering.has(sessionId)) return
-  modelSwitchesAnswering.add(sessionId)
+  if (watchedModelSwitches.has(sessionId)) return
+  watchedModelSwitches.add(sessionId)
   const label = MODELS.find(option => option.id === model)?.label || model
   const defaultBefore = readDefaultModel()
   const deadline = Date.now() + MESSAGE_TTL_MS
@@ -87,6 +86,6 @@ async function answerModelQuestion(sessionId, model) {
       }
     }
   } finally {
-    modelSwitchesAnswering.delete(sessionId)
+    watchedModelSwitches.delete(sessionId)
   }
 }

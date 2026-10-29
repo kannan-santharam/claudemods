@@ -1,3 +1,6 @@
+// Token prices (pricing.json, editable) and what a model's traffic would cost
+// at API list prices, plus the token tallies the reports add up.
+
 import fs from 'node:fs'
 import { DEFAULT_PRICING, PRICING_FILE } from './constants.mjs'
 import { settings } from './state.mjs'

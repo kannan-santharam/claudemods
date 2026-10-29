@@ -1,3 +1,6 @@
+// Resuming a past session: a folder's recent transcripts described from their
+// head and tail, and the `claude --resume` that reopens one.
+
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import path from 'node:path'
@@ -61,8 +64,7 @@ async function describeTranscript(filePath, size) {
 export async function listHistory(folderPath) {
   const realFolder = insideHome(folderPath)
   if (!realFolder || isExcludedPath(realFolder)) return { ok: false, reason: 'Pick a folder inside your home folder.' }
-  const folder = { path: realFolder }
-  const slug = folder.path.replace(/[^a-zA-Z0-9]/g, '-')
+  const slug = realFolder.replace(/[^a-zA-Z0-9]/g, '-')
   let projectDirs = []
   try {
     projectDirs = (await fsp.readdir(PROJECTS_DIR)).filter(name => name === slug || name.startsWith(slug + '-'))
@@ -91,7 +93,7 @@ export async function listHistory(folderPath) {
   for (const candidate of candidates.slice(0, 60)) {
     const facts = await describeTranscript(candidate.full, candidate.size)
     // A slug also matches a sibling (api → api-docs): the rows' cwd decides.
-    if (!facts.cwd || !(facts.cwd === folder.path || facts.cwd.startsWith(folder.path + '/'))) continue
+    if (!facts.cwd || !(facts.cwd === realFolder || facts.cwd.startsWith(realFolder + '/'))) continue
     if (!facts.firstPrompt) continue
     sessions.push({
       sessionId: candidate.sessionId,
@@ -101,7 +103,7 @@ export async function listHistory(folderPath) {
       prompts: facts.prompts,
       model: facts.model,
       cwd: facts.cwd,
-      subfolder: facts.cwd === folder.path ? '' : facts.cwd.slice(folder.path.length + 1),
+      subfolder: facts.cwd === realFolder ? '' : facts.cwd.slice(realFolder.length + 1),
       lastAt: candidate.lastAt,
       sizeBytes: candidate.size,
       isLive: liveIds.has(candidate.sessionId),

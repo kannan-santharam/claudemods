@@ -1,3 +1,6 @@
+// Messages for sessions without the mod are typed into their own terminal tab,
+// one session at a time and only while it waits idle at its prompt.
+
 import { READ_ITERM_TAB, READ_TERMINAL_TAB, TYPE_INTO_ITERM, TYPE_INTO_TAB, osascript } from './applescript.mjs'
 import { acknowledge } from './messaging.mjs'
 import { hasMod } from './registry.mjs'
@@ -26,8 +29,8 @@ async function typeIntoTab(tty, text) {
       await sleep(waitMs)
       await osascript(script, `/dev/${tty}`, '\r')
       await sleep(1000)
-      const box = inputBoxText((await osascript(reader, `/dev/${tty}`)).stdout)
-      if (box === null || !(box.includes(opening) || box.includes('[Pasted text'))) return { ok: true, script }
+      const inputText = inputBoxText((await osascript(reader, `/dev/${tty}`)).stdout)
+      if (inputText === null || !(inputText.includes(opening) || inputText.includes('[Pasted text'))) return { ok: true, script }
       waitMs = 2000
     }
     return { ok: false, reason: 'it is still in its input box: press Enter in its tab' }

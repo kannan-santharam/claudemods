@@ -1,19 +1,21 @@
+// A hidden session's screen for the page, rendered from `claude logs`.
+
 import { claudeBinary } from './hidden-sessions.mjs'
 import { live } from './state.mjs'
 import { run, stripAnsi } from './utils.mjs'
 
 // What a hidden session's terminal shows, from `claude logs <id>`: the raw
 // output is replayed on a small grid so the page can draw the screen as text.
-function renderScreen(raw, cols = 200, rows = 50) {
-  const blank = () => ({ ch: ' ', fg: '', bold: false })
-  let grid = Array.from({ length: rows }, () => Array.from({ length: cols }, blank))
-  let row = 0, col = 0, fg = '', bold = false
-  const clamp = () => { row = Math.max(0, Math.min(rows - 1, row)); col = Math.max(0, Math.min(cols - 1, col)) }
-  const newline = () => { row++; if (row >= rows) { grid.shift(); grid.push(Array.from({ length: cols }, blank)); row = rows - 1 } }
+function renderScreen(raw, columns = 200, rows = 50) {
+  const blank = () => ({ character: ' ', fg: '', bold: false })
+  let grid = Array.from({ length: rows }, () => Array.from({ length: columns }, blank))
+  let row = 0, column = 0, foreground = '', bold = false
+  const clamp = () => { row = Math.max(0, Math.min(rows - 1, row)); column = Math.max(0, Math.min(columns - 1, column)) }
+  const newline = () => { row++; if (row >= rows) { grid.shift(); grid.push(Array.from({ length: columns }, blank)); row = rows - 1 } }
   const text = String(raw)
   for (let index = 0; index < text.length; index++) {
-    const ch = text[index]
-    if (ch === '\x1b') {
+    const character = text[index]
+    if (character === '\x1b') {
       const next = text[index + 1]
       if (next === '[') {
         let end = index + 2
@@ -23,30 +25,30 @@ function renderScreen(raw, cols = 200, rows = 50) {
         const numbers = params.split(';').map(part => Number(part) || 0)
         const first = numbers[0] || 0
         if (final === 'm') {
-          for (let at = 0; at < numbers.length; at++) {
-            const code = params ? numbers[at] : 0
-            if (code === 0) { fg = ''; bold = false }
+          for (let paramIndex = 0; paramIndex < numbers.length; paramIndex++) {
+            const code = params ? numbers[paramIndex] : 0
+            if (code === 0) { foreground = ''; bold = false }
             else if (code === 1) bold = true
             else if (code === 22) bold = false
-            else if (code === 39) fg = ''
-            else if (code === 38 && numbers[at + 1] === 2) { fg = `rgb(${numbers[at + 2]},${numbers[at + 3]},${numbers[at + 4]})`; at += 4 }
-            else if (code === 38 && numbers[at + 1] === 5) { at += 2 }
-            else if (code === 48) { at += numbers[at + 1] === 2 ? 4 : 2 }
-            else if ((code >= 30 && code <= 37) || (code >= 90 && code <= 97)) fg = ['#000', '#c33', '#3a3', '#c90', '#36c', '#c3c', '#3cc', '#ccc'][(code % 10)]
+            else if (code === 39) foreground = ''
+            else if (code === 38 && numbers[paramIndex + 1] === 2) { foreground = `rgb(${numbers[paramIndex + 2]},${numbers[paramIndex + 3]},${numbers[paramIndex + 4]})`; paramIndex += 4 }
+            else if (code === 38 && numbers[paramIndex + 1] === 5) { paramIndex += 2 }
+            else if (code === 48) { paramIndex += numbers[paramIndex + 1] === 2 ? 4 : 2 }
+            else if ((code >= 30 && code <= 37) || (code >= 90 && code <= 97)) foreground = ['#000', '#c33', '#3a3', '#c90', '#36c', '#c3c', '#3cc', '#ccc'][(code % 10)]
           }
-        } else if (final === 'H' || final === 'f') { row = (numbers[0] || 1) - 1; col = (numbers[1] || 1) - 1; clamp() }
+        } else if (final === 'H' || final === 'f') { row = (numbers[0] || 1) - 1; column = (numbers[1] || 1) - 1; clamp() }
         else if (final === 'A') { row -= first || 1; clamp() }
         else if (final === 'B') { row += first || 1; clamp() }
-        else if (final === 'C') { col += first || 1; clamp() }
-        else if (final === 'D') { col -= first || 1; clamp() }
-        else if (final === 'G') { col = (first || 1) - 1; clamp() }
+        else if (final === 'C') { column += first || 1; clamp() }
+        else if (final === 'D') { column -= first || 1; clamp() }
+        else if (final === 'G') { column = (first || 1) - 1; clamp() }
         else if (final === 'd') { row = (first || 1) - 1; clamp() }
         else if (final === 'J') {
-          if (first === 2 || first === 3) grid = Array.from({ length: rows }, () => Array.from({ length: cols }, blank))
-          else if (first === 0) { for (let c = col; c < cols; c++) grid[row][c] = blank(); for (let r = row + 1; r < rows; r++) grid[r] = Array.from({ length: cols }, blank) }
+          if (first === 2 || first === 3) grid = Array.from({ length: rows }, () => Array.from({ length: columns }, blank))
+          else if (first === 0) { for (let columnIndex = column; columnIndex < columns; columnIndex++) grid[row][columnIndex] = blank(); for (let rowIndex = row + 1; rowIndex < rows; rowIndex++) grid[rowIndex] = Array.from({ length: columns }, blank) }
         } else if (final === 'K') {
-          const [from, to] = first === 1 ? [0, col + 1] : first === 2 ? [0, cols] : [col, cols]
-          for (let c = from; c < to; c++) grid[row][c] = blank()
+          const [from, to] = first === 1 ? [0, column + 1] : first === 2 ? [0, columns] : [column, columns]
+          for (let columnIndex = from; columnIndex < to; columnIndex++) grid[row][columnIndex] = blank()
         }
         index = end
       } else if (next === ']') {
@@ -57,24 +59,24 @@ function renderScreen(raw, cols = 200, rows = 50) {
       } else index++
       continue
     }
-    if (ch === '\r') { col = 0; continue }
-    if (ch === '\n') { newline(); continue }
-    if (ch === '\b') { col = Math.max(0, col - 1); continue }
-    if (ch === '\t') { col = Math.min(cols - 1, (Math.floor(col / 8) + 1) * 8); continue }
-    if (ch < ' ' || ch === '\x7f') continue
-    if (col >= cols) { col = 0; newline() }
-    grid[row][col] = { ch, fg, bold }
-    col++
+    if (character === '\r') { column = 0; continue }
+    if (character === '\n') { newline(); continue }
+    if (character === '\b') { column = Math.max(0, column - 1); continue }
+    if (character === '\t') { column = Math.min(columns - 1, (Math.floor(column / 8) + 1) * 8); continue }
+    if (character < ' ' || character === '\x7f') continue
+    if (column >= columns) { column = 0; newline() }
+    grid[row][column] = { character, fg: foreground, bold }
+    column++
   }
   // Rows as runs of one style, trailing blanks dropped.
   const lines = grid.map(cells => {
     let last = cells.length - 1
-    while (last >= 0 && cells[last].ch === ' ') last--
+    while (last >= 0 && cells[last].character === ' ') last--
     const runs = []
-    for (let c = 0; c <= last; c++) {
-      const cell = cells[c], run = runs[runs.length - 1]
-      if (run && run.fg === cell.fg && run.bold === cell.bold) run.text += cell.ch
-      else runs.push({ text: cell.ch, fg: cell.fg, bold: cell.bold })
+    for (let columnIndex = 0; columnIndex <= last; columnIndex++) {
+      const cell = cells[columnIndex], run = runs[runs.length - 1]
+      if (run && run.fg === cell.fg && run.bold === cell.bold) run.text += cell.character
+      else runs.push({ text: cell.character, fg: cell.fg, bold: cell.bold })
     }
     return runs
   })

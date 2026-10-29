@@ -1,3 +1,7 @@
+// Fixed values: the port, where Claude Code keeps its sessions and transcripts,
+// this server's data folder and files, scan timings, the plugin version, and the
+// pricing.json and config.json written when a file is missing.
+
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -32,11 +36,15 @@ export const DAY_MS = 24 * 60 * 60 * 1000
 export const BROWSER_SECRET_FILE = path.join(DATA_DIR, 'browser-secret')
 const PLUGIN_MANIFEST = path.join(SERVER_DIR, '..', '.claude-plugin', 'plugin.json')
 
-let version = ''
-try {
-  version = String(JSON.parse(fs.readFileSync(PLUGIN_MANIFEST, 'utf8')).version || '')
-} catch {}
-export const VERSION = version
+// The plugin version this server came from: a session on a newer one retires it.
+function readPluginVersion() {
+  try {
+    return String(JSON.parse(fs.readFileSync(PLUGIN_MANIFEST, 'utf8')).version || '')
+  } catch {
+    return ''
+  }
+}
+export const VERSION = readPluginVersion()
 
 // API-equivalent list prices, USD per million tokens. On a subscription this
 // is not a bill; it says what the same traffic would cost on the API.

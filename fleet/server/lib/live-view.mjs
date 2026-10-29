@@ -1,3 +1,6 @@
+// The live view the page polls every two seconds: each running session with its
+// summary, heartbeat figures, running subagents, background shells and open questions.
+
 import fs from 'node:fs'
 import { DAY_MS, HEARTBEAT_FRESH_MS } from './constants.mjs'
 import { pendingAsks } from './asks.mjs'
@@ -23,10 +26,10 @@ const SUBAGENT_STALE_MS = 15 * 60 * 1000
 function subagentFilesOf(sessionId) {
   if (fileIndexes.subagentIndex.version !== transcriptScan.filesVersion) {
     const bySession = new Map()
-    for (const state of files.values()) {
-      if (!state.isSubagent) continue
-      if (!bySession.has(state.sessionId)) bySession.set(state.sessionId, [])
-      bySession.get(state.sessionId).push(state)
+    for (const transcript of files.values()) {
+      if (!transcript.isSubagent) continue
+      if (!bySession.has(transcript.sessionId)) bySession.set(transcript.sessionId, [])
+      bySession.get(transcript.sessionId).push(transcript)
     }
     fileIndexes.subagentIndex = { version: transcriptScan.filesVersion, bySession }
   }
@@ -39,15 +42,15 @@ const SHELL_OUTPUT = /^\/(private\/)?tmp\/claude-[^/]+\/.+\/tasks\/[\w-]+\.outpu
 export function shellsOf(session, now) {
   if (fileIndexes.mainFileIndex.version !== transcriptScan.filesVersion) {
     const bySession = new Map()
-    for (const state of files.values()) if (!state.isSubagent) bySession.set(state.sessionId, state)
+    for (const transcript of files.values()) if (!transcript.isSubagent) bySession.set(transcript.sessionId, transcript)
     fileIndexes.mainFileIndex = { version: transcriptScan.filesVersion, bySession }
   }
-  const state = fileIndexes.mainFileIndex.bySession.get(session.sessionId)
-  if (!state?.shells?.size) return []
+  const transcript = fileIndexes.mainFileIndex.bySession.get(session.sessionId)
+  if (!transcript?.shells?.size) return []
   // A shell from before this process started (the session was resumed) died with the old one.
   const since = (session.startedAt || 0) - 10_000
   const found = []
-  for (const shell of state.shells.values()) {
+  for (const shell of transcript.shells.values()) {
     if (shell.endedAt || shell.startedAt < since || now - shell.startedAt > DAY_MS) continue
     found.push({ id: shell.id, command: shell.command, description: shell.description, startedAt: shell.startedAt, ...outputTail(shell.outputFile) })
   }
@@ -70,14 +73,14 @@ function outputTail(file) {
 
 function subagentsOf(sessionId, now) {
   const found = []
-  for (const state of subagentFilesOf(sessionId)) {
+  for (const transcript of subagentFilesOf(sessionId)) {
     let stat
     try {
-      stat = fs.statSync(state.filePath)
+      stat = fs.statSync(transcript.filePath)
     } catch {
       continue
     }
-    const metaPath = state.filePath.replace(/\.jsonl$/, '.meta.json')
+    const metaPath = transcript.filePath.replace(/\.jsonl$/, '.meta.json')
     let meta = {}
     try {
       const metaStat = fs.statSync(metaPath)
@@ -92,13 +95,13 @@ function subagentsOf(sessionId, now) {
     // A subagent leaves the page as soon as it finishes.
     if (!isRunning) continue
     found.push({
-      agentId: baseName(state.filePath).replace(/^agent-|\.jsonl$/g, ''),
-      description: String(meta.description || state.firstPrompt || 'subagent').slice(0, 120),
+      agentId: baseName(transcript.filePath).replace(/^agent-|\.jsonl$/g, ''),
+      description: String(meta.description || transcript.firstPrompt || 'subagent').slice(0, 120),
       agentType: String(meta.agentType || ''),
-      model: String(meta.model || state.model || ''),
+      model: String(meta.model || transcript.model || ''),
       isBackground: meta.requestShape === 'background',
       isRunning,
-      startedAt: state.firstAt,
+      startedAt: transcript.firstAt,
       lastAt: stat.mtimeMs,
     })
   }
@@ -119,19 +122,19 @@ function buildLiveView() {
   const summaries = sessionSummaries(today)
   const rateLimits = new Map()
   const sessions = [...live.values()].map(session => {
-    const beat = heartbeats.get(session.sessionId)
-    const hasMod = Boolean(beat && now - beat.at < HEARTBEAT_FRESH_MS)
+    const heartbeat = heartbeats.get(session.sessionId)
+    const hasMod = Boolean(heartbeat && now - heartbeat.at < HEARTBEAT_FRESH_MS)
     const summary = summaries.get(session.sessionId)
     let contextTokens = summary?.contextTokens || 0
     let contextWindow = Math.max(contextWindowFor(summary?.model), contextTokens > 200_000 ? 1_000_000 : 0)
     let model = summary?.model || ''
     if (hasMod) {
-      model = baseModel(beat.model) || model
-      if (beat.context?.tokens != null) contextTokens = beat.context.tokens
-      if (beat.context?.window) contextWindow = beat.context.window
-      for (const limit of beat.rateLimits || []) {
+      model = baseModel(heartbeat.model) || model
+      if (heartbeat.context?.tokens != null) contextTokens = heartbeat.context.tokens
+      if (heartbeat.context?.window) contextWindow = heartbeat.context.window
+      for (const limit of heartbeat.rateLimits || []) {
         const known = rateLimits.get(limit.kind)
-        if (!known || (beat.at > known.at)) rateLimits.set(limit.kind, { ...limit, at: beat.at })
+        if (!known || (heartbeat.at > known.at)) rateLimits.set(limit.kind, { ...limit, at: heartbeat.at })
       }
     }
     const topTools = Object.entries(summary?.tools || {})
@@ -151,8 +154,8 @@ function buildLiveView() {
       contextTokens,
       contextWindow,
       contextPercent: contextWindow ? Math.min(100, Math.round((contextTokens / contextWindow) * 100)) : 0,
-      sessionCostUsd: hasMod ? beat.costUsd ?? null : null,
-      turns: hasMod ? beat.turns ?? null : null,
+      sessionCostUsd: hasMod ? heartbeat.costUsd ?? null : null,
+      turns: hasMod ? heartbeat.turns ?? null : null,
       todayTokens: summary
         ? summary.tokens.input + summary.tokens.output + summary.tokens.cacheRead + summary.tokens.cacheWrite5m + summary.tokens.cacheWrite1h
         : 0,
@@ -181,9 +184,9 @@ function buildLiveView() {
     session.status = 'waiting'
     session.waitingFor = session.asks[0].kind === 'question' ? 'a question for you' : `permission for ${session.asks[0].toolName}`
   }
-  const rank = { waiting: 0, busy: 1, shell: 2, idle: 3 }
+  const statusOrder = { waiting: 0, busy: 1, shell: 2, idle: 3 }
   sessions.sort(
-    (left, right) => (rank[left.status] ?? 9) - (rank[right.status] ?? 9) || right.lastActivityAt - left.lastActivityAt,
+    (left, right) => (statusOrder[left.status] ?? 9) - (statusOrder[right.status] ?? 9) || right.lastActivityAt - left.lastActivityAt,
   )
   return {
     generatedAt: now,

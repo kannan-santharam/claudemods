@@ -1,3 +1,6 @@
+// Starting a new session: the models offered, the folder list, and the command
+// that opens it in a terminal tab or as a hidden session.
+
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import path from 'node:path'
@@ -37,16 +40,15 @@ export async function listFolders() {
 export async function startSession(body) {
   const folderPath = insideHome(body.folder)
   if (!folderPath || isExcludedPath(folderPath)) return { ok: false, reason: 'Pick a folder inside your home folder.' }
-  const folder = { path: folderPath }
   const model = String(body.model || '')
   if (model && !MODEL_IDS.has(model)) return { ok: false, reason: 'Unknown model.' }
   const name = cleanLine(body.name, 80)
   const command = [
-    `cd ${shellQuote(folder.path)} &&`,
+    `cd ${shellQuote(folderPath)} &&`,
     'claude',
     model ? `--model ${shellQuote(model)}` : '',
     name ? `--name ${shellQuote(name)}` : '',
   ].filter(Boolean).join(' ')
-  if (body.hidden === true) return startHidden(folder.path, [...(model ? ['--model', model] : []), ...(name ? ['--name', name] : [])])
+  if (body.hidden === true) return startHidden(folderPath, [...(model ? ['--model', model] : []), ...(name ? ['--name', name] : [])])
   return openInTerminal(command)
 }

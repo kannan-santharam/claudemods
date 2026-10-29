@@ -1,3 +1,6 @@
+// Session actions and the pickers behind them: heartbeats from the mods, focus,
+// start, resume, end, attach, /model /rename /compact, folders and history.
+
 import { isExcludedPath } from '../config.mjs'
 import { endSession } from '../end-sessions.mjs'
 import { browse } from '../folder-browser.mjs'

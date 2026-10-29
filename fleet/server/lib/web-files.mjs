@@ -1,13 +1,14 @@
-import fsp from 'node:fs/promises'
-import path from 'node:path'
-import { WEB_DIR } from './constants.mjs'
-import { webState } from './state.mjs'
-
 // The page is server/web/: index.html, its stylesheets in css/ and its modules in
 // js/. What can be served is an allowlist built from a listing of that folder,
 // never a path taken from the request: URL path -> { file, type, mtimeMs, body }.
 // Only plain lowercase names count, symlinks are skipped, and nothing else under
 // web/ (or outside it) can ever be named by a URL.
+
+import fsp from 'node:fs/promises'
+import path from 'node:path'
+import { WEB_DIR } from './constants.mjs'
+import { webState } from './state.mjs'
+
 const WEB_FILE_NAME = /^[a-z0-9-]+\.(css|js)$/
 const WEB_FOLDER_NAME = /^[a-z0-9-]+$/
 const WEB_TYPES = { html: 'text/html; charset=utf-8', css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8' }

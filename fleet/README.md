@@ -49,7 +49,7 @@ Costs are an estimate at API list prices. On a Claude subscription they are not 
 
 - macOS, with Terminal or iTerm2
 - Claude Code with mods (function-hook plugins) enabled
-- Node.js 18 or newer. The dashboard server is one small Node script with no dependencies; the mod finds Node on your PATH or where Homebrew, nvm, fnm, volta or asdf keep it.
+- Node.js 18 or newer. The dashboard server is a small set of plain Node modules with no dependencies; the mod finds Node on your PATH or where Homebrew, nvm, fnm, volta or asdf keep it.
 
 ## More on installing
 

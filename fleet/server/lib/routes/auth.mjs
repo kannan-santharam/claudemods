@@ -1,3 +1,5 @@
+// Signing a browser in, the health check the mods poll, and retiring the server.
+
 import { ENTRY_SCRIPT, PORT, VERSION } from '../constants.mjs'
 import { send } from '../http.mjs'
 import { COOKIE_NAME, hasToken, newLoginCode, takeLoginCode } from '../security.mjs'

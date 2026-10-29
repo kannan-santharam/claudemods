@@ -1,3 +1,6 @@
+// Opening a new terminal tab or window for a session, and bringing a session's
+// tab to the front.
+
 import { FOCUS_ITERM, FOCUS_TERMINAL, IS_RUNNING, OPEN_IN_ITERM, OPEN_IN_TERMINAL, osascript } from './applescript.mjs'
 import { live } from './state.mjs'
 

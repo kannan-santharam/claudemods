@@ -1,3 +1,7 @@
+// A hidden session runs in Claude Code's own background service (`claude --bg`):
+// no terminal window opens, and the dashboard is how it is reached. `claude
+// attach <id>` opens it in a terminal at any time; `claude stop <id>` ends it.
+
 import fs from 'node:fs'
 import path from 'node:path'
 import { HOME } from './constants.mjs'
@@ -6,9 +10,6 @@ import { live } from './state.mjs'
 import { focusTab, openInTerminal } from './terminal.mjs'
 import { run, shellQuote, stripAnsi } from './utils.mjs'
 
-// A hidden session runs in Claude Code's own background service (`claude --bg`):
-// no terminal window opens, and the dashboard is how it is reached. `claude
-// attach <id>` opens it in a terminal at any time; `claude stop <id>` ends it.
 export function claudeBinary() {
   for (const candidate of [path.join(HOME, '.local', 'bin', 'claude'), '/opt/homebrew/bin/claude', '/usr/local/bin/claude']) {
     if (fs.existsSync(candidate)) return candidate

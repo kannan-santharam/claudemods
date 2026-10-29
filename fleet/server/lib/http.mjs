@@ -1,3 +1,6 @@
+// Writing a response with the security headers every answer carries, and reading
+// a JSON request body with a size limit.
+
 import { PAGE_POLICY } from './security.mjs'
 
 export function send(response, status, body, type = 'application/json', extra = {}) {

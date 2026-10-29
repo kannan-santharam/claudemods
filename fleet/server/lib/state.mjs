@@ -1,14 +1,14 @@
-import { DEFAULT_PRICING } from './constants.mjs'
-
 // Every piece of state the server keeps between requests lives here, so every
 // module sees the same copy. ES module bindings cannot be reassigned by the
 // modules that import them, so each export is a container that is changed in
 // place: a Map, a Set or an array, or a plain object whose fields are set.
 // Nothing here is ever reassigned.
 
+import { DEFAULT_PRICING } from './constants.mjs'
+
 // Two secrets, each kept 0600 in the data folder so a restart keeps them:
-// TOKEN for the sessions' mods (they read the file), BROWSER_SECRET for the
-// dashboard's cookie. Neither is ever written into a page.
+// the token for the sessions' mods (they read the file), the browser secret for
+// the dashboard's cookie. Neither is ever written into a page.
 export const secrets = { token: '', browserSecret: '' }
 
 // What pricing.json and config.json say, reloaded when either file changes.
@@ -46,8 +46,11 @@ export const messaging = {
   isTyping: false,
 }
 export const deliveries = [] // { id, sessionId, name, text, at, isDelivered, reason, via }
+// AppleScript calls against Terminal, chained so they run one at a time.
 export const terminal = { queue: Promise.resolve() }
-export const modelSwitchesAnswering = new Set()
+// Sessions whose /model switch is being watched for its "Switch model?" question.
+export const watchedModelSwitches = new Set()
 
 export const loginCodes = new Map() // code -> expiry
+// The page's files that may be served (URL path -> file), and a listing in progress.
 export const webState = { files: new Map(), scan: null }

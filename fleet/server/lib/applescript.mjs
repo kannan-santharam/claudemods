@@ -1,3 +1,6 @@
+// Every AppleScript this server runs against Terminal and iTerm2, and the queue
+// that runs them one at a time.
+
 import { terminal } from './state.mjs'
 import { run } from './utils.mjs'
 

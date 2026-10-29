@@ -1,3 +1,6 @@
+// The last sessions that closed, kept across restarts so the page can offer to
+// resume them.
+
 import fs from 'node:fs'
 import { DAY_MS, RECENTLY_CLOSED_FILE } from './constants.mjs'
 import { isExcludedPath } from './config.mjs'

@@ -1,3 +1,6 @@
+// Ending a session: SIGTERM (or SIGKILL when forced) for a session in a tab,
+// `claude stop` for a hidden one, then closing a tab left with only its shell.
+
 import crypto from 'node:crypto'
 import { CLOSE_ITERM_SESSION, CLOSE_TERMINAL_TAB, EXIT_TERMINAL_SHELL, TERMINAL_TAB_EXISTS, osascript } from './applescript.mjs'
 import { claudeBinary } from './hidden-sessions.mjs'
@@ -13,21 +16,18 @@ async function isAlive(pid) {
   } catch {
     return false
   }
-  const state = (await run('ps', ['-o', 'stat=', '-p', String(pid)])).stdout.trim()
-  return Boolean(state) && !state.startsWith('Z')
+  const processState = (await run('ps', ['-o', 'stat=', '-p', String(pid)])).stdout.trim()
+  return Boolean(processState) && !processState.startsWith('Z')
 }
 
-// SIGTERM lets Claude Code finish writing its transcript, so the session can be
-// resumed later; `force` (SIGKILL) is for one that did not stop. The pid is
-// checked to still be a claude process, never just any pid the page names.
 // Closing the tab of an ended session: only when nothing but a shell is left on
 // it, so a tab still running something else (a server, an editor) stays open.
 // The shell is asked to exit first, which closes the tab without taking focus
 // when Terminal closes tabs whose shell exits; else the tab is closed directly.
-const SHELLS = /^-?(zsh|bash|fish|sh|login|tcsh|ksh)$/
+const SHELL_NAMES = /^-?(zsh|bash|fish|sh|login|tcsh|ksh)$/
 async function onlyShellsOn(tty) {
   const listing = await run('ps', ['-t', tty, '-o', 'comm='])
-  return listing.stdout.split('\n').map(line => baseName(line.trim())).filter(Boolean).every(name => SHELLS.test(name))
+  return listing.stdout.split('\n').map(line => baseName(line.trim())).filter(Boolean).every(name => SHELL_NAMES.test(name))
 }
 
 async function closeTab(tty) {
@@ -54,6 +54,9 @@ async function stopHidden(session) {
   return { ended, reason: ended ? '' : stripAnsi(result.stderr || result.stdout).trim().split('\n')[0] || 'it is still running' }
 }
 
+// SIGTERM lets Claude Code finish writing its transcript, so the session can be
+// resumed later; `force` (SIGKILL) is for one that did not stop. The pid is
+// checked to still be a claude process, never just any pid the page names.
 export async function endSession(body) {
   const session = live.get(String(body.sessionId || ''))
   if (!session) return { ok: false, reason: 'That session is no longer running.' }
