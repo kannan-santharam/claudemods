@@ -27,7 +27,7 @@ export function renderTiles() {
   const runningShellTotal = sessions.reduce((sum, session) => sum + (session.shells || []).length, 0)
   const longest = waiting.slice().sort((first, second) => first.updatedAt - second.updatedAt)[0]
   const fills = sessions.map(session => session.contextPercent)
-  const hot = fills.filter(percent => percent >= 80).length
+  const hot = fills.filter(percent => percent >= 70).length
   const averageFill = fills.length ? Math.round(fills.reduce((total, fill) => total + fill, 0) / fills.length) : 0
   const totals = report?.totals
   const rangeTokens = totals ? totals.tokens.input + totals.tokens.output + totals.tokens.cacheRead + totals.tokens.cacheWrite5m + totals.tokens.cacheWrite1h : 0
@@ -48,6 +48,6 @@ export function renderTiles() {
     <div class="tile"><div class="label">Est. cost · ${rangeName}</div><div class="value">${formatCost(totals?.cost)}</div>
       <div class="sub">Today ${formatCost(totals?.today.cost)} · API list prices</div></div>
     <div class="tile"><div class="label">Avg context fill</div><div class="value">${averageFill}%</div>
-      <div class="sub">${hot ? hot + ' session' + (hot > 1 ? 's' : '') + ' above 80%' : 'All below 80%'}</div></div>
+      <div class="sub">${hot ? hot + ' session' + (hot > 1 ? 's' : '') + ' above 70%' : 'All below 70%'}</div></div>
     <div class="tile"><div class="label">Plan usage</div>${limitHtml}</div>`
 }

@@ -9,7 +9,7 @@
 .bar-row .track > b.mid { background: var(--fill-mid); }
 .bar-row .track > b.hot { background: var(--critical); }
 .bar-row .track > b.max { background: var(--fill-max); }
-.bar-row .track > s { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--text-muted); left: 80%; }
+.bar-row .track > s { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--text-muted); left: 70%; }
 .bar-row .v { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
 
 /* timeline */
