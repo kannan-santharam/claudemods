@@ -52,8 +52,8 @@ function createOffice() {
   }
 }
 
-// Built once by main.js, at the point in the start-up order where the page used to
-// build it: it reads the DOM, adds its listeners and starts its timer.
+// Built once by main.js, at its place in the start-up order: it reads the DOM,
+// adds its listeners and starts its timer.
 export let office = null
 export function startOffice() {
   office = createOffice()

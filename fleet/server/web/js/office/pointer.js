@@ -62,7 +62,8 @@ function openInList(scene, sessionId) {
   const row = document.querySelector(isListView() ? `.nav-item[data-id="${CSS.escape(sessionId)}"]` : `tr.session[data-id="${CSS.escape(sessionId)}"]`)
   if (row) { row.scrollIntoView({ block: 'center', behavior: isReduced(scene) ? 'auto' : 'smooth' }); row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 1600) }
 }
-// The canvas listeners, added in the order the single closure used to add them.
+// The canvas listeners. A drag that moved sets scene.suppressClick on mouseup,
+// which comes before the click that ends the drag, so that click selects no one.
 export function bindPointer(scene) {
   scene.canvas.addEventListener('mousedown', event => {
     if (event.button !== 0 || scene.camera.zoom <= 1.01) return

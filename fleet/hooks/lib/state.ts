@@ -17,8 +17,10 @@ const selectedAtom = atom({ plugin: 'fleet', key: 'selected' } as const, '')
 const isOpenAtom = atom({ plugin: 'fleet', key: 'isOpen' } as const, false)
 const scannedAtAtom = atom({ plugin: 'fleet', key: 'scannedAt' } as const, 0)
 
-// The engine reads every state source off the file that calls read or update,
-// so the atoms are read and written here, and nowhere else.
+// The atoms and their shape tags are declared once here, and every other module
+// reads and writes through these helpers, so the keys have one owner. It also
+// keeps `claude plugin validate` able to see them: it only counts a read or an
+// update made in the file that defines the atom.
 export function readSessions($: EngineInterface): Promise<FleetSession[]> {
   return read($, sessionsAtom)
 }

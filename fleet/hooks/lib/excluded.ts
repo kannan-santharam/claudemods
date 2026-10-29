@@ -1,9 +1,9 @@
-// Folders the person excluded on the dashboard: sessions there are left out of
-// the scan, send no heartbeat and take no messages.
+// Folders the person excluded on the dashboard, read from ~/.claude/fleet/config.json
+// (the server writes it): sessions there are left out of the scan, send no
+// heartbeat and take no messages.
 
 import type { EngineInterface } from 'claude-code'
 
-// Folders the fleet never reads, from ~/.claude/fleet/config.json (the server writes it).
 const DEFAULT_EXCLUDE_PATHS: string[] = []
 let excludedRoots: string[] = []
 let excludedRootsReadAt = 0

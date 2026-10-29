@@ -1,6 +1,6 @@
 // The dashboard's entry point. Every other module only declares; this one wires
-// them up, in the order the single-file page used to run its top level, then
-// loads the first data and starts the polling timers.
+// them up in a fixed order, then loads the first data and starts the polling
+// timers.
 
 import { $ } from './core/dom.js'
 import { state } from './core/state.js'
@@ -24,8 +24,8 @@ import { initTabs, setTab } from './tabs.js'
 import { initTheme } from './theme.js'
 import { initTooltip } from './tooltip.js'
 
-// Listeners first, in the page's old order: where two share a target, the
-// first added still runs first.
+// Listeners first, and the order matters: where two share a target, the first
+// added runs first.
 initTheme()
 initLayout()
 initSessionEvents()
