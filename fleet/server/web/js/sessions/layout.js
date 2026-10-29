@@ -4,7 +4,7 @@
 import { $ } from '../core/dom.js'
 import { state } from '../core/state.js'
 import { remember } from '../core/storage.js'
-import { office } from '../office.js'
+import { office } from '../office/index.js'
 import { isListView } from './list-view.js'
 import { renderLive } from './live.js'
 

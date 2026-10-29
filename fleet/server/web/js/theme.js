@@ -2,7 +2,7 @@
 // choice has been made here.
 
 import { $ } from './core/dom.js'
-import { office } from './office.js'
+import { office } from './office/index.js'
 import { renderAll } from './refresh.js'
 import { drawOfficeMini } from './sessions/layout.js'
 

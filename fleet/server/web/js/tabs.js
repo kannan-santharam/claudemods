@@ -2,7 +2,7 @@
 
 import { $ } from './core/dom.js'
 import { remember } from './core/storage.js'
-import { office } from './office.js'
+import { office } from './office/index.js'
 import { renderCharts } from './reports/charts.js'
 import { renderContextBars, renderTimeline } from './reports/panels.js'
 import { drawOfficeMini, fitSplit, placeTiles } from './sessions/layout.js'
