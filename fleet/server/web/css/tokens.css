@@ -25,6 +25,8 @@
   --good-text: #006300;
   --critical: #d03b3b;
   --critical-soft: #fbe7e7;
+  --fill-mid: #dc9c00;
+  --fill-max: #8e1b1b;
   --shadow: 0 1px 2px rgba(20, 20, 18, .05), 0 4px 16px rgba(20, 20, 18, .04);
   --radius: 12px;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -53,6 +55,8 @@
     --series-other: #6b6a64;
     --good-text: #4cc94c;
     --critical-soft: #3a1f1f;
+    --fill-mid: #d4a017;
+    --fill-max: #a52121;
     --shadow: none;
   }
 }
@@ -79,5 +83,7 @@
   --series-other: #6b6a64;
   --good-text: #4cc94c;
   --critical-soft: #3a1f1f;
+  --fill-mid: #d4a017;
+  --fill-max: #a52121;
   --shadow: none;
 }

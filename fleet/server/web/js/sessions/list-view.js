@@ -2,7 +2,7 @@
 // on the right.
 
 import { $ } from '../core/dom.js'
-import { clock, escapeHtml, formatCost, formatTokens, shortModel, timeAgo } from '../core/format.js'
+import { clock, escapeHtml, fillLevel, formatCost, formatTokens, shortModel, timeAgo } from '../core/format.js'
 import { MODEL_ALIASES, modelColor } from '../core/models.js'
 import { state } from '../core/state.js'
 import { matchesFilter } from './filters.js'
@@ -42,7 +42,7 @@ function navItem(session, depth, byId, belowOf) {
     <div class="nav-main">
       <div class="nav-line"><span class="nav-name" title="${escapeHtml(session.name)}">${escapeHtml(session.name)}</span><span class="chip"><i class="sw" style="background:${modelColor(session.model)}"></i>${escapeHtml(shortModel(session.model))}</span></div>
       <div class="nav-sub"><span class="folder" title="${escapeHtml(session.cwd || session.folder)}">${escapeHtml(session.folder)}</span>${badges}</div>
-      <div class="nav-ctx" data-tip="${formatTokens(session.contextTokens)} of ${formatTokens(session.contextWindow)} tokens"><div class="track"><b class="${session.contextPercent >= 80 ? 'hot' : ''}" style="width:${session.contextPercent}%"></b></div><span>${session.contextPercent}%</span></div>
+      <div class="nav-ctx" data-tip="${formatTokens(session.contextTokens)} of ${formatTokens(session.contextWindow)} tokens"><div class="track"><b class="${fillLevel(session.contextPercent)}" style="width:${session.contextPercent}%"></b></div><span>${session.contextPercent}%</span></div>
     </div>
     ${opener}
   </div>`
@@ -75,12 +75,11 @@ export function renderSide(byId) {
   else {
     const subagents = (session.subagents || []).filter(agent => agent.isRunning)
     const shells = session.shells || []
-    const hot = session.contextPercent >= 80
     html = `
       <h3>This session<span title="${escapeHtml(session.name)}">${escapeHtml(session.name)}</span></h3>
       <div class="side-meter">
         <div class="row"><span class="big">${session.contextPercent}%</span><span class="of">${formatTokens(session.contextTokens)} of ${formatTokens(session.contextWindow)} tokens</span></div>
-        <div class="track"><b class="${hot ? 'hot' : ''}" style="width:${session.contextPercent}%"></b></div>
+        <div class="track"><b class="${fillLevel(session.contextPercent)}" style="width:${session.contextPercent}%"></b></div>
       </div>
       <dl class="kv">
         <dt>Model</dt><dd><span class="chip"><i class="sw" style="background:${modelColor(session.model)}"></i>${escapeHtml(shortModel(session.model))}</span></dd>

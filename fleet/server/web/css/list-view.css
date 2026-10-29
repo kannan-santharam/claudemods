@@ -41,7 +41,7 @@
 .nav-item.child { margin-left: 16px; }
 .nav-item.child::after { content: "↳"; position: absolute; left: -13px; top: 7px; font-size: 12px; color: var(--text-muted); }
 .nav-dot { width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--text-muted); }
-.nav-dot.busy { background: var(--accent); animation: blink 1.2s infinite; }
+.nav-dot.busy { background: var(--good); animation: blink 1.2s infinite; }
 .nav-dot.waiting { background: var(--critical); border-radius: 2px; transform: rotate(45deg); }
 .nav-dot.shell { background: var(--series-7); }
 .nav-dot.delegating { background: transparent; border: 2px solid var(--accent); animation: blink 1.6s infinite; }

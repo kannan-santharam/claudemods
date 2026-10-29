@@ -2,7 +2,7 @@
 // column, keeping focus, caret and scroll across each 2-second refresh.
 
 import { $ } from '../core/dom.js'
-import { escapeHtml, formatCost, formatTokens, shortModel, timeAgo } from '../core/format.js'
+import { escapeHtml, fillLevel, formatCost, formatTokens, shortModel, timeAgo } from '../core/format.js'
 import { modelColor } from '../core/models.js'
 import { state } from '../core/state.js'
 import { renderBulkbar } from '../dialogs/end-session.js'
@@ -54,7 +54,6 @@ export function renderLive() {
       runningShells ? `${runningShells} background shell${runningShells > 1 ? 's' : ''}` : '',
       childCount ? `${childCount} child session${childCount > 1 ? 's' : ''}` : '',
     ].filter(Boolean).join(' · ')
-    const hot = session.contextPercent >= 80
     const id = escapeHtml(session.sessionId)
     rows.push(`
       <tr class="session ${isOpen ? 'selected' : ''}" data-id="${id}" aria-selected="${isOpen}">
@@ -68,7 +67,7 @@ export function renderLive() {
         </td>
         <td class="hide-sm"><span class="chip"><i class="sw" style="background:${modelColor(session.model)}"></i>${escapeHtml(shortModel(session.model))}</span></td>
         <td><div class="meter-cell">
-          <div class="meter" data-tip="${formatTokens(session.contextTokens)} of ${formatTokens(session.contextWindow)} tokens"><div class="track"><b class="${hot ? 'hot' : ''}" style="width:${session.contextPercent}%"></b></div><span>${session.contextPercent}%</span></div>
+          <div class="meter" data-tip="${formatTokens(session.contextTokens)} of ${formatTokens(session.contextWindow)} tokens"><div class="track"><b class="${fillLevel(session.contextPercent)}" style="width:${session.contextPercent}%"></b></div><span>${session.contextPercent}%</span></div>
         </div></td>
         <td class="num hide-sm today">${formatTokens(session.todayTokens)} · ${formatCost(session.todayCost)}</td>
         <td class="num hide-sm">${timeAgo(session.lastActivityAt)}</td>

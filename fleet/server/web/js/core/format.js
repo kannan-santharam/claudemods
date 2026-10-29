@@ -4,6 +4,8 @@
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]))
 export const formatTokens = tokens => tokens >= 1e9 ? (tokens / 1e9).toFixed(2) + 'B' : tokens >= 1e6 ? (tokens / 1e6).toFixed(1) + 'M' : tokens >= 1e3 ? Math.round(tokens / 1e3) + 'k' : String(Math.round(tokens || 0))
 export const formatCost = dollars => dollars == null ? '—' : dollars >= 100 ? '$' + Math.round(dollars).toLocaleString() : '$' + dollars.toFixed(2)
+// A fill bar's colour class by how full it is: blue below half, then yellow, red, and dark red from 85%.
+export const fillLevel = percent => percent >= 85 ? 'max' : percent >= 70 ? 'hot' : percent >= 50 ? 'mid' : ''
 export const clock = time => new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 // A small Markdown reader for replies: the text is escaped first, so only the
 // tags written here can appear. Code fences, inline code, bold, italics,

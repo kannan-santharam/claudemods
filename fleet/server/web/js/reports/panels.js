@@ -2,7 +2,7 @@
 // projects and the messages sent from here.
 
 import { $ } from '../core/dom.js'
-import { clock, duration, escapeHtml, formatCost, formatTokens, timeAgo } from '../core/format.js'
+import { clock, duration, escapeHtml, fillLevel, formatCost, formatTokens, timeAgo } from '../core/format.js'
 import { state } from '../core/state.js'
 
 export function renderContextBars() {
@@ -10,7 +10,7 @@ export function renderContextBars() {
   $('#context-bars').innerHTML = sessions.map(session => `
     <div class="bar-row" data-tip="${escapeHtml(session.name)}: ${formatTokens(session.contextTokens)} of ${formatTokens(session.contextWindow)} tokens">
       <span class="lbl">${escapeHtml(session.name)}</span>
-      <div class="track"><b class="${session.contextPercent >= 80 ? 'hot' : ''}" style="width:${session.contextPercent}%"></b><s></s></div>
+      <div class="track"><b class="${fillLevel(session.contextPercent)}" style="width:${session.contextPercent}%"></b><s></s></div>
       <span class="v">${session.contextPercent}% · ${formatTokens(session.contextTokens)}</span>
     </div>`).join('') || '<div class="empty">No live sessions</div>'
 }

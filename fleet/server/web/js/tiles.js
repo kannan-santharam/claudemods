@@ -2,7 +2,7 @@
 // fill and plan usage.
 
 import { $ } from './core/dom.js'
-import { escapeHtml, formatCost, formatTokens, timeAgo } from './core/format.js'
+import { escapeHtml, fillLevel, formatCost, formatTokens, timeAgo } from './core/format.js'
 import { state } from './core/state.js'
 
 // Time left in a usage window: "resets in 2h 14m", or a day and time when days away.
@@ -36,7 +36,7 @@ export function renderTiles() {
   const limits = (live?.rateLimits || []).filter(limit => typeof limit.percentUsed === 'number')
   const limitName = kind => ({ five_hour: '5-hour window', seven_day: '7-day window', seven_day_opus: '7-day Opus', spend_limit: 'Spend limit' }[kind] || String(kind).replace(/_/g, ' '))
   const limitHtml = limits.length
-    ? limits.map(limit => `<div class="limit"><div class="row"><span>${escapeHtml(limitName(limit.kind))}</span><span>${Math.round(limit.percentUsed)}%</span></div><div class="track"><b class="${limit.percentUsed >= 80 ? 'hot' : ''}" style="width:${Math.min(100, limit.percentUsed)}%"></b></div>${limit.resetsAt ? `<div class="resets" title="Resets ${escapeHtml(new Date(limit.resetsAt).toLocaleString())}">${resetsIn(limit.resetsAt)}</div>` : ''}</div>`).join('')
+    ? limits.map(limit => `<div class="limit"><div class="row"><span>${escapeHtml(limitName(limit.kind))}</span><span>${Math.round(limit.percentUsed)}%</span></div><div class="track"><b class="${fillLevel(limit.percentUsed)}" style="width:${Math.min(100, limit.percentUsed)}%"></b></div>${limit.resetsAt ? `<div class="resets" title="Resets ${escapeHtml(new Date(limit.resetsAt).toLocaleString())}">${resetsIn(limit.resetsAt)}</div>` : ''}</div>`).join('')
     : '<div class="sub" style="white-space:normal">Shows once a connected session reports in</div>'
   $('#tiles').innerHTML = `
     <div class="tile"><div class="label">Live sessions</div><div class="value">${sessions.length}</div>

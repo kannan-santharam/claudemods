@@ -19,4 +19,6 @@
 .tile > .limit { flex: 1 1 100px; min-width: 0; }
 .track { height: 6px; border-radius: 4px; background: var(--surface-3); overflow: hidden; margin-top: 3px; }
 .track > b { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
+.track > b.mid { background: var(--fill-mid); }
 .track > b.hot { background: var(--critical); }
+.track > b.max { background: var(--fill-max); }
