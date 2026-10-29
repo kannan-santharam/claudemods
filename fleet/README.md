@@ -102,6 +102,14 @@ Everything stays on your machine. The server listens on 127.0.0.1 only and refus
 - The page cannot be framed by another site, and actions need a header only the page sends.
 - The only network request the page makes is for Chart.js 4.4.1 from cdn.jsdelivr.net, checked against its integrity hash.
 
+## Layout
+
+For anyone reading or changing the code. There is no build step: what is in the folder is what runs.
+
+- `hooks/register.tsx` is the mod itself. It only wires up `hooks/lib`, where each concern has its own file: the pane, the `/fleet` command, the session scan, messaging and starting the server.
+- `server/fleet-server.mjs` is the entry the mod starts, and it starts the modules in `server/lib`, one per concern, with the HTTP routes in `server/lib/routes`.
+- `server/web` is the page: `index.html`, its stylesheets in `css/` and its modules in `js/`, with `main.js` wiring them up in `core` (state, API calls, formatting), `sessions`, `dialogs`, `reports` and `office` (the Office tab).
+
 ## License
 
 MIT
