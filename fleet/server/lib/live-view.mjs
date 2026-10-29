@@ -6,7 +6,7 @@ import { DAY_MS, HEARTBEAT_FRESH_MS } from './constants.mjs'
 import { pendingAsks } from './asks.mjs'
 import { baseModel } from './pricing.mjs'
 import { displayName, sessionSummaries } from './reports.mjs'
-import { deliveries, fileIndexes, files, heartbeats, live, liveCache, metaCache, transcriptScan } from './state.mjs'
+import { deliveries, heartbeats, live, liveCache, metaCache, transcriptIndexes, transcripts, transcriptScan } from './state.mjs'
 import { baseName, dayKey } from './utils.mjs'
 
 // Without the session's own report, the window is the model's: these run with 1M tokens.
@@ -24,28 +24,28 @@ const SUBAGENT_STALE_MS = 15 * 60 * 1000
 // Subagent files by session, rebuilt only when a transcript scan changed the set.
 
 function subagentFilesOf(sessionId) {
-  if (fileIndexes.subagentIndex.version !== transcriptScan.filesVersion) {
+  if (transcriptIndexes.subagentIndex.version !== transcriptScan.version) {
     const bySession = new Map()
-    for (const transcript of files.values()) {
+    for (const transcript of transcripts.values()) {
       if (!transcript.isSubagent) continue
       if (!bySession.has(transcript.sessionId)) bySession.set(transcript.sessionId, [])
       bySession.get(transcript.sessionId).push(transcript)
     }
-    fileIndexes.subagentIndex = { version: transcriptScan.filesVersion, bySession }
+    transcriptIndexes.subagentIndex = { version: transcriptScan.version, bySession }
   }
-  return fileIndexes.subagentIndex.bySession.get(sessionId) || []
+  return transcriptIndexes.subagentIndex.bySession.get(sessionId) || []
 }
 
 // The background shells a session still has running, with the end of their output.
 const SHELL_OUTPUT = /^\/(private\/)?tmp\/claude-[^/]+\/.+\/tasks\/[\w-]+\.output$/
 
 export function shellsOf(session, now) {
-  if (fileIndexes.mainFileIndex.version !== transcriptScan.filesVersion) {
+  if (transcriptIndexes.mainFileIndex.version !== transcriptScan.version) {
     const bySession = new Map()
-    for (const transcript of files.values()) if (!transcript.isSubagent) bySession.set(transcript.sessionId, transcript)
-    fileIndexes.mainFileIndex = { version: transcriptScan.filesVersion, bySession }
+    for (const transcript of transcripts.values()) if (!transcript.isSubagent) bySession.set(transcript.sessionId, transcript)
+    transcriptIndexes.mainFileIndex = { version: transcriptScan.version, bySession }
   }
-  const transcript = fileIndexes.mainFileIndex.bySession.get(session.sessionId)
+  const transcript = transcriptIndexes.mainFileIndex.bySession.get(session.sessionId)
   if (!transcript?.shells?.size) return []
   // A shell from before this process started (the session was resumed) died with the old one.
   const since = (session.startedAt || 0) - 10_000

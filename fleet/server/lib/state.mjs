@@ -26,13 +26,13 @@ export const registryState = {
 }
 
 // One entry per transcript file: what has been read and what it added up to.
-export const files = new Map()
+export const transcripts = new Map()
 export const excludedDirCache = new Map() // dir -> { roots, isExcluded }
-export const transcriptScan = { isScanning: false, filesVersion: 0, readyAt: 0 }
+export const transcriptScan = { isScanning: false, version: 0, readyAt: 0 } // version counts finished scans
 
 export const metaCache = new Map() // path -> { mtimeMs, meta }
 // Subagent files and main transcripts by session, rebuilt only when a transcript scan changed the set.
-export const fileIndexes = {
+export const transcriptIndexes = {
   subagentIndex: { version: -1, bySession: new Map() },
   mainFileIndex: { version: -1, bySession: new Map() },
 }

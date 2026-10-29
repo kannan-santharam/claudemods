@@ -5,7 +5,7 @@ import { send } from '../http.mjs'
 import { shellsOf } from '../live-view.mjs'
 import { scanRegistry } from '../registry.mjs'
 import { hasToken } from '../security.mjs'
-import { fileIndexes, live, transcriptScan } from '../state.mjs'
+import { live, transcriptIndexes, transcriptScan } from '../state.mjs'
 
 export const getRoutes = {
   '/api/asks/mode': async ({ response, url }) => {
@@ -14,8 +14,8 @@ export const getRoutes = {
     const askedFor = url.searchParams.get('sessionId') || ''
     if (!live.has(askedFor)) await scanRegistry()
     const session = live.get(askedFor)
-    if (session?.hidden && fileIndexes.mainFileIndex.version !== transcriptScan.filesVersion) shellsOf(session, Date.now())
-    return send(response, 200, { hidden: Boolean(session?.hidden), permissionMode: (session && fileIndexes.mainFileIndex.bySession.get(session.sessionId)?.permissionMode) || '' })
+    if (session?.hidden && transcriptIndexes.mainFileIndex.version !== transcriptScan.version) shellsOf(session, Date.now())
+    return send(response, 200, { hidden: Boolean(session?.hidden), permissionMode: (session && transcriptIndexes.mainFileIndex.bySession.get(session.sessionId)?.permissionMode) || '' })
   },
   '/api/asks/wait': async ({ request, response, url }) => {
     if (!hasToken(request)) return send(response, 401, { error: 'only a session waits for answers' })

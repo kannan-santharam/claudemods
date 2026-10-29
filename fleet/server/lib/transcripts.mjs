@@ -7,7 +7,7 @@ import path from 'node:path'
 import { DAY_MS, HISTORY_DAYS, PROJECTS_DIR } from './constants.mjs'
 import { isExcludedProjectDir } from './config.mjs'
 import { baseModel, emptyTokens } from './pricing.mjs'
-import { files, transcriptScan } from './state.mjs'
+import { transcripts, transcriptScan } from './state.mjs'
 import { baseName, dayKey, log } from './utils.mjs'
 
 function newFileState(filePath) {
@@ -243,14 +243,14 @@ export async function scanTranscripts() {
     const listed = new Set()
     for (const { full, size, mtimeMs } of await listTranscripts(PROJECTS_DIR, cutoff)) {
       if (isExcludedProjectDir(path.relative(PROJECTS_DIR, full).split(path.sep)[0], full)) {
-        files.delete(full)
+        transcripts.delete(full)
         continue
       }
       listed.add(full)
-      let transcript = files.get(full)
+      let transcript = transcripts.get(full)
       if (!transcript || size < transcript.offset) {
         transcript = newFileState(full)
-        files.set(full, transcript)
+        transcripts.set(full, transcript)
       }
       if (size > transcript.offset) {
         try {
@@ -264,8 +264,8 @@ export async function scanTranscripts() {
       if (Date.now() - mtimeMs > 60 * 60 * 1000 && transcript.seenIds.size) transcript.seenIds = new Set()
     }
     // Transcripts past the history window, or deleted, leave memory too.
-    for (const full of [...files.keys()]) if (!listed.has(full)) files.delete(full)
-    transcriptScan.filesVersion++
+    for (const full of [...transcripts.keys()]) if (!listed.has(full)) transcripts.delete(full)
+    transcriptScan.version++
     transcriptScan.readyAt = Date.now()
   } finally {
     transcriptScan.isScanning = false

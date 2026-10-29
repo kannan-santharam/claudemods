@@ -9,7 +9,7 @@ import { DAY_MS, HEARTBEAT_FRESH_MS, HISTORY_DAYS, REGISTRY_DIR, STATUS_LOG_FILE
 import { sweepAsks } from './asks.mjs'
 import { isExcludedPath } from './config.mjs'
 import { rememberClosed } from './recently-closed.mjs'
-import { branchCache, files, heartbeats, lastStatus, live, metaCache, registryState } from './state.mjs'
+import { branchCache, heartbeats, lastStatus, live, metaCache, registryState, transcripts } from './state.mjs'
 import { baseName, run, writePrivate } from './utils.mjs'
 
 // A readable name for the process that started a session: a shell says nothing,
@@ -52,7 +52,7 @@ export function loadStatusLog() {
 export function pruneMemory() {
   const now = Date.now()
   for (const [sessionId, beat] of heartbeats) if (now - beat.at > 60 * 60 * 1000 && !live.has(sessionId)) heartbeats.delete(sessionId)
-  for (const metaPath of metaCache.keys()) if (!files.has(metaPath.replace(/\.meta\.json$/, '.jsonl'))) metaCache.delete(metaPath)
+  for (const metaPath of metaCache.keys()) if (!transcripts.has(metaPath.replace(/\.meta\.json$/, '.jsonl'))) metaCache.delete(metaPath)
   if (now - registryState.lastStatusTrim > 60 * 60 * 1000) {
     registryState.lastStatusTrim = now
     const cutoff = now - HISTORY_DAYS * DAY_MS

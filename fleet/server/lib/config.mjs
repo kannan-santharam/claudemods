@@ -3,7 +3,7 @@
 
 import fs from 'node:fs'
 import { CONFIG_FILE, DEFAULT_CONFIG, HOME } from './constants.mjs'
-import { excludedDirCache, files, live, settings } from './state.mjs'
+import { excludedDirCache, live, settings, transcripts } from './state.mjs'
 import { writePrivate } from './utils.mjs'
 
 export function loadConfig() {
@@ -55,5 +55,5 @@ export function isExcludedProjectDir(dirName, sampleFile) {
 }
 
 export function includedFiles() {
-  return [...files.values()].filter(transcript => !isExcludedPath(transcript.cwd))
+  return [...transcripts.values()].filter(transcript => !isExcludedPath(transcript.cwd))
 }
