@@ -5,7 +5,7 @@ import { $ } from '../core/dom.js'
 import { escapeHtml, formatCost, formatTokens, markdown, shortModel, timeAgo } from '../core/format.js'
 import { modelOptions } from '../core/models.js'
 import { fieldValue, state } from '../core/state.js'
-import { permissionCard, questionCard } from './asks.js'
+import { permissionCard, questionCard } from './ask-cards.js'
 import { screenHtml } from './screen.js'
 import { lastDelivery, statusPill } from './tree.js'
 

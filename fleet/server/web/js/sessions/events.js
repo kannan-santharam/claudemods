@@ -3,15 +3,29 @@
 
 import { $, toast } from '../core/dom.js'
 import { fieldValue, sessionById, state } from '../core/state.js'
+import { remember } from '../core/storage.js'
 import { askToCompact } from '../dialogs/compact.js'
 import { askToEnd } from '../dialogs/end-session.js'
 import { askToSwitchModel } from '../dialogs/switch-model.js'
 import { attachHidden, focusTab, sendFromDraft, sessionCommand } from './actions.js'
 import { answerAsk, pickOption } from './asks.js'
-import { drawOfficeMini, placeTiles, setView, wideQuery } from './layout.js'
+import { drawOfficeMini, placeTiles, wideQuery } from './layout.js'
 import { renderLive, selectSession } from './live.js'
 import { refreshScreens } from './screen.js'
 import { setTab } from '../tabs.js'
+
+// List or Table, remembered in this browser. It sits beside the toggle's click,
+// its only caller, rather than in layout.js, because it redraws the sessions
+// and live.js already depends on layout.js.
+function setView(view) {
+  state.view = view === 'table' ? 'table' : 'list'
+  remember('fleet-sessions-view', state.view)
+  $('#view-sessions').dataset.layout = state.view
+  document.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === state.view)))
+  placeTiles()
+  renderLive()
+  drawOfficeMini()
+}
 
 export function initSessionEvents() {
   // A click anywhere outside the actions menu closes it.
