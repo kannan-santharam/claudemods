@@ -86,7 +86,7 @@ export const renderPane: MatchedHook<'ui.render', { component: 'Pane'; requestId
         const percent = session.contextWindow
           ? Math.round((session.contextTokens / session.contextWindow) * 100)
           : 0
-        const contextColor = percent >= 80 ? 'error' : percent >= 60 ? 'warning' : 'inactive'
+        const contextColor = percent >= 70 ? 'error' : percent >= 50 ? 'warning' : 'inactive'
         const meta = [
           session.folder,
           session.branch && `⎇ ${session.branch}`,
