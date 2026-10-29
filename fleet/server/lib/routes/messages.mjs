@@ -5,7 +5,7 @@ import crypto from 'node:crypto'
 import { send } from '../http.mjs'
 import { acknowledge, claimFor } from '../messaging.mjs'
 import { live, messaging } from '../state.mjs'
-import { stripControls } from '../typing.mjs'
+import { stripControls } from '../utils.mjs'
 
 export const getRoutes = {
   '/api/inbox': ({ response, url }) => {

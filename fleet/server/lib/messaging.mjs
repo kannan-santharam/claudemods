@@ -4,7 +4,7 @@
 // through another session.
 
 import { deliveries, live, liveCache, messaging } from './state.mjs'
-import { guardLeading } from './typing.mjs'
+import { guardLeading } from './utils.mjs'
 
 export function claimFor(claimant) {
   const now = Date.now()

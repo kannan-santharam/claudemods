@@ -23,7 +23,7 @@ export function baseModel(model) {
     .replace(/-\d{8}$/, '')
 }
 
-export function priceFor(model) {
+function priceFor(model) {
   const models = settings.pricing.models || {}
   const base = baseModel(model)
   let rate = models[base]

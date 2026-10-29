@@ -40,6 +40,22 @@ export function cleanLine(text, max) {
   return String(text || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max)
 }
 
+// What is typed must stay one prompt: Claude Code reads backslash-Enter as a
+// new line, and a leading / or ! would run a command or a shell line instead.
+export function asTypedPrompt(text) {
+  return guardLeading(stripControls(text))
+}
+
+// Escape, Ctrl-C, Ctrl-D and the like would act on the terminal, not be read.
+export function stripControls(text) {
+  return String(text).replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '')
+}
+
+// A leading / or ! would run a command or a shell line instead of being read.
+export function guardLeading(text) {
+  return /^[\/!]/.test(text) ? ' ' + text : text
+}
+
 export const stripAnsi = text => String(text).replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')
 
 export const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))

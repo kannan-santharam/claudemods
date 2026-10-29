@@ -5,7 +5,7 @@ import { READ_ITERM_TAB, READ_TERMINAL_TAB, TYPE_INTO_ITERM, TYPE_INTO_TAB, osas
 import { acknowledge } from './messaging.mjs'
 import { hasMod } from './registry.mjs'
 import { live, messaging } from './state.mjs'
-import { run, sleep } from './utils.mjs'
+import { asTypedPrompt, run, sleep } from './utils.mjs'
 
 async function typeIntoTab(tty, text) {
   if (!(await claudeHasForeground(tty))) return { ok: false, reason: 'Claude is not in the foreground of its tab' }
@@ -45,22 +45,6 @@ function inputBoxText(screen) {
   const rules = []
   for (let index = lines.length - 1; index >= 0 && rules.length < 2; index--) if (/^\s*─{20,}/.test(lines[index])) rules.push(index)
   return rules.length < 2 ? null : lines.slice(rules[1] + 1, rules[0]).join('\n')
-}
-
-// What is typed must stay one prompt: Claude Code reads backslash-Enter as a
-// new line, and a leading / or ! would run a command or a shell line instead.
-function asTypedPrompt(text) {
-  return guardLeading(stripControls(text))
-}
-
-// Escape, Ctrl-C, Ctrl-D and the like would act on the terminal, not be read.
-export function stripControls(text) {
-  return String(text).replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '')
-}
-
-// A leading / or ! would run a command or a shell line instead of being read.
-export function guardLeading(text) {
-  return /^[\/!]/.test(text) ? ' ' + text : text
 }
 
 // Typing is only safe while Claude itself is in the foreground of that tab: if
