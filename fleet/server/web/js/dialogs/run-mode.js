@@ -1,3 +1,5 @@
+// Where a new or resumed session runs, shared by the New and Resume dialogs.
+
 import { toast } from '../core/dom.js'
 import { remembered } from '../core/storage.js'
 

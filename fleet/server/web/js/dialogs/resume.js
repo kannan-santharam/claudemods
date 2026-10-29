@@ -1,3 +1,6 @@
+// The Resume session dialog: recently closed sessions, or a past one from a
+// folder.
+
 import { api } from '../core/api.js'
 import { $, toast } from '../core/dom.js'
 import { ago, esc, shortModel } from '../core/format.js'
@@ -8,7 +11,6 @@ import { runMode, showRunMode, startedToast } from './run-mode.js'
 import { refreshLive } from '../refresh.js'
 import { focusTab, loadOptions } from '../sessions/actions.js'
 
-// ---------------------------------------------------------- resume dialog --
 const resumePicker = createPicker($('#resume-picker'), picker => { remember('fleet-resume-folder', picker.path); loadHistory() })
 const resume = { sessions: [], chosen: '' }
 function renderHistory() {

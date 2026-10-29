@@ -1,3 +1,5 @@
+// A hidden session's terminal screen, shown in its pane.
+
 import { api } from '../core/api.js'
 import { ago, esc } from '../core/format.js'
 import { sessionById, state } from '../core/state.js'

@@ -1,3 +1,6 @@
+// Permission prompts and questions from hidden sessions, shown as cards in
+// their chat and answered from there.
+
 import { api } from '../core/api.js'
 import { toast } from '../core/dom.js'
 import { ago, esc, markdown } from '../core/format.js'

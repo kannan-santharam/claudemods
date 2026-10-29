@@ -1,3 +1,6 @@
+// Switching between the List and Table views, where the headline figures sit,
+// the small office preview, and sizing the split to the window.
+
 import { $ } from '../core/dom.js'
 import { state } from '../core/state.js'
 import { remember } from '../core/storage.js'

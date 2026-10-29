@@ -1,3 +1,5 @@
+// The filter chips and search box both session views share.
+
 import { $ } from '../core/dom.js'
 import { state } from '../core/state.js'
 

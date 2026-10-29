@@ -1,16 +1,3 @@
-import { $, css, toast } from './core/dom.js'
-import { ago, shortModel } from './core/format.js'
-import { sessionById, state } from './core/state.js'
-import { remember, remembered } from './core/storage.js'
-import { focusTab } from './sessions/actions.js'
-import { isListView } from './sessions/list-view.js'
-import { renderLive } from './sessions/live.js'
-import { STATUS, sessionTree } from './sessions/tree.js'
-import { setTab } from './tabs.js'
-import { resetsIn } from './tiles.js'
-import { tip } from './tooltip.js'
-
-// ----------------------------------------------------------------- office --
 // The Office tab: every session as a person in an isometric office, drawn on a
 // canvas with no image assets. Sessions sit with their project: each folder is
 // a row of desks on its own coloured rug. A working session sits at its desk
@@ -23,6 +10,19 @@ import { tip } from './tooltip.js'
 // Running subagents are small helpers on stools beside their session, and a
 // headless session started by another is a robot at the server racks. The
 // room is lit by the local time of day, and the dark theme is night.
+
+import { $, css, toast } from './core/dom.js'
+import { ago, shortModel } from './core/format.js'
+import { sessionById, state } from './core/state.js'
+import { remember, remembered } from './core/storage.js'
+import { focusTab } from './sessions/actions.js'
+import { isListView } from './sessions/list-view.js'
+import { renderLive } from './sessions/live.js'
+import { STATUS, sessionTree } from './sessions/tree.js'
+import { setTab } from './tabs.js'
+import { resetsIn } from './tiles.js'
+import { tip } from './tooltip.js'
+
 function createOffice() {
   const TILE_X = 32, TILE_Y = 16, WALL_HEIGHT = 84
   const SLANT = Math.hypot(TILE_X, TILE_Y)

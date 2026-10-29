@@ -1,3 +1,5 @@
+// The New session dialog.
+
 import { api } from '../core/api.js'
 import { $, toast } from '../core/dom.js'
 import { esc } from '../core/format.js'

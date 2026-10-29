@@ -1,3 +1,5 @@
+/* Base element styles, the page frame and the header. */
+
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body {

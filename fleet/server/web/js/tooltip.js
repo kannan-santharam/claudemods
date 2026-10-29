@@ -1,6 +1,7 @@
+// The hover tooltip for anything with a data-tip attribute.
+
 import { $ } from './core/dom.js'
 
-// ---------------------------------------------------------------- tooltips --
 export const tip = $('#tip')
 
 export function initTooltip() {

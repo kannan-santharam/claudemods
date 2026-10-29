@@ -1,3 +1,5 @@
+// Polling: fetching the live view and the report, and redrawing what each feeds.
+
 import { api } from './core/api.js'
 import { $, toast } from './core/dom.js'
 import { state } from './core/state.js'
@@ -13,7 +15,6 @@ export function renderAll() {
   renderTiles(); renderLive(); renderContextBars(); renderFeed(); renderTimeline(); renderProjects(); renderCharts()
 }
 
-// ---------------------------------------------------------------- polling --
 export async function refreshLive() {
   try {
     state.live = await api('/api/live')

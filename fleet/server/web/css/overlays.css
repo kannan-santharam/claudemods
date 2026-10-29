@@ -1,3 +1,6 @@
+/* Things over the page: the tooltip, the toast, the dialogs and their folder
+   picker, history lists and fields; and the messages feed. */
+
 .tip { white-space: pre-line; }
 .tip { position: fixed; pointer-events: none; z-index: 30; background: var(--text-primary); color: var(--bg); font-size: 12px; padding: 6px 9px; border-radius: 7px; max-width: 280px; display: none; }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text-primary); color: var(--bg); padding: 10px 14px; border-radius: 10px; font-size: 13px; z-index: 40; box-shadow: 0 8px 30px rgba(0,0,0,.2); opacity: 0; transition: opacity .2s; max-width: min(560px, 90vw); pointer-events: none; }

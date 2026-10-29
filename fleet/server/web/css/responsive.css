@@ -1,3 +1,5 @@
+/* The row flash, and the layout for narrow windows. */
+
 tr.session.flash > td { animation: flash 1.6s ease-out; }
 @keyframes flash { from { background: var(--accent-soft); } }
 @media (prefers-reduced-motion: reduce) { tr.session.flash > td { animation: none; background: var(--accent-soft); } }

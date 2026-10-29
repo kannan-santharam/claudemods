@@ -1,3 +1,5 @@
+// The one way the page talks to the Fleet server.
+
 export async function api(route, body) {
   // Signed in by an HttpOnly cookie; the header proves the request comes from this page.
   const response = await fetch(route, {

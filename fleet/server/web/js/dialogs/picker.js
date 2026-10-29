@@ -1,8 +1,9 @@
+// The folder picker used by the New and Resume dialogs.
+
 import { api } from '../core/api.js'
 import { toast } from '../core/dom.js'
 import { esc } from '../core/format.js'
 
-// ---------------------------------------------------------- folder picker --
 // The folder you are in is the one picked: click a subfolder to go into it,
 // a crumb to go back up, a recent folder to jump straight there.
 function recentFolders() { try { return JSON.parse(localStorage.getItem('fleet-recent-folders') || '[]') } catch { return [] } }

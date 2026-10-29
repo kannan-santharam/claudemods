@@ -1,3 +1,6 @@
+// The Table view's nested rows: running subagents and background shells under
+// their session.
+
 import { ago, esc, shortModel } from '../core/format.js'
 import { MODEL_ALIASES, modelColor } from '../core/models.js'
 

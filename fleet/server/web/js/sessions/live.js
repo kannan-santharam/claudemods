@@ -1,3 +1,6 @@
+// Rendering the Sessions tab: the table rows, the list, the pane and the side
+// column, keeping focus, caret and scroll across each 2-second refresh.
+
 import { $ } from '../core/dom.js'
 import { ago, esc, fmtCost, fmtTokens, shortModel } from '../core/format.js'
 import { modelColor } from '../core/models.js'

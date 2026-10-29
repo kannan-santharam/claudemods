@@ -1,10 +1,11 @@
+// The Compact dialog.
+
 import { api } from '../core/api.js'
 import { $, toast } from '../core/dom.js'
 import { fmtTokens } from '../core/format.js'
 import { sessionById } from '../core/state.js'
 import { refreshLive } from '../refresh.js'
 
-// ------------------------------------------------------------- compacting --
 // /compact summarises the conversation so far and keeps going from the summary.
 let compactingId = ''
 export function askToCompact(sessionId) {

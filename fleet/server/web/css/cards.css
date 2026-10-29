@@ -1,3 +1,5 @@
+/* Cards, the Reports grid and empty states. */
+
 /* cards */
 .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); min-width: 0; }
 .card > header { display: flex; align-items: center; gap: 12px; padding: 14px 16px 10px; flex-wrap: wrap; }

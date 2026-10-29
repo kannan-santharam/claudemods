@@ -1,3 +1,7 @@
+// The dashboard's entry point. Every other module only declares; this one wires
+// them up, in the order the single-file page used to run its top level, then
+// loads the first data and starts the polling timers.
+
 import { $ } from './core/dom.js'
 import { state } from './core/state.js'
 import { remembered } from './core/storage.js'
@@ -20,6 +24,8 @@ import { initTabs, setTab } from './tabs.js'
 import { initTheme } from './theme.js'
 import { initTooltip } from './tooltip.js'
 
+// Listeners first, in the page's old order: where two share a target, the
+// first added still runs first.
 initTheme()
 initLayout()
 initSessionEvents()
@@ -34,13 +40,17 @@ initReportControls()
 startOffice()
 initTabs()
 
+// The office repaints in the new colours after theme.js has renamed the theme.
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => office.themeChanged())
+// The layout and tab this browser last showed.
 state.view = remembered('fleet-sessions-view') === 'table' ? 'table' : 'list'
 $('#view-sessions').dataset.layout = state.view
 document.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === state.view)))
 setTab(location.hash === '#office' ? 'office' : location.hash === '#reports' ? 'reports' : remembered('fleet-tab') || 'sessions')
 
 initConnection()
+// The first data, then polling: the live view every 2 seconds, a shown hidden
+// session's screen as often, the report every 20.
 loadOptions().then(() => renderLive())
 refreshLive(); refreshReport()
 setInterval(refreshLive, 2000)

@@ -1,10 +1,12 @@
+// Commands sent to a session: model and rename, open its tab or attach a hidden
+// one, and messages.
+
 import { api } from '../core/api.js'
 import { toast } from '../core/dom.js'
 import { state } from '../core/state.js'
 import { refreshLive } from '../refresh.js'
 import { renderLive } from './live.js'
 
-// ------------------------------------------------------- session control --
 export async function sessionCommand(sessionId, command, args) {
   if (!args) return toast(command === 'model' ? 'Choose a model first' : 'Give it a name first')
   try {

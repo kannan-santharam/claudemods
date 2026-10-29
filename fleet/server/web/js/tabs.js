@@ -1,3 +1,5 @@
+// The Sessions, Office and Reports tabs.
+
 import { $ } from './core/dom.js'
 import { remember } from './core/storage.js'
 import { office } from './office.js'
@@ -5,7 +7,6 @@ import { renderCharts } from './reports/charts.js'
 import { renderContextBars, renderTimeline } from './reports/panels.js'
 import { drawOfficeMini, fitSplit, placeTiles } from './sessions/layout.js'
 
-// ------------------------------------------------------------------ tabs --
 export function setTab(name) {
   if (!['sessions', 'office', 'reports'].includes(name)) name = 'sessions'
   const isOffice = name === 'office'

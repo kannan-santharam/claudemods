@@ -1,9 +1,11 @@
+// The lost-connection dialog, the reconnect probe and the "updated" pulse in
+// the header.
+
 import { $ } from '../core/dom.js'
 import { ago } from '../core/format.js'
 import { state } from '../core/state.js'
 import { refreshLive, refreshReport } from '../refresh.js'
 
-// ------------------------------------------------------------- connection --
 // down: nothing answers. signin: the server answers but this browser is not
 // signed in (a new browser, cleared cookies, an expired link): /fleet web signs it in.
 let connection = 'ok'

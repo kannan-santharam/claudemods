@@ -1,8 +1,10 @@
+// The Reports tab's panels drawn as HTML: context fill, the 24-hour timeline,
+// projects and the messages sent from here.
+
 import { $ } from '../core/dom.js'
 import { ago, clock, duration, esc, fmtCost, fmtTokens } from '../core/format.js'
 import { state } from '../core/state.js'
 
-// ---------------------------------------------------------------- panels --
 export function renderContextBars() {
   const sessions = (state.live?.sessions || []).slice().sort((a, b) => b.contextPercent - a.contextPercent)
   $('#context-bars').innerHTML = sessions.map(s => `

@@ -1,3 +1,5 @@
+// Keyboard: j and k move through the sessions, Escape closes the actions menu.
+
 import { $ } from '../core/dom.js'
 import { state } from '../core/state.js'
 import { renderLive, selectSession } from './live.js'

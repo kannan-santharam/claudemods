@@ -1,9 +1,10 @@
+// The Reports tab's charts, drawn with Chart.js in the theme's colours.
+
 import { $, css } from '../core/dom.js'
 import { fmtCost, fmtTokens, shortModel } from '../core/format.js'
 import { MODEL_SLOTS, modelColor } from '../core/models.js'
 import { state } from '../core/state.js'
 
-// ---------------------------------------------------------------- charts --
 function baseOptions(horizontal) {
   const grid = css('--grid'), muted = css('--text-muted'), text = css('--text-secondary')
   return {

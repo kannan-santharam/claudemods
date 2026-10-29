@@ -1,8 +1,10 @@
+// The headline figures: live sessions, who waits for you, tokens, cost, context
+// fill and plan usage.
+
 import { $ } from './core/dom.js'
 import { ago, esc, fmtCost, fmtTokens } from './core/format.js'
 import { state } from './core/state.js'
 
-// ---------------------------------------------------------------- tiles --
 // Time left in a usage window: "resets in 2h 14m", or a day and time when days away.
 export function resetsIn(resetsAt) {
   const at = Date.parse(resetsAt)

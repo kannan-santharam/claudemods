@@ -1,7 +1,9 @@
+// Sessions as a tree: who started whom, what works below each session, the
+// status pill, and the stable order rows keep.
+
 import { esc } from '../core/format.js'
 import { state } from '../core/state.js'
 
-// ---------------------------------------------------------------- live --
 export const STATUS = {
   waiting: { cls: 'waiting', label: 'Needs input' },
   busy: { cls: 'busy', label: 'Working' },

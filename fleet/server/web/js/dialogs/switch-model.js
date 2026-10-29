@@ -1,9 +1,10 @@
+// The Switch model dialog.
+
 import { $, toast } from '../core/dom.js'
 import { fmtTokens, shortModel } from '../core/format.js'
 import { sessionById, state } from '../core/state.js'
 import { sessionCommand } from '../sessions/actions.js'
 
-// ------------------------------------------------------------ switching --
 // The session would ask "Switch model?" in its terminal; it is asked here
 // instead, and the session is told the answer, so nothing waits in the tab.
 const switching = { sessionId: '', model: '' }

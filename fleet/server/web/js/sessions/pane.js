@@ -1,3 +1,6 @@
+// The selected session's pane: its header and tools, and the chat, files,
+// details or screen below.
+
 import { $ } from '../core/dom.js'
 import { ago, esc, fmtCost, fmtTokens, markdown, shortModel } from '../core/format.js'
 import { modelOptions } from '../core/models.js'

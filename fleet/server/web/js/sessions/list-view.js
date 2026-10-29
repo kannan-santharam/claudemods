@@ -1,3 +1,6 @@
+// The List view: every session down the left, and the selected one's figures
+// on the right.
+
 import { $ } from '../core/dom.js'
 import { ago, clock, esc, fmtCost, fmtTokens, shortModel } from '../core/format.js'
 import { MODEL_ALIASES, modelColor } from '../core/models.js'
@@ -5,7 +8,6 @@ import { state } from '../core/state.js'
 import { matchesFilter } from './filters.js'
 import { STATUS, byName } from './tree.js'
 
-// ---------------------------------------------------------- List view --
 // Every session down the left: whoever waits for you pinned on top, then those
 // working (or delegating to helpers), then the rest. Inside a group sessions keep
 // their place by name, and a child session sits under its parent when both are in

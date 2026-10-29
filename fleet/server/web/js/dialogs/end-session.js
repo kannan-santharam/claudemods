@@ -1,3 +1,6 @@
+// Ending sessions: the bar above the table for a selection, and the dialog
+// that confirms (and, when a session will not stop, offers to force it).
+
 import { api } from '../core/api.js'
 import { $, toast } from '../core/dom.js'
 import { esc } from '../core/format.js'
@@ -5,7 +8,6 @@ import { sessionById, state } from '../core/state.js'
 import { refreshLive } from '../refresh.js'
 import { renderLive } from '../sessions/live.js'
 
-// ---------------------------------------------------------------- ending --
 // One session from its row, or every selected one from the bar above the table.
 const ending = { sessionIds: [], force: false }
 export function renderBulkbar() {

@@ -1,3 +1,6 @@
+// Models: the colour each known model keeps everywhere, the aliases subagents
+// report, and the options of a model picker.
+
 import { css } from './dom.js'
 import { esc, shortModel } from './format.js'
 import { state } from './state.js'

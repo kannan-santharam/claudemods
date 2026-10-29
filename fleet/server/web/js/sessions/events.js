@@ -1,3 +1,6 @@
+// Clicks, typing and changes inside the Sessions tab, handled by delegation on
+// the tab, so the 2-second redraw never loses a listener.
+
 import { $, toast } from '../core/dom.js'
 import { fieldValue, sessionById, state } from '../core/state.js'
 import { askToCompact } from '../dialogs/compact.js'
@@ -19,21 +22,15 @@ export function initSessionEvents() {
     const target = event.target
     // dataset keys are camelCase; their attributes are kebab-case (applyModel → data-apply-model).
     const attr = name => target.closest(`[data-${name.replace(/[A-Z]/g, ch => '-' + ch.toLowerCase())}]`)?.dataset[name]
-    const focusId = attr('focus'), messageId = attr('message'), sendId = attr('send'), selectId = attr('select')
+    const focusId = attr('focus'), sendId = attr('send'), selectId = attr('select')
     const compactId = attr('compact')
     if (compactId) return askToCompact(compactId)
     const endId = attr('end')
     if (endId) return askToEnd(endId)
-    const filesId = attr('showFiles'), detailsId = attr('showDetails')
-    const flip = (set, key) => { set.has(key) ? set.delete(key) : set.add(key); renderLive() }
-    if (filesId) return flip(state.showFiles, filesId)
-    const screenId = attr('showScreen')
-    if (screenId) { flip(state.showScreen, screenId); if (state.showScreen.has(screenId)) refreshScreens().then(renderLive); return }
     const askId = attr('askAnswer')
     if (askId) return answerAsk(askId, target.closest('[data-ask-answer]').dataset.choice)
     const pick = target.closest('[data-ask-pick]')
     if (pick) return pickOption(pick)
-    if (detailsId) return flip(state.showDetails, detailsId)
     const toggleId = attr('toggle')
     if (toggleId) {
       state.collapsed.has(toggleId) ? state.collapsed.delete(toggleId) : state.collapsed.add(toggleId)
@@ -51,12 +48,6 @@ export function initSessionEvents() {
     if (selectId) {
       target.checked ? state.selected.add(selectId) : state.selected.delete(selectId)
       return renderLive()
-    }
-    if (messageId) {
-      state.paneTab[messageId] = 'chat'
-      selectSession(messageId)
-      document.querySelector(`textarea[data-draft="${CSS.escape(messageId)}"]`)?.focus()
-      return
     }
     const menuId = attr('actionsMenu')
     if (menuId) { state.actionsMenu = state.actionsMenu === menuId ? '' : menuId; return renderLive() }

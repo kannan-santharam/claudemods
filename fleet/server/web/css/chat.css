@@ -1,3 +1,6 @@
+/* The chat: bubbles, question and permission cards, the screen, drawers and
+   rendered Markdown. */
+
 .detail > td { padding: 0 10px 16px; background: var(--surface-2); }
 /* Nothing typed or shown in an open session can widen the table: the panel
    takes the row's width and its content wraps or scrolls inside it. */

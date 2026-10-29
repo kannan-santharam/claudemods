@@ -1,3 +1,5 @@
+/* Reports: context bars and the activity timeline. */
+
 /* context bars */
 .bars { display: flex; flex-direction: column; gap: 9px; }
 .bar-row { display: grid; grid-template-columns: minmax(90px, 180px) 1fr 90px; gap: 10px; align-items: center; font-size: 12.5px; }

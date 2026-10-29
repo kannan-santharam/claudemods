@@ -1,11 +1,13 @@
+// Light and dark: the toggle in the header, and following the system while no
+// choice has been made here.
+
 import { $ } from './core/dom.js'
 import { office } from './office.js'
 import { renderAll } from './refresh.js'
 import { drawOfficeMini } from './sessions/layout.js'
 
-// ---------------------------------------------------------------- theme --
 // The theme is always named on the root, so the dark styles apply whether it was
-// chosen here or comes from the system.
+// chosen here or comes from the system. index.html names it before the first paint.
 const systemTheme = () => (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
 const savedTheme = () => { try { return localStorage.getItem('fleet-theme') || '' } catch { return '' } }
 

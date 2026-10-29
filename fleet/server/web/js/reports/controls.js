@@ -1,8 +1,8 @@
+// The report range (Today or 7 days) and the cost or tokens measure.
+
 import { state } from '../core/state.js'
 import { refreshReport } from '../refresh.js'
 import { renderCharts } from './charts.js'
-
-// ---------------------------------------------------------------- controls --
 
 export function initReportControls() {
   document.querySelectorAll('[data-range]').forEach(button => button.addEventListener('click', () => {

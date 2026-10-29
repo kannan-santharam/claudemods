@@ -1,3 +1,5 @@
+/* The sessions table: buttons, the bulk bar, rows, status pills, chips and meters. */
+
 /* live table */
 .composer { display: flex; gap: 8px; align-items: flex-end; padding: 0 16px 12px; }
 .composer textarea { flex: 1; resize: vertical; min-height: 38px; max-height: 160px; padding: 9px 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface-2); outline: none; }

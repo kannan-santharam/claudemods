@@ -1,3 +1,5 @@
+// Small DOM helpers: a selector, a CSS custom property reader and the toast.
+
 export const $ = selector => document.querySelector(selector)
 export const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 export function toast(text) {
