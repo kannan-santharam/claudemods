@@ -22,9 +22,7 @@ Mac only, needs Node.js 18 or newer.
 
 Fleet in one minute, with sound and subtitles.
 
-
 https://github.com/user-attachments/assets/30aec2e9-12f6-454f-96ce-b6a48a0a400d
-
 
 ## About
 
