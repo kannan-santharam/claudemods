@@ -64,6 +64,15 @@ function noteTaskNotifications(transcript, text, time) {
     shell.status = block.match(/<status>([^<]+)<\/status>/)?.[1]?.trim() || 'completed'
   }
 }
+// Stopping a background shell (TaskStop, or the older KillShell/KillBash) sends no
+// task notification, so the stop call itself ends the shell.
+const SHELL_STOP_TOOLS = new Set(['TaskStop', 'KillShell', 'KillBash'])
+function noteShellStopped(transcript, input, time) {
+  const shell = transcript.shells.get(String(input.task_id || input.shell_id || input.bash_id || ''))
+  if (!shell || shell.endedAt) return
+  shell.endedAt = time || Date.now()
+  shell.status = 'stopped'
+}
 // A Bash call sent to the background answers with its task id and output file.
 function noteBackgroundShell(transcript, row, time) {
   const taskId = row.toolUseResult?.backgroundTaskId
@@ -146,6 +155,7 @@ function ingestRow(transcript, row) {
       const touched = input.file_path || input.notebook_path
       transcript.filesTouched[touched] = (transcript.filesTouched[touched] || 0) + 1
     }
+    if (SHELL_STOP_TOOLS.has(tool) && !row.isSidechain && !transcript.isSubagent) noteShellStopped(transcript, input, time)
     if (tool === 'Bash' && !row.isSidechain && !transcript.isSubagent && block.id) {
       transcript.bashInputs.set(block.id, { command: input.command, description: input.description })
       if (transcript.bashInputs.size > 60) transcript.bashInputs.delete(transcript.bashInputs.keys().next().value)
