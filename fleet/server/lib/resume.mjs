@@ -48,10 +48,10 @@ async function describeTranscript(filePath, size) {
       if (row.type === 'assistant' && row.message?.model && row.message.model !== '<synthetic>') facts.model = baseModel(row.message.model)
       const content = row.message?.content
       if (row.type === 'user' && !row.isMeta && typeof content === 'string') {
-        const text = content.trim()
-        if (!text || text.startsWith('<')) continue
-        if (!facts.firstPrompt) facts.firstPrompt = text.slice(0, 200)
-        facts.lastPrompt = text.slice(0, 300)
+        const prompt = content.trim()
+        if (!prompt || prompt.startsWith('<')) continue
+        if (!facts.firstPrompt) facts.firstPrompt = prompt.slice(0, 200)
+        facts.lastPrompt = prompt.slice(0, 300)
         if (!isTail) facts.prompts++
       }
     }

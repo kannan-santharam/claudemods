@@ -31,7 +31,7 @@ export const excludedDirCache = new Map() // dir -> { roots, isExcluded }
 export const transcriptScan = { isScanning: false, version: 0, readyAt: 0 } // version counts finished scans
 
 export const metaCache = new Map() // path -> { mtimeMs, meta }
-// Subagent files and main transcripts by session, rebuilt only when a transcript scan changed the set.
+// Subagent files and main transcripts by session, rebuilt after each transcript scan.
 export const transcriptIndexes = {
   subagentIndex: { version: -1, bySession: new Map() },
   mainFileIndex: { version: -1, bySession: new Map() },

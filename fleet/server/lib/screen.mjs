@@ -74,8 +74,8 @@ function renderScreen(raw, columns = 200, rows = 50) {
     while (last >= 0 && cells[last].character === ' ') last--
     const runs = []
     for (let columnIndex = 0; columnIndex <= last; columnIndex++) {
-      const cell = cells[columnIndex], run = runs[runs.length - 1]
-      if (run && run.fg === cell.fg && run.bold === cell.bold) run.text += cell.character
+      const cell = cells[columnIndex], currentRun = runs[runs.length - 1]
+      if (currentRun && currentRun.fg === cell.fg && currentRun.bold === cell.bold) currentRun.text += cell.character
       else runs.push({ text: cell.character, fg: cell.fg, bold: cell.bold })
     }
     return runs

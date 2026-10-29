@@ -21,7 +21,7 @@ function contextWindowFor(model) {
 
 const SUBAGENT_STALE_MS = 15 * 60 * 1000
 
-// Subagent files by session, rebuilt only when a transcript scan changed the set.
+// Subagent files by session, rebuilt after each transcript scan.
 
 function subagentFilesOf(sessionId) {
   if (transcriptIndexes.subagentIndex.version !== transcriptScan.version) {
