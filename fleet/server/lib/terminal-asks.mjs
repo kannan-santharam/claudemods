@@ -12,9 +12,10 @@ import { claudeHasForeground } from './typing.mjs'
 import { sleep } from './utils.mjs'
 
 // The dialog is everything under the last solid rule on the screen, and ends
-// with this hint; its first option, "Yes", is the one picked when it opens.
+// with this hint (a plan's asks whether to proceed instead); its first option,
+// "Yes", is the one picked when it opens.
 const SOLID_RULE = /^\s*─{20,}\s*$/
-const DIALOG_HINT = /Esc to cancel/
+const DIALOG_HINT = /Esc to cancel|Would you like to proceed\?/
 const YES_PICKED = /^\s*❯\s*1\.\s*Yes\s*$/m
 const PRESS_SETTLE_MS = 2500
 
@@ -72,8 +73,15 @@ async function readTab(ask) {
 export async function answerInTerminal(ask, answer, record) {
   const tab = await readTab(ask)
   if (!tab.isReadable) return { ok: false, reason: 'Fleet cannot read its terminal tab: answer it there.' }
-  // Answered in the terminal already: a Deny now would cut short the tool it let run.
-  if (!showsPrompt(tab.dialog, ask)) return { ok: false, isGone: true, reason: 'It was already answered in its terminal.' }
+  // Seen before and gone now, it was answered in the terminal: a Deny now would cut
+  // short the tool it let run. Never seen, the prompt may be one this reading does
+  // not know, so the card stays for the terminal to settle.
+  if (!showsPrompt(tab.dialog, ask)) {
+    return ask.wasSeen
+      ? { ok: false, isGone: true, reason: 'It was already answered in its terminal.' }
+      : { ok: false, reason: 'Fleet cannot find that prompt in its tab: answer it there.' }
+  }
+  ask.wasSeen = true
   if (!answer.allow) return { ok: true }
   if (ask.toolName === 'ExitPlanMode') return { ok: false, reason: 'Approve it in its terminal: its options also choose how edits are approved.' }
   if (!YES_PICKED.test(tab.dialog)) return { ok: false, reason: 'Another option is picked in its terminal: answer it there.' }
