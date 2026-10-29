@@ -1,3 +1,7 @@
+// The registry scan: reads ~/.claude/sessions, keeps the sessions ps says are
+// alive, adds model, context and last prompt from each transcript's tail and the
+// git branch, and stores the list for the pane. It runs while the pane is open.
+
 import type { EngineInterface } from 'claude-code'
 
 import type { FleetSession } from '../../types'

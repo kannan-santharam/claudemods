@@ -1,3 +1,6 @@
+// Folders the person excluded on the dashboard: sessions there are left out of
+// the scan, send no heartbeat and take no messages.
+
 import type { EngineInterface } from 'claude-code'
 
 // Folders the fleet never reads, from ~/.claude/fleet/config.json (the server writes it).

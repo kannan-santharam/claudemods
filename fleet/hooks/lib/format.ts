@@ -1,3 +1,5 @@
+// Small text helpers for the pane and the scan: pure, so they hold no state.
+
 export function baseName(path: string): string {
   return path.split('/').filter(Boolean).at(-1) ?? path
 }

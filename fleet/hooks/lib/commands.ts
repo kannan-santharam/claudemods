@@ -1,3 +1,6 @@
+// The /fleet slash command. It is registered, and its hook answered, in
+// register.tsx, where the engine reads the command's name.
+
 import type { EngineInterface, MatchedHook } from 'claude-code'
 
 import { PANE, openPane } from './pane'

@@ -1,3 +1,5 @@
+// The mod's $.state values (their contract is types/index.d.ts).
+
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface } from 'claude-code'
 

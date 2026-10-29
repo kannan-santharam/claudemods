@@ -1,3 +1,7 @@
+// Fleet's hooks module: the one file the engine loads (hooks.json). It only wires
+// hooks to the handlers in lib/, in the order they nest; what each one does is
+// beside its code there.
+
 import type { Register } from 'claude-code'
 
 import { runFleetCommand } from './lib/commands'

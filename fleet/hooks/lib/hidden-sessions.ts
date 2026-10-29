@@ -1,13 +1,14 @@
-import type { EngineInterface, HookOf, MatchedHook } from 'claude-code'
-
-import { callServer } from './server'
-
-// ------------------------------------------------------- hidden sessions --
 // A hidden session (`claude --bg`) has no terminal to ask in: its permission
 // prompts and questions go to the dashboard, which shows them in the session's
 // chat with buttons, and the answer comes back here. A session in a terminal
 // asks there as usual.
+
+import type { EngineInterface, HookOf, MatchedHook } from 'claude-code'
+
+import { callServer } from './server'
+
 const allowedForSession = new Set<string>() // tools allowed for the rest of the session from the page
+
 // Whether this session runs hidden, and the permission mode its last prompt was
 // sent under (the server reads it from the transcript).
 async function sessionMode($: EngineInterface): Promise<{ hidden: boolean; permissionMode: string }> {
@@ -21,6 +22,7 @@ async function sessionMode($: EngineInterface): Promise<{ hidden: boolean; permi
   }
   return { hidden: false, permissionMode: '' }
 }
+
 async function isHiddenSession($: EngineInterface): Promise<boolean> {
   return (await sessionMode($)).hidden
 }

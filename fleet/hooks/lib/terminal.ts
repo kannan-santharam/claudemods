@@ -1,3 +1,5 @@
+// Jumping to a session's terminal tab, in Terminal or iTerm2, by its tty.
+
 import type { EngineInterface } from 'claude-code'
 
 import type { FleetSession } from '../../types'

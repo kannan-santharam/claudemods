@@ -1,3 +1,6 @@
+// The /fleet pane in the terminal: one row per running session, from what the
+// scan stored, with a message box and a jump to its tab for the selected one.
+
 import type { EngineInterface, MatchedHook } from 'claude-code'
 
 import type { FleetSession } from '../../types'

@@ -1,3 +1,6 @@
+// Messages both ways through the dashboard server: the pane's message box sends
+// to other sessions, and the inbox poll takes what the page sent this one.
+
 import type { EngineInterface } from 'claude-code'
 
 import type { FleetSend, FleetSession } from '../../types'

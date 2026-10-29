@@ -1,3 +1,6 @@
+// Status reporting: this session's exact model, context, cost and turns, sent to
+// the dashboard server every few seconds.
+
 import type { EngineInterface } from 'claude-code'
 
 import { callServer } from './server'

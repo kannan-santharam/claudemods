@@ -1,13 +1,13 @@
-import type { EngineInterface } from 'claude-code'
-
-// ------------------------------------------------- the browser dashboard --
+// The browser dashboard's server, and this session's link to it.
 //
 // server/fleet-server.mjs serves it on 127.0.0.1. Every session with this mod
 // keeps it running, reports its own exact figures to it, and takes the
 // messages the page sends it, as a prompt or a /model or /rename command.
 // Sessions without the mod have theirs typed into their tab by the server.
 
-export const SERVER_URL = 'http://127.0.0.1:8770'
+import type { EngineInterface } from 'claude-code'
+
+const SERVER_URL = 'http://127.0.0.1:8770'
 export const SERVER_CHECK_MS = 30000
 
 let serverToken = ''
@@ -15,10 +15,6 @@ let serverToken = ''
 // an object, so every file sees the one value.
 export const serverState = { isUp: false }
 let isStartingServer = false
-
-function shellQuote(text: string): string {
-  return `'${text.replace(/'/g, `'\\''`)}'`
-}
 
 async function readServerToken($: EngineInterface): Promise<string> {
   const home = await $.env.get('HOME')
