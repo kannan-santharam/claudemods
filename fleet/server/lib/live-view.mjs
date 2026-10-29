@@ -7,7 +7,7 @@ import { pendingAsks } from './asks.mjs'
 import { baseModel } from './pricing.mjs'
 import { displayName, sessionSummaries } from './reports.mjs'
 import { deliveries, heartbeats, live, liveCache, metaCache, transcriptIndexes, transcripts, transcriptScan } from './state.mjs'
-import { baseName, dayKey } from './utils.mjs'
+import { baseName, dayKey, stripAnsi } from './utils.mjs'
 
 // Without the session's own report, the window is the model's: these run with 1M tokens.
 const MILLION_TOKEN_MODELS = /^claude-(fable-5|opus-5|opus-4-[6-9]|sonnet-5|sonnet-4-6|haiku-5)/
@@ -21,8 +21,7 @@ function contextWindowFor(model) {
 
 const SUBAGENT_STALE_MS = 15 * 60 * 1000
 
-// Subagent files by session, rebuilt after each transcript scan.
-
+// Subagent files by session, from the index rebuilt after each transcript scan.
 function subagentFilesOf(sessionId) {
   if (transcriptIndexes.subagentIndex.version !== transcriptScan.version) {
     const bySession = new Map()
@@ -64,7 +63,7 @@ function outputTail(file) {
     const buffer = Buffer.alloc(length)
     const handle = fs.openSync(file, 'r')
     try { fs.readSync(handle, buffer, 0, length, stat.size - length) } finally { fs.closeSync(handle) }
-    const lines = buffer.toString('utf8').replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').split(/\r?\n|\r/).map(line => line.trim()).filter(Boolean)
+    const lines = stripAnsi(buffer.toString('utf8')).split(/\r?\n|\r/).map(line => line.trim()).filter(Boolean)
     return { lastOutput: (lines[lines.length - 1] || '').slice(0, 240), outputAt: stat.mtimeMs }
   } catch {
     return { lastOutput: '', outputAt: 0 }
