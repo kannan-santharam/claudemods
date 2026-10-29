@@ -4,7 +4,6 @@
 import { $ } from '../core/dom.js'
 import { timeAgo } from '../core/format.js'
 import { state } from '../core/state.js'
-import { refreshLive, refreshReport } from '../refresh.js'
 
 // down: nothing answers. signin: the server answers but this browser is not
 // signed in (a new browser, cleared cookies, an expired link): /fleet web signs it in.
@@ -29,7 +28,9 @@ export function setConnection(next) {
   if (!dialog.hidden) $('#lost-reload').focus()
 }
 
-export function initConnection() {
+// refreshLive and refreshReport come from main.js, which owns the polling, so
+// this dialog imports nothing that imports it back.
+export function initConnection({ refreshLive, refreshReport }) {
   $('#lost-reload').addEventListener('click', () => location.reload())
   $('#lost-dismiss').addEventListener('click', () => { dismissedState = connection; $('#lost').hidden = true })
   document.addEventListener('keydown', event => {

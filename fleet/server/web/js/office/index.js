@@ -17,6 +17,7 @@
 import { refreshColors } from './colors.js'
 import { draw, settleAll, wake } from './frame.js'
 import { hashOf } from './helpers.js'
+import { buildLayout } from './layout.js'
 import { drawMini } from './mini.js'
 import { bindPointer } from './pointer.js'
 import { createScene, isReduced } from './scene.js'
@@ -24,9 +25,9 @@ import { sync } from './sync.js'
 import { renderTicker } from './ticker.js'
 import { bindToolbar } from './toolbar.js'
 
-function createOffice() {
-  const scene = createScene()
-  bindPointer(scene)
+function createOffice(page) {
+  const scene = createScene(buildLayout([], 0))
+  bindPointer(scene, page)
   bindToolbar(scene)
   new ResizeObserver(() => { if (scene.isActive) draw(scene) }).observe(scene.canvas.parentElement)
   document.addEventListener('visibilitychange', () => wake(scene))
@@ -53,10 +54,11 @@ function createOffice() {
 }
 
 // Built once by main.js, at its place in the start-up order: it reads the DOM,
-// adds its listeners and starts its timer.
+// adds its listeners and starts its timer. page is what a click in the office
+// opens elsewhere on the page: { setTab, renderLive, focusTab }.
 export let office = null
-export function startOffice() {
-  office = createOffice()
+export function startOffice(page) {
+  office = createOffice(page)
   // The screenshot and demo harnesses call office.themeChanged() and office.drawMini().
   window.office = office
 }

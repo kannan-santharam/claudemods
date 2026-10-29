@@ -5,9 +5,10 @@
 
 import { $ } from '../core/dom.js'
 import { remembered } from '../core/storage.js'
-import { buildLayout } from './layout.js'
 
-export function createScene() {
+// emptyLayout is the floor before the first sync, built by index.js so this
+// module needs nothing from layout.js (which reads isWallMode from here).
+export function createScene(emptyLayout) {
   // The Office canvas; drawMini lends both to a small canvas for one frame.
   const canvas = $('#office-canvas')
   const mainPen = canvas.getContext('2d')
@@ -31,7 +32,7 @@ export function createScene() {
     effects: [], // parcels, planes and paper in flight
     outboxCount: 0,
     pen: mainPen,
-    layout: buildLayout([], 0),
+    layout: emptyLayout,
     colors: null,
     floorCache: null,
     floorCacheKey: '',

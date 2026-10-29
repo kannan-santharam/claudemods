@@ -4,11 +4,8 @@
 
 import { shortModel, timeAgo } from '../core/format.js'
 import { sessionById, state } from '../core/state.js'
-import { focusTab } from '../sessions/actions.js'
 import { isListView } from '../sessions/list-view.js'
-import { renderLive } from '../sessions/live.js'
 import { STATUS } from '../sessions/tree.js'
-import { setTab } from '../tabs.js'
 import { tip } from '../tooltip.js'
 import { setCamera, zoomAround } from './camera.js'
 import { ACTIVITY_LABEL, OUTFIT_LABEL, TRIP_LABEL } from './constants.js'
@@ -50,21 +47,23 @@ function describe(scene, person) {
     person.leaving ? '' : session.tty ? 'Click for details · double-click for its tab' : 'Click for details',
   ].filter(Boolean).join('\n')
 }
-function openInList(scene, sessionId) {
+function openInList(scene, page, sessionId) {
   tip.style.display = 'none'
   if (isWallMode(scene)) document.exitFullscreen().catch(() => {})
   state.open = new Set([sessionId])
   state.filter = 'all'
   let parent = sessionById(sessionId)?.parentSessionId
   for (let depth = 0; parent && depth < 6; depth++) { state.collapsed.delete(parent); parent = sessionById(parent)?.parentSessionId }
-  setTab('sessions')
-  renderLive()
+  page.setTab('sessions')
+  page.renderLive()
   const row = document.querySelector(isListView() ? `.nav-item[data-id="${CSS.escape(sessionId)}"]` : `tr.session[data-id="${CSS.escape(sessionId)}"]`)
   if (row) { row.scrollIntoView({ block: 'center', behavior: isReduced(scene) ? 'auto' : 'smooth' }); row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 1600) }
 }
 // The canvas listeners. A drag that moved sets scene.suppressClick on mouseup,
 // which comes before the click that ends the drag, so that click selects no one.
-export function bindPointer(scene) {
+// page holds what a click opens on the rest of the page (setTab, renderLive,
+// focusTab), handed in by main.js so the office imports none of it.
+export function bindPointer(scene, page) {
   scene.canvas.addEventListener('mousedown', event => {
     if (event.button !== 0 || scene.camera.zoom <= 1.01) return
     scene.drag = { x: event.clientX, y: event.clientY, cameraX: scene.camera.x, cameraY: scene.camera.y, moved: false }
@@ -99,14 +98,14 @@ export function bindPointer(scene) {
     const person = hitAt(scene, event)
     if (!person || person.leaving || !person.sessionId) return
     clearTimeout(scene.clickTimer)
-    scene.clickTimer = setTimeout(() => openInList(scene, person.sessionId), 260)
+    scene.clickTimer = setTimeout(() => openInList(scene, page, person.sessionId), 260)
   })
   scene.canvas.addEventListener('dblclick', event => {
     clearTimeout(scene.clickTimer)
     const person = hitAt(scene, event)
     if (!person || person.leaving || !person.sessionId) return
     const session = sessionById(person.sessionId)
-    if (session?.tty) focusTab(session.sessionId)
-    else openInList(scene, person.sessionId)
+    if (session?.tty) page.focusTab(session.sessionId)
+    else openInList(scene, page, person.sessionId)
   })
 }

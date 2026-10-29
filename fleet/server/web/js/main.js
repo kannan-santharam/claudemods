@@ -14,7 +14,7 @@ import { initSwitchModelDialog } from './dialogs/switch-model.js'
 import { office, startOffice } from './office/index.js'
 import { refreshLive, refreshReport } from './refresh.js'
 import { initReportControls } from './reports/controls.js'
-import { loadOptions } from './sessions/actions.js'
+import { focusTab, loadOptions } from './sessions/actions.js'
 import { initSessionEvents } from './sessions/events.js'
 import { initKeyboard } from './sessions/keyboard.js'
 import { initLayout } from './sessions/layout.js'
@@ -34,10 +34,10 @@ initNewSessionDialog()
 initResumeDialog()
 initCompactDialog()
 initSwitchModelDialog()
-initEndSessionDialog()
+initEndSessionDialog({ renderLive, refreshLive })
 initTooltip()
 initReportControls()
-startOffice()
+startOffice({ setTab, renderLive, focusTab })
 initTabs()
 
 // The office repaints in the new colours after theme.js has renamed the theme.
@@ -48,7 +48,7 @@ $('#view-sessions').dataset.layout = state.view
 document.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === state.view)))
 setTab(location.hash === '#office' ? 'office' : location.hash === '#reports' ? 'reports' : remembered('fleet-tab') || 'sessions')
 
-initConnection()
+initConnection({ refreshLive, refreshReport })
 // The first data, then polling: the live view every 2 seconds, a shown hidden
 // session's screen as often, the report every 20.
 loadOptions().then(() => renderLive())

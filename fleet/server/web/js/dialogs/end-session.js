@@ -5,8 +5,6 @@ import { api } from '../core/api.js'
 import { $, toast } from '../core/dom.js'
 import { escapeHtml } from '../core/format.js'
 import { sessionById, state } from '../core/state.js'
-import { refreshLive } from '../refresh.js'
-import { renderLive } from '../sessions/live.js'
 
 // One session from its row, or every selected one from the bar above the table.
 const ending = { sessionIds: [], force: false }
@@ -38,7 +36,9 @@ export function askToEnd(sessionIds, force = false) {
 }
 function closeEndDialog() { $('#end-dialog').hidden = true }
 
-export function initEndSessionDialog() {
+// renderLive and refreshLive come from main.js: the table draws this dialog's
+// bar, so importing them here would close a loop.
+export function initEndSessionDialog({ renderLive, refreshLive }) {
   $('#bulk-clear').addEventListener('click', () => { state.selected.clear(); renderLive() })
   $('#bulk-end').addEventListener('click', () => askToEnd([...state.selected]))
   $('#end-cancel').addEventListener('click', closeEndDialog)
