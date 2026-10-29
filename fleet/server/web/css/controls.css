@@ -1,0 +1,39 @@
+/* ---------------------------------------------- tags read as labels, buttons as buttons -- */
+/* Tags are flat: no border, a soft fill, small text in a full pill (or just a dot and
+   a word). Buttons are raised: a solid fill, a firmer border, a shadow under them and a
+   pressed state, so nothing you can't click looks like something you can. */
+.tag, .tag.hidden-tag, .tag.shell-kind, .shell-tag, .sid {
+  border: 0;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+  padding: 0 8px;
+}
+.tag { background: color-mix(in srgb, var(--text-muted) 14%, transparent); color: var(--text-secondary); }
+.tag.hidden-tag { background: color-mix(in srgb, var(--series-7) 16%, transparent); color: var(--series-7); }
+.tag.shell-kind, .shell-tag { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.sid { background: color-mix(in srgb, var(--text-muted) 10%, transparent); color: var(--text-secondary); font-size: 11px; }
+.sid:hover { background: color-mix(in srgb, var(--text-muted) 20%, transparent); }
+/* "connected" is a status word with a dot, not a box. */
+.link { border: 0; padding: 0; border-radius: 0; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; color: var(--text-muted); }
+.link::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); opacity: .6; }
+.link.on { color: var(--good-text); }
+.link.on::before { background: var(--good); opacity: 1; }
+/* The subagents toggle reads as a link with a chevron. */
+.nest { border: 0; background: none; padding: 0; color: var(--text-muted); font-size: 11.5px; border-radius: 0; }
+.nest:hover { background: none; color: var(--text-primary); text-decoration: underline; }
+/* Buttons: raised. */
+.btn {
+  background: var(--surface-2);
+  border-color: color-mix(in srgb, var(--text-muted) 38%, var(--border));
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .06), 0 1px 2px rgba(0, 0, 0, .08);
+  font-weight: 550;
+  color: var(--text-primary);
+}
+.btn:hover { background: var(--surface-3); border-color: color-mix(in srgb, var(--text-muted) 55%, var(--border)); }
+.btn:active { transform: translateY(1px); box-shadow: none; }
+.btn.ghost { box-shadow: none; }
+.btn.primary { box-shadow: 0 1px 2px rgba(0, 0, 0, .18); }
+.btn.danger { background: color-mix(in srgb, var(--critical) 8%, var(--surface-2)); }
+.btn:disabled { box-shadow: none; transform: none; }

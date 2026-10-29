@@ -1,0 +1,11 @@
+/* cards */
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); min-width: 0; }
+.card > header { display: flex; align-items: center; gap: 12px; padding: 14px 16px 10px; flex-wrap: wrap; }
+.card > header h2 { font-size: 14.5px; margin: 0; font-weight: 650; }
+.card > header .hint { color: var(--text-muted); font-size: 12px; }
+.card > header .spacer { margin-left: auto; }
+.card .body { padding: 4px 16px 16px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+.span-2 { grid-column: span 2; }
+.chart-box { position: relative; height: 260px; }
+.empty { color: var(--text-muted); padding: 24px 0; text-align: center; font-size: 13px; }

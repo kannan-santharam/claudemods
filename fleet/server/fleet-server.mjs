@@ -30,7 +30,7 @@ const CONFIG_FILE = path.join(DATA_DIR, 'config.json')
 const STATUS_LOG_FILE = path.join(DATA_DIR, 'status-log.jsonl')
 const RECENTLY_CLOSED_FILE = path.join(DATA_DIR, 'recently-closed.json')
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const PAGE_FILE = path.join(HERE, 'dashboard.html')
+const WEB_DIR = path.join(HERE, 'web')
 
 const REGISTRY_POLL_MS = 2000
 const TRANSCRIPT_POLL_MS = 15000
@@ -2231,16 +2231,74 @@ function send(response, status, body, type = 'application/json', extra = {}) {
   response.end(type === 'application/json' ? JSON.stringify(body) : body)
 }
 
-// The page is read once and again only when the file changes, so a plugin
-// update that removes the old folder never leaves this server unable to serve it.
-let pageCache = { mtimeMs: 0, html: '' }
-async function readPage() {
+// The page is server/web/: index.html, its stylesheets in css/ and its modules in
+// js/. What can be served is an allowlist built from a listing of that folder,
+// never a path taken from the request: URL path -> { file, type, mtimeMs, body }.
+// Only plain lowercase names count, symlinks are skipped, and nothing else under
+// web/ (or outside it) can ever be named by a URL.
+const WEB_FILE_NAME = /^[a-z0-9-]+\.(css|js)$/
+const WEB_FOLDER_NAME = /^[a-z0-9-]+$/
+const WEB_TYPES = { html: 'text/html; charset=utf-8', css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8' }
+let webFiles = new Map()
+let webScan = null
+
+async function listWebFolder(folder, urlPrefix, extension, depth, found) {
+  let entries = []
   try {
-    const stat = await fsp.stat(PAGE_FILE)
-    if (stat.mtimeMs !== pageCache.mtimeMs) pageCache = { mtimeMs: stat.mtimeMs, html: await fsp.readFile(PAGE_FILE, 'utf8') }
-  } catch {}
-  return pageCache.html
+    entries = await fsp.readdir(folder, { withFileTypes: true })
+  } catch {
+    return
+  }
+  for (const entry of entries) {
+    if (entry.isFile() && WEB_FILE_NAME.test(entry.name) && entry.name.endsWith('.' + extension)) {
+      found.set(`${urlPrefix}/${entry.name}`, { file: path.join(folder, entry.name), type: WEB_TYPES[extension] })
+    } else if (entry.isDirectory() && depth > 0 && WEB_FOLDER_NAME.test(entry.name)) {
+      await listWebFolder(path.join(folder, entry.name), `${urlPrefix}/${entry.name}`, extension, depth - 1, found)
+    }
+  }
 }
+
+// Each file is read when listed and again only when it changes, so a plugin
+// update that removes the old folder never leaves this server unable to serve
+// the page: a listing that finds no web/ at all keeps what it had.
+async function scanWebFiles() {
+  const found = new Map()
+  try {
+    if ((await fsp.lstat(path.join(WEB_DIR, 'index.html'))).isFile()) {
+      found.set('/', { file: path.join(WEB_DIR, 'index.html'), type: WEB_TYPES.html })
+    }
+  } catch {}
+  await listWebFolder(path.join(WEB_DIR, 'css'), '/css', 'css', 0, found)
+  await listWebFolder(path.join(WEB_DIR, 'js'), '/js', 'js', 3, found)
+  if (!found.size) return
+  for (const [urlPath, entry] of found) {
+    const kept = webFiles.get(urlPath)
+    if (kept && kept.file === entry.file) found.set(urlPath, kept)
+    else await refreshWebFile(entry)
+  }
+  webFiles = found
+}
+
+async function refreshWebFile(entry) {
+  try {
+    const stat = await fsp.stat(entry.file)
+    if (stat.mtimeMs !== entry.mtimeMs) Object.assign(entry, { mtimeMs: stat.mtimeMs, body: await fsp.readFile(entry.file) })
+  } catch {}
+}
+
+// A path not in the list is looked for once more, so a file added to web/
+// is served without a restart. Only paths shaped like the page's are.
+async function readWebFile(urlPath) {
+  if (!webFiles.has(urlPath) && (urlPath === '/' || /^\/(css|js)\//.test(urlPath))) {
+    webScan ||= scanWebFiles().finally(() => { webScan = null })
+    await webScan
+  }
+  const entry = webFiles.get(urlPath)
+  if (!entry) return null
+  await refreshWebFile(entry)
+  return entry.body ? entry : null
+}
+scanWebFiles()
 
 // Signing the browser in: a session's mod (which holds TOKEN) asks for a code
 // good once for a minute, opens /auth?code=…, and the answer is an HttpOnly,
@@ -2310,8 +2368,9 @@ const server = http.createServer(async (request, response) => {
   if (!ALLOWED_HOSTS.has(String(request.headers.host || ''))) return send(response, 421, { error: 'wrong host' })
   const url = new URL(request.url || '/', `http://127.0.0.1:${PORT}`)
   try {
-    if (request.method === 'GET' && url.pathname === '/') {
-      return send(response, 200, await readPage(), 'text/html; charset=utf-8')
+    if (request.method === 'GET' && !url.pathname.startsWith('/api/')) {
+      const page = await readWebFile(url.pathname)
+      if (page) return send(response, 200, page.body, page.type)
     }
     if (request.method === 'GET' && url.pathname === '/auth') {
       if (!takeLoginCode(url.searchParams.get('code') || '')) return send(response, 302, '', 'text/plain', { location: '/?signin=expired' })

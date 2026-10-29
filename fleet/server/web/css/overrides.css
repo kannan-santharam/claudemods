@@ -1,0 +1,19 @@
+/* ------------------------------------------------------------------ light theme pass -- */
+/* Light is the base; these only name light, so dark is untouched. */
+:root[data-theme="light"] .msg.claude .bubble { background: var(--surface-2); box-shadow: none; }
+:root[data-theme="light"] .msg.claude .bubble .md code { background: var(--surface-1); }
+:root[data-theme="light"] .btn:not(.primary):not(.danger):not(.danger-solid):not(.ghost) { background: #fff; }
+:root[data-theme="light"] .btn:not(.primary):not(.danger):not(.danger-solid):not(.ghost):hover { background: var(--surface-2); }
+:root[data-theme="light"] .actions-menu .menu { box-shadow: 0 12px 32px rgba(20, 20, 18, .14), 0 2px 6px rgba(20, 20, 18, .06); }
+
+/* The terminal tab button as its own column at the end of each row. To make room
+   the table takes a little more of the width, and "connected" is just its dot there. */
+.split { grid-template-columns: minmax(0, 62fr) minmax(0, 38fr); }
+@media (max-width: 1100px) { .split { grid-template-columns: minmax(0, 1fr); } }
+.live-card .link { font-size: 0; gap: 0; }
+.live-card .link::before { width: 7px; height: 7px; }
+.live-card .meter { min-width: 84px; }
+.live-card .where { flex-wrap: wrap; row-gap: 2px; }
+.live-card .shell-out { max-width: 240px; }
+.tab-col { width: 1%; text-align: right; white-space: nowrap; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

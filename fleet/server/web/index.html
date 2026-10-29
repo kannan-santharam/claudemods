@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fleet</title>
+<script>
+// The theme is always named on the root, so the dark styles apply whether it was
+// chosen here or comes from the system. It is set here, before the first paint,
+// because the page's scripts are modules and run only once the page is parsed.
+{
+  let savedTheme = ''
+  try { savedTheme = localStorage.getItem('fleet-theme') || '' } catch {}
+  document.documentElement.dataset.theme = savedTheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/tiles.css">
+<link rel="stylesheet" href="css/cards.css">
+<link rel="stylesheet" href="css/table.css">
+<link rel="stylesheet" href="css/chat.css">
+<link rel="stylesheet" href="css/reports.css">
+<link rel="stylesheet" href="css/overlays.css">
+<link rel="stylesheet" href="css/tabs.css">
+<link rel="stylesheet" href="css/office.css">
+<link rel="stylesheet" href="css/responsive.css">
+<link rel="stylesheet" href="css/split.css">
+<link rel="stylesheet" href="css/controls.css">
+<link rel="stylesheet" href="css/attention.css">
+<link rel="stylesheet" href="css/overrides.css">
+<link rel="stylesheet" href="css/list-view.css">
+<script type="module" src="js/main.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <div class="logo">F</div>
+      <div>
+        <h1>Fleet</h1>
+        <p>Every Claude Code session on this machine</p>
+      </div>
+    </div>
+    <span class="pulse" id="pulse"><i></i><span id="updated">connecting…</span></span>
+    <div class="seg" role="group" aria-label="Report range">
+      <button data-range="today" aria-pressed="false">Today</button>
+      <button data-range="7d" aria-pressed="true">7 days</button>
+    </div>
+    <button class="btn" id="resume-session">Resume session</button>
+    <button class="btn primary" id="new-session">+ New session</button>
+    <button class="icon-btn" id="theme" title="Toggle theme" aria-label="Toggle theme">◐</button>
+  </div>
+
+  <section class="tiles" id="tiles"></section>
+
+  <div class="tabs" role="tablist" aria-label="View">
+    <button role="tab" data-tab="sessions" aria-selected="true" aria-controls="view-sessions">Sessions</button>
+    <button role="tab" data-tab="office" aria-selected="false" aria-controls="view-office">Office</button>
+    <button role="tab" data-tab="reports" aria-selected="false" aria-controls="view-reports">Reports</button>
+    <div class="seg view-toggle" id="view-toggle" role="group" aria-label="Sessions layout">
+      <button type="button" data-view="list" aria-pressed="true" title="Sessions as a list, the chat in the middle and its figures on the right">List</button>
+      <button type="button" data-view="table" aria-pressed="false" title="Sessions as a table, with the chat docked beside it">Table</button>
+    </div>
+  </div>
+
+  <div id="view-office" role="tabpanel" hidden>
+    <section class="card" id="office-card">
+      <header>
+        <h2>Office</h2>
+        <span class="hint" id="office-hint"></span>
+        <span class="spacer"></span>
+        <label class="hint office-toggle" title="Names off also hides project names, so snapshots and clips stay private"><input type="checkbox" id="office-names"> Names</label>
+        <label class="hint office-toggle" title="A soft chime when a session starts waiting for you"><input type="checkbox" id="office-chime"> Chime</label>
+      </header>
+      <div class="office-tools">
+        <span class="office-zoom" role="group" aria-label="Zoom">
+          <button class="btn small ghost" id="office-zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
+          <button class="btn small ghost" id="office-zoom-fit" title="Fit the whole office">Fit</button>
+          <button class="btn small ghost" id="office-zoom-in" title="Zoom in (or pinch, or ctrl and scroll)" aria-label="Zoom in">+</button>
+        </span>
+        <span class="spacer"></span>
+        <button class="btn small" id="office-snapshot" title="Save a PNG of the office">Snapshot</button>
+        <button class="btn small" id="office-clip" title="Record an 8 second WebM clip of the office">Record clip</button>
+        <button class="btn small" id="office-wall" title="Full screen, for a second monitor">Wall mode</button>
+      </div>
+      <div class="legend office-legend">
+        <span>At a desk: working, the screen shows what it is doing and the paper pile is its context</span>
+        <span><i class="sw" style="background:var(--critical)"></i>Standing with "!": needs you</span>
+        <span>Lounge: idle</span>
+        <span>Rug and sign: one project folder</span>
+        <span>Blazer Opus · hoodie Sonnet · beanie Haiku · headphones Fable</span>
+        <span><i class="sw" style="background:var(--accent)"></i>Cap: subagent helping its session</span>
+        <span>Robot at the racks: headless session</span>
+        <span><i class="sw" style="background:var(--accent)"></i>Humming box by a desk: background shell</span>
+        <span>Parcel: commit · paper plane: push · shredder: compaction</span>
+      </div>
+      <p class="office-dim" id="office-dim" hidden></p>
+      <div class="office-stage"><canvas id="office-canvas" role="img" aria-label="Office view"></canvas></div>
+      <div class="office-ticker" id="office-ticker"></div>
+      <div class="note">Hover someone for details, click to open them in the session list, double-click to jump to their terminal tab. Pinch or ctrl and scroll to zoom, then drag to look around. The room follows your local time of day; the dark theme is night.</div>
+    </section>
+  </div>
+
+  <div id="view-sessions" role="tabpanel" data-layout="list">
+  <div class="split">
+  <aside class="card nav-col" aria-label="Sessions">
+    <div class="nav-head">
+      <input class="live-search" id="nav-search" type="search" placeholder="Search sessions or folders" autocomplete="off" aria-label="Search sessions or folders">
+      <div class="seg filters nav-filters" role="group" aria-label="Show" id="nav-filters"></div>
+    </div>
+    <div class="nav-list" id="nav-list" role="listbox" aria-label="Sessions"></div>
+  </aside>
+  <section class="card live-card">
+    <header>
+      <div class="seg filters" role="group" aria-label="Show" id="live-filters"></div>
+      <span class="spacer"></span>
+      <input class="live-search" id="live-search" type="search" placeholder="Search sessions or folders" autocomplete="off" aria-label="Search sessions or folders">
+      <span class="hint" id="live-hint" hidden></span>
+    </header>
+    <div class="scroll-x">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:28px"><input type="checkbox" id="select-all" aria-label="Select all sessions"></th>
+            <th>Status</th>
+            <th>Session</th>
+            <th class="hide-sm">Model</th>
+            <th>Context</th>
+            <th class="num hide-sm">Today</th>
+            <th class="num hide-sm">Active</th>
+            <th class="tab-col"><span class="sr-only">Terminal tab</span></th>
+          </tr>
+        </thead>
+        <tbody id="live-rows"></tbody>
+      </table>
+    </div>
+    <div class="bulkbar" id="bulkbar" hidden>
+      <span id="bulk-count"></span>
+      <span class="spacer"></span>
+      <button class="btn small" id="bulk-clear">Clear selection</button>
+      <button class="btn small danger-solid" id="bulk-end">End selected</button>
+    </div>
+  </section>
+  <aside class="card session-pane" id="session-pane" aria-label="The selected session"></aside>
+  <aside class="side-col" aria-label="About the selected session">
+    <section class="card side-card" id="side-session"></section>
+    <div id="side-tiles"></div>
+    <section class="card office-mini">
+      <header><h2>Office</h2><span class="hint" id="office-mini-hint"></span><span class="spacer"></span><button class="btn small" type="button" data-open-office>Open Office ↗</button></header>
+      <div class="mini-stage" data-open-office title="Open the Office"><canvas id="office-mini" role="img" aria-label="A small live view of the office"></canvas></div>
+    </section>
+  </aside>
+  </div>
+  </div>
+
+  <div id="view-reports" role="tabpanel" hidden>
+  <div class="grid">
+    <section class="card span-2">
+      <header>
+        <h2 id="usage-title">Estimated cost per day, by model</h2>
+        <span class="hint">API-equivalent estimate — on a subscription this is not a bill</span>
+        <span class="spacer"></span>
+        <div class="seg" role="group" aria-label="Measure">
+          <button data-measure="cost" aria-pressed="true">Cost</button>
+          <button data-measure="tokens" aria-pressed="false">Tokens</button>
+        </div>
+      </header>
+      <div class="body"><div class="chart-box"><canvas id="chart-days"></canvas></div></div>
+    </section>
+
+    <section class="card span-2">
+      <header>
+        <h2>Activity, last 24 hours</h2>
+        <span class="spacer"></span>
+        <div class="legend">
+          <span><i class="sw" style="background:var(--series-1)"></i>Working (from transcripts)</span>
+          <span><i class="sw hatch"></i>Waiting for you</span>
+        </div>
+      </header>
+      <div class="body"><div class="tl" id="timeline"></div></div>
+      <div class="note" id="timeline-note"></div>
+    </section>
+
+    <section class="card">
+      <header><h2>Cost by project</h2><span class="hint" data-range-hint></span></header>
+      <div class="body"><div class="chart-box"><canvas id="chart-projects"></canvas></div></div>
+    </section>
+
+    <section class="card">
+      <header><h2>Top sessions by tokens</h2><span class="hint" data-range-hint></span></header>
+      <div class="body"><div class="chart-box"><canvas id="chart-sessions"></canvas></div></div>
+    </section>
+
+    <section class="card">
+      <header><h2>Context fill</h2><span class="hint">live sessions · marker at 80%</span></header>
+      <div class="body"><div class="bars" id="context-bars"></div></div>
+    </section>
+
+    <section class="card">
+      <header><h2>Tool calls</h2><span class="hint" data-range-hint></span></header>
+      <div class="body"><div class="chart-box"><canvas id="chart-tools"></canvas></div></div>
+    </section>
+
+    <section class="card span-2">
+      <header><h2>Projects</h2><span class="hint" data-range-hint></span></header>
+      <div class="body scroll-x">
+        <table>
+          <thead><tr>
+            <th>Project</th><th class="num">Sessions</th><th class="num">Prompts</th><th class="num">Tokens</th>
+            <th class="num">Cost</th><th class="num">Commits</th><th class="num">Files edited</th>
+            <th class="hide-sm">Branches</th><th class="hide-sm">Top tools</th>
+          </tr></thead>
+          <tbody id="project-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card span-2">
+      <header><h2>Messages sent from here</h2><span class="hint">a connected session takes it as a prompt; one started before the mod has it typed into its tab when idle</span></header>
+      <div class="body"><div class="feed" id="feed"></div></div>
+    </section>
+  </div>
+  </div>
+</div>
+<div class="needs-glow" aria-hidden="true"></div>
+<div class="tip" id="tip"></div>
+<div class="toast" id="toast"></div>
+<div class="overlay" id="new-dialog" hidden>
+  <form class="dialog wide" id="new-form" role="dialog" aria-modal="true" aria-labelledby="new-title">
+    <h3 id="new-title">New Claude session</h3>
+    <p>Opens Claude in the folder you pick, in a new tab of your terminal, or hidden in the background where only this page reaches it.</p>
+    <div class="field"><span>Where it runs</span><div class="runmode" role="radiogroup" aria-label="Where it runs">
+      <label><input type="radio" name="new-run" value="tab"> Terminal tab</label>
+      <label><input type="radio" name="new-run" value="hidden"> Hidden, only here</label>
+    </div></div>
+    <div class="field"><span>Folder</span><div class="picker" id="new-picker"></div></div>
+    <label class="field"><span>Name</span><input id="new-name" maxlength="80" placeholder="e.g. api-review" autocomplete="off"></label>
+    <label class="field"><span>Model</span><select id="new-model"></select></label>
+    <code class="preview" id="new-preview"></code>
+    <div class="dialog-actions">
+      <button type="button" class="btn" id="new-cancel">Cancel</button>
+      <button type="submit" class="btn primary" id="new-start">Start session</button>
+    </div>
+  </form>
+</div>
+<div class="overlay" id="resume-dialog" hidden>
+  <form class="dialog wider" id="resume-form" role="dialog" aria-modal="true" aria-labelledby="resume-title">
+    <h3 id="resume-title">Resume a past session</h3>
+    <p>It reopens with its conversation intact, in a new tab of your terminal or hidden in the background.</p>
+    <div class="field-row two">
+      <label class="field"><span>Model</span><select id="resume-model"></select></label>
+      <div class="field"><span>Where it runs</span><div class="runmode" role="radiogroup" aria-label="Where it runs">
+        <label><input type="radio" name="resume-run" value="tab"> Terminal tab</label>
+        <label><input type="radio" name="resume-run" value="hidden"> Hidden, only here</label>
+      </div></div>
+    </div>
+    <div class="field" id="closed-section" hidden><span>Recently closed</span><div class="history closed" id="closed-list"></div></div>
+    <div class="field"><span>Or pick a folder, then a session from it</span><div class="picker" id="resume-picker"></div></div>
+    <input class="search" id="resume-search" placeholder="Filter by name or prompt…" autocomplete="off">
+    <div class="history" id="resume-list" role="listbox" aria-label="Past sessions"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn" id="resume-cancel">Cancel</button>
+      <button type="submit" class="btn primary" id="resume-start" disabled>Resume</button>
+    </div>
+  </form>
+</div>
+<div class="overlay" id="compact-dialog" hidden>
+  <form class="dialog wide" id="compact-form" role="dialog" aria-modal="true" aria-labelledby="compact-title">
+    <h3 id="compact-title">Compact this session?</h3>
+    <p id="compact-text"></p>
+    <label class="field"><span>What the summary should keep (optional)</span><input id="compact-focus" maxlength="500" placeholder="e.g. the failing test and the plan for the fix" autocomplete="off"></label>
+    <div class="dialog-actions">
+      <button type="button" class="btn" id="compact-cancel">Cancel</button>
+      <button type="submit" class="btn primary" id="compact-confirm">Compact</button>
+    </div>
+  </form>
+</div>
+<div class="overlay" id="model-dialog" hidden>
+  <form class="dialog wide" id="model-form" role="dialog" aria-modal="true" aria-labelledby="model-title" aria-describedby="model-text">
+    <h3 id="model-title">Switch model?</h3>
+    <p id="model-text"></p>
+    <div class="dialog-actions">
+      <button type="button" class="btn" id="model-cancel">Cancel</button>
+      <button type="submit" class="btn primary" id="model-confirm">Switch model</button>
+    </div>
+  </form>
+</div>
+<div class="overlay" id="end-dialog" hidden>
+  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="end-title" aria-describedby="end-text">
+    <div class="dialog-icon">✕</div>
+    <h3 id="end-title">End this session?</h3>
+    <p id="end-text"></p>
+    <ul class="end-list" id="end-list" hidden></ul>
+    <div class="dialog-actions">
+      <button class="btn" id="end-cancel">Cancel</button>
+      <button class="btn danger-solid" id="end-confirm">End session</button>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="lost" hidden>
+  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="lost-title" aria-describedby="lost-text">
+    <div class="dialog-icon" id="lost-icon">!</div>
+    <h3 id="lost-title">Lost connection to the Fleet server</h3>
+    <p id="lost-text"></p>
+    <div class="dialog-actions">
+      <button class="btn" id="lost-dismiss">Dismiss</button>
+      <button class="btn primary" id="lost-reload">Reload page</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

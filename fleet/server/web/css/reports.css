@@ -1,0 +1,29 @@
+/* context bars */
+.bars { display: flex; flex-direction: column; gap: 9px; }
+.bar-row { display: grid; grid-template-columns: minmax(90px, 180px) 1fr 90px; gap: 10px; align-items: center; font-size: 12.5px; }
+.bar-row .lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-secondary); }
+.bar-row .track { height: 10px; position: relative; overflow: visible; margin: 0; }
+.bar-row .track > b { background: var(--series-1); }
+.bar-row .track > b.hot { background: var(--critical); }
+.bar-row .track > s { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--text-muted); left: 80%; }
+.bar-row .v { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+
+/* timeline */
+.tl { position: relative; }
+.tl-row { display: grid; grid-template-columns: 170px 1fr 70px; gap: 12px; align-items: center; height: 26px; }
+.tl-row .lbl { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-muted); }
+.tl-row .lbl.live { color: var(--text-primary); font-weight: 500; }
+.waited { font-size: 12px; color: var(--text-muted); text-align: right; font-variant-numeric: tabular-nums; }
+.tl-track { position: relative; height: 14px; background: var(--surface-2); border-radius: 4px; }
+.tl-track b { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: var(--series-1); min-width: 2px; }
+.tl-track b.wait { background: repeating-linear-gradient(45deg, var(--critical) 0 3px, color-mix(in srgb, var(--critical) 55%, transparent) 3px 6px); top: 3px; bottom: 3px; }
+.tl-axis { display: grid; grid-template-columns: 170px 1fr 70px; gap: 12px; margin-top: 4px; }
+.tl-ticks { position: relative; height: 16px; font-size: 11px; color: var(--text-muted); }
+.tl-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.tl-grid { position: absolute; top: 0; bottom: 20px; left: 182px; right: 82px; pointer-events: none; }
+.tl-grid i { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--grid); }
+.tl-grid i.now { background: var(--accent); opacity: .6; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.sw.hatch { background: repeating-linear-gradient(45deg, var(--critical) 0 3px, color-mix(in srgb, var(--critical) 55%, transparent) 3px 6px); }

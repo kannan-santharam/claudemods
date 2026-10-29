@@ -1,0 +1,20 @@
+/* ------------------------------------------------- a turning ring on what waits for you -- */
+/* Only the "Waiting on you" tile and the question cards: a thin multi-colour border that
+   slowly turns. No glow. It sits on the element's own border, so nothing can clip it. */
+@property --fleet-spin { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes fleet-spin { to { --fleet-spin: 360deg; } }
+.tile.alert, .ask-card, .nav-item.waiting { position: relative; border-color: transparent; }
+.tile.alert::before, .ask-card::before, .nav-item.waiting::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(from var(--fleet-spin), #ff3ec8, #ff8a3d, #ffd23f, #2ee6ff, #8b5cf6, #ff3ec8);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: fleet-spin 4s linear infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) { .tile.alert::before, .ask-card::before, .nav-item.waiting::before { animation: none; } }

@@ -1,0 +1,58 @@
+/* ------------------------------------------------- table and chat side by side -- */
+/* The table on the left and the selected session docked on the right, filling the window. */
+.split { display: grid; grid-template-columns: minmax(0, 58fr) minmax(0, 42fr); gap: 14px; align-items: start; }
+@media (max-width: 1100px) { .split { grid-template-columns: minmax(0, 1fr); } }
+.live-card > header { gap: 10px; }
+.filters button span { color: var(--text-muted); margin-left: 4px; font-weight: 500; }
+.filters button[aria-pressed="true"] span { color: var(--text-secondary); }
+.live-search { font: inherit; font-size: 13px; color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; width: 220px; max-width: 100%; outline: none; }
+.live-search:focus { border-color: var(--accent); }
+tr.session { cursor: pointer; }
+tr.session.selected > td { background: var(--surface-2); }
+tr.session.selected > td:first-child { box-shadow: inset 2px 0 0 var(--text-primary); }
+.live-card .bulkbar { position: sticky; bottom: 0; margin: 0; border-radius: 0 0 var(--radius) var(--radius); }
+.today { white-space: nowrap; }
+.split { height: max(480px, calc(100vh - var(--split-top, 200px) - 16px)); }
+.split > .live-card { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+.live-card > .scroll-x { flex: 1; min-height: 0; overflow: auto; }
+.live-card thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-1); }
+.session-pane { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+@media (max-width: 1100px) {
+  .split { height: auto; }
+  .split > .live-card { height: auto; }
+  .session-pane { height: 82vh; }
+}
+.pane-head { padding: 14px 16px 0; display: grid; gap: 8px; border-bottom: 1px solid var(--border); }
+.pane-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pane-title h2 { margin: 0; font-size: 16px; }
+.pane-where { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; color: var(--text-muted); font-size: 12.5px; }
+.pane-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pane-tools select, .pane-tools input { font: inherit; font-size: 12.5px; color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; padding: 4px 8px; }
+.pane-tools input { width: 150px; }
+.pane-tools .spacer { flex: 1; }
+.actions-menu { position: relative; }
+.actions-menu .menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; width: 300px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 12px 30px rgba(0, 0, 0, .35); padding: 10px; display: grid; gap: 10px; }
+.actions-menu .menu label { display: grid; gap: 5px; font-size: 12px; color: var(--text-muted); }
+.actions-menu .menu .row { display: flex; gap: 6px; }
+.actions-menu .menu .row > :first-child { flex: 1; min-width: 0; }
+.actions-menu .menu select, .actions-menu .menu input { width: 100%; font: inherit; font-size: 12.5px; color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; padding: 5px 8px; }
+.actions-menu .menu .item { text-align: left; justify-content: flex-start; width: 100%; }
+.pane-tabs { display: flex; gap: 2px; }
+.pane-tabs button { border: 0; background: none; font: inherit; font-size: 13px; color: var(--text-secondary); padding: 6px 10px 9px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.pane-tabs button[aria-selected="true"] { color: var(--text-primary); font-weight: 600; border-bottom-color: var(--text-primary); }
+.pane-body { overflow-y: auto; flex: 1; min-height: 0; padding: 12px 16px; }
+.pane-body .thread { padding: 0; }
+.pane-body .msg { max-width: 92%; }
+.pane-foot { padding: 10px 16px 14px; border-top: 1px solid var(--border); display: grid; gap: 6px; }
+.pane-foot .composer.chat { margin: 0; }
+.pane-empty { padding: 40px 24px; color: var(--text-muted); text-align: center; }
+.pane-body .drawer { margin: 0; }
+/* Rows a little tighter, so every column fits beside the pane. */
+.wrap { max-width: 1680px; }
+.live-card th, .live-card td { padding-left: 8px; padding-right: 8px; }
+.live-card td { padding-top: 7px; padding-bottom: 7px; }
+.live-card .name.sub { max-width: 260px; }
+.live-card .meter { min-width: 92px; gap: 6px; }
+.live-card .meter span { font-size: 12px; min-width: 30px; text-align: right; }
+.live-card .shell-out { max-width: 300px; margin: 0; }
+.live-card td.num { white-space: nowrap; }
