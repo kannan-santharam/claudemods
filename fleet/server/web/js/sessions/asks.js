@@ -1,5 +1,5 @@
-// Answering the permission prompts and questions from hidden sessions, from
-// the cards in their chat (ask-cards.js). What is picked or typed goes into
+// Answering sessions' permission prompts and questions from the cards in
+// their chat (ask-cards.js). What is picked or typed goes into
 // state.fields until it is sent.
 
 import { api } from '../core/api.js'

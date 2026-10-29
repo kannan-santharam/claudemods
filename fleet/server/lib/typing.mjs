@@ -49,7 +49,7 @@ function inputBoxText(screen) {
 
 // Typing is only safe while Claude itself is in the foreground of that tab: if
 // the person quit it, the text would land in the shell and run there.
-async function claudeHasForeground(tty) {
+export async function claudeHasForeground(tty) {
   const listing = await run('ps', ['-t', tty, '-o', 'stat=,comm='])
   return listing.stdout.split('\n').some(line => {
     const [stat, ...command] = line.trim().split(/\s+/)

@@ -1,4 +1,4 @@
-// Questions and permission prompts from hidden sessions, and their answers.
+// Questions and permission prompts from sessions, and their answers.
 
 import { answerAsk, cancelAsk, createAsk, waitForAnswer } from '../asks.mjs'
 import { send } from '../http.mjs'
@@ -14,7 +14,9 @@ export const getRoutes = {
     const askedFor = url.searchParams.get('sessionId') || ''
     if (!live.has(askedFor)) await scanRegistry()
     const session = live.get(askedFor)
-    if (session?.hidden && transcriptIndexes.mainFileIndex.version !== transcriptScan.version) shellsOf(session, Date.now())
+    // The mode is read off the latest transcript scan, for a session in a terminal too:
+    // an ask its auto mode settles must not reach the page.
+    if (session && transcriptIndexes.mainFileIndex.version !== transcriptScan.version) shellsOf(session, Date.now())
     return send(response, 200, { hidden: Boolean(session?.hidden), permissionMode: (session && transcriptIndexes.mainFileIndex.bySession.get(session.sessionId)?.permissionMode) || '' })
   },
   '/api/asks/wait': async ({ request, response, url }) => {
@@ -32,5 +34,5 @@ export const postRoutes = {
     if (!hasToken(request)) return send(response, 401, { error: 'only a session cancels its question' })
     return send(response, 200, cancelAsk(body))
   },
-  '/api/asks/answer': ({ response, body }) => send(response, 200, answerAsk(body)),
+  '/api/asks/answer': async ({ response, body }) => send(response, 200, await answerAsk(body)),
 }

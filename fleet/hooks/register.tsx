@@ -4,9 +4,9 @@
 
 import type { Register } from 'claude-code'
 
+import { askPermissionOnDashboard, askQuestionOnDashboard, racePermissionDialog } from './lib/asks'
 import { runFleetCommand } from './lib/commands'
 import { isThisSessionExcluded } from './lib/excluded'
-import { askPermissionOnDashboard, askQuestionOnDashboard } from './lib/hidden-sessions'
 import { INBOX_POLL_MS, deliverInbox } from './lib/messages'
 import { markPaneClosed, renderPane } from './lib/pane'
 import { REGISTRY_POLL_MS, scan } from './lib/scan'
@@ -61,6 +61,8 @@ export const register: Register = on => {
   })
 
   on('tool.check', askPermissionOnDashboard)
+
+  on('tool.call', racePermissionDialog)
 
   on('tool.call', { tool: 'AskUserQuestion' }, askQuestionOnDashboard)
 
