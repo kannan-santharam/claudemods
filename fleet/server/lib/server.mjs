@@ -8,6 +8,18 @@ import { ALLOWED_HOSTS, isAuthorized } from './security.mjs'
 import { log } from './utils.mjs'
 import { readWebFile } from './web-files.mjs'
 
+// The page's files may be kept by the browser but are checked on every load:
+// the tag changes with the file's size or modification time, and an unchanged
+// file answers 304 with no body. The security headers ride on both answers.
+// The empty page served before index.html was ever read has no tag and stays
+// no-store, like every /api answer.
+function sendWebFile(request, response, page) {
+  const etag = page.mtimeMs ? `"${page.body.length.toString(16)}-${Math.floor(page.mtimeMs).toString(16)}"` : ''
+  const extra = etag ? { 'cache-control': 'no-cache', etag } : {}
+  if (etag && request.headers['if-none-match'] === etag) return send(response, 304, '', page.type, extra)
+  return send(response, 200, page.body, page.type, extra)
+}
+
 export async function handleRequest(request, response) {
   // A page on another origin, or a rebound DNS name, never gets in.
   if (!ALLOWED_HOSTS.has(String(request.headers.host || ''))) return send(response, 421, { error: 'wrong host' })
@@ -15,7 +27,7 @@ export async function handleRequest(request, response) {
   try {
     if (request.method === 'GET' && !url.pathname.startsWith('/api/')) {
       const page = await readWebFile(url.pathname)
-      if (page) return send(response, 200, page.body, page.type)
+      if (page) return sendWebFile(request, response, page)
     }
     if (request.method === 'GET' && publicGetRoutes.has(url.pathname)) {
       return await publicGetRoutes.get(url.pathname)({ request, response, url })
