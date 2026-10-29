@@ -54,6 +54,6 @@ export function isExcludedProjectDir(dirName, sampleFile) {
   return isExcluded
 }
 
-export function includedFiles() {
+export function includedTranscripts() {
   return [...transcripts.values()].filter(transcript => !isExcludedPath(transcript.cwd))
 }

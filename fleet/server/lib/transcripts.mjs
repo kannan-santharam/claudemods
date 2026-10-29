@@ -10,7 +10,7 @@ import { baseModel, emptyTokens } from './pricing.mjs'
 import { transcripts, transcriptScan } from './state.mjs'
 import { baseName, dayKey, log } from './utils.mjs'
 
-function newFileState(filePath) {
+function newTranscript(filePath) {
   const relative = path.relative(PROJECTS_DIR, filePath).split(path.sep)
   // <project>/<session>.jsonl, or <project>/<session>/subagents/agent-*.jsonl
   const isSubagent = relative.includes('subagents')
@@ -249,7 +249,7 @@ export async function scanTranscripts() {
       listed.add(full)
       let transcript = transcripts.get(full)
       if (!transcript || size < transcript.offset) {
-        transcript = newFileState(full)
+        transcript = newTranscript(full)
         transcripts.set(full, transcript)
       }
       if (size > transcript.offset) {

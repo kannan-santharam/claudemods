@@ -2,14 +2,14 @@
 // usage by day and model, projects, tools and the activity timeline.
 
 import { ACTIVITY_GAP_MIN, DAY_MS } from './constants.mjs'
-import { includedFiles } from './config.mjs'
+import { includedTranscripts } from './config.mjs'
 import { addTokens, costOf, emptyTokens } from './pricing.mjs'
 import { live, registryState, settings, transcriptScan } from './state.mjs'
 import { baseName, dayKey } from './utils.mjs'
 
 export function sessionSummaries(sinceDay) {
   const sessions = new Map()
-  for (const transcript of includedFiles()) {
+  for (const transcript of includedTranscripts()) {
     let summary = sessions.get(transcript.sessionId)
     if (!summary) {
       summary = {
@@ -84,7 +84,7 @@ export function sessionSummaries(sinceDay) {
   }
   // A session known only from its subagents' files takes their cwd: one pass, not one per session.
   const cwdBySession = new Map()
-  for (const transcript of includedFiles()) if (transcript.cwd && !cwdBySession.has(transcript.sessionId)) cwdBySession.set(transcript.sessionId, transcript.cwd)
+  for (const transcript of includedTranscripts()) if (transcript.cwd && !cwdBySession.has(transcript.sessionId)) cwdBySession.set(transcript.sessionId, transcript.cwd)
   for (const summary of sessions.values()) {
     if (!summary.cwd) summary.cwd = cwdBySession.get(summary.sessionId) || ''
     summary.project = baseName(summary.cwd || 'unknown')
@@ -94,7 +94,7 @@ export function sessionSummaries(sinceDay) {
 
 function activitySegments(sessionId, since) {
   const minutes = []
-  for (const transcript of includedFiles()) {
+  for (const transcript of includedTranscripts()) {
     if (transcript.sessionId !== sessionId) continue
     for (const minute of transcript.activeMinutes) if (minute * 60000 >= since) minutes.push(minute)
   }
@@ -135,7 +135,7 @@ export function buildReport(range) {
   const projects = {}
   const tools = {}
   const models = new Set()
-  for (const transcript of includedFiles()) {
+  for (const transcript of includedTranscripts()) {
     for (const [day, byModel] of Object.entries(transcript.usage)) {
       for (const [model, tokens] of Object.entries(byModel)) {
         if (perDay[day]) {

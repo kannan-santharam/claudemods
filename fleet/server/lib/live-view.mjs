@@ -22,7 +22,7 @@ function contextWindowFor(model) {
 const SUBAGENT_STALE_MS = 15 * 60 * 1000
 
 // Subagent files by session, from the index rebuilt after each transcript scan.
-function subagentFilesOf(sessionId) {
+function subagentTranscriptsOf(sessionId) {
   if (transcriptIndexes.subagentIndex.version !== transcriptScan.version) {
     const bySession = new Map()
     for (const transcript of transcripts.values()) {
@@ -72,7 +72,7 @@ function outputTail(file) {
 
 function subagentsOf(sessionId, now) {
   const found = []
-  for (const transcript of subagentFilesOf(sessionId)) {
+  for (const transcript of subagentTranscriptsOf(sessionId)) {
     let stat
     try {
       stat = fs.statSync(transcript.filePath)
