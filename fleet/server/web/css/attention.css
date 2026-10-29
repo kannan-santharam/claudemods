@@ -1,6 +1,5 @@
 /* The turning ring on whatever waits for you. */
 
-/* ------------------------------------------------- a turning ring on what waits for you -- */
 /* Only the "Waiting on you" tile and the question cards: a thin multi-colour border that
    slowly turns. No glow. It sits on the element's own border, so nothing can clip it. */
 @property --fleet-spin { syntax: '<angle>'; inherits: false; initial-value: 0deg; }

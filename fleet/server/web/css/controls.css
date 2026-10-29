@@ -1,7 +1,6 @@
 /* Tags read as labels and buttons as buttons. Loaded after the area styles on
    purpose: it overrides them. */
 
-/* ---------------------------------------------- tags read as labels, buttons as buttons -- */
 /* Tags are flat: no border, a soft fill, small text in a full pill (or just a dot and
    a word). Buttons are raised: a solid fill, a firmer border, a shadow under them and a
    pressed state, so nothing you can't click looks like something you can. */

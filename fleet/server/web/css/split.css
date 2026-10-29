@@ -1,6 +1,5 @@
 /* The table and the selected session's pane side by side, filling the window. */
 
-/* ------------------------------------------------- table and chat side by side -- */
 /* The table on the left and the selected session docked on the right, filling the window. */
 .split { display: grid; grid-template-columns: minmax(0, 58fr) minmax(0, 42fr); gap: 14px; align-items: start; }
 @media (max-width: 1100px) { .split { grid-template-columns: minmax(0, 1fr); } }

@@ -1,6 +1,5 @@
 /* The List view: three panes, the session list and the side column. */
 
-/* ------------------------------------------------- sessions: List view, three panes -- */
 /* List: every session down the left, the selected one's chat in the middle, its figures,
    the headline figures and a small office on the right. Table: the table and the docked
    chat, as before. The same .split holds both, so it is sized to the window the same way. */

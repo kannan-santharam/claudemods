@@ -1,6 +1,5 @@
 /* Late overrides: the light theme pass and the terminal tab column. */
 
-/* ------------------------------------------------------------------ light theme pass -- */
 /* Light is the base; these only name light, so dark is untouched. */
 :root[data-theme="light"] .msg.claude .bubble { background: var(--surface-2); box-shadow: none; }
 :root[data-theme="light"] .msg.claude .bubble .md code { background: var(--surface-1); }
