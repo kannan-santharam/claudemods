@@ -23,7 +23,13 @@ function sendWebFile(request, response, page) {
 export async function handleRequest(request, response) {
   // A page on another origin, or a rebound DNS name, never gets in.
   if (!ALLOWED_HOSTS.has(String(request.headers.host || ''))) return send(response, 421, { error: 'wrong host' })
-  const url = new URL(request.url || '/', `http://127.0.0.1:${PORT}`)
+  // A path no URL can be made of (such as //) is refused rather than taking the server down.
+  let url
+  try {
+    url = new URL(request.url || '/', `http://127.0.0.1:${PORT}`)
+  } catch {
+    return send(response, 400, { error: 'bad request' })
+  }
   try {
     if (request.method === 'GET' && !url.pathname.startsWith('/api/')) {
       const page = await readWebFile(url.pathname)
