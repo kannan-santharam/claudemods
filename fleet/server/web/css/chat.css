@@ -18,6 +18,7 @@
 .bubble { font-size: 13.5px; line-height: 1.5; padding: 9px 13px; border-radius: 18px; white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; }
 .msg.you .bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 5px; max-height: 180px; }
 .msg.claude .bubble { background: var(--surface-1); color: var(--text-primary); border-bottom-left-radius: 5px; box-shadow: 0 1px 2px rgba(0,0,0,.08); max-height: 420px; }
+.thread-top { align-self: center; font-size: 11.5px; color: var(--text-muted); padding: 2px 0 4px; }
 .stamp { font-size: 11px; color: var(--text-muted); padding: 0 6px; margin-top: 3px; }
 .bubble.typing { display: inline-flex; gap: 4px; padding: 12px 14px; margin-bottom: 0; }
 .bubble.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); animation: typing 1.2s infinite; }

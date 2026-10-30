@@ -38,13 +38,18 @@ function subagentTranscriptsOf(sessionId) {
 // The background shells a session still has running, with the end of their output.
 const SHELL_OUTPUT = /^\/(private\/)?tmp\/claude-[^/]+\/.+\/tasks\/[\w-]+\.output$/
 
-export function shellsOf(session, now) {
+// A session's own transcript (not its subagents'), from an index rebuilt once per scan.
+export function mainTranscriptOf(sessionId) {
   if (transcriptIndexes.mainFileIndex.version !== transcriptScan.version) {
     const bySession = new Map()
     for (const transcript of transcripts.values()) if (!transcript.isSubagent) bySession.set(transcript.sessionId, transcript)
     transcriptIndexes.mainFileIndex = { version: transcriptScan.version, bySession }
   }
-  const transcript = transcriptIndexes.mainFileIndex.bySession.get(session.sessionId)
+  return transcriptIndexes.mainFileIndex.bySession.get(sessionId)
+}
+
+export function shellsOf(session, now) {
+  const transcript = mainTranscriptOf(session.sessionId)
   if (!transcript?.shells?.size) return []
   // A shell from before this process started (the session was resumed) died with the old one.
   const since = (session.startedAt || 0) - 10_000

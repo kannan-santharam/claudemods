@@ -10,6 +10,27 @@ import { baseModel, emptyTokens } from './pricing.mjs'
 import { transcripts, transcriptScan } from './state.mjs'
 import { baseName, dayKey, log } from './utils.mjs'
 
+// What the person typed in a user row: a string, or the text blocks of one sent
+// with images. Tool results, meta rows, compaction summaries and the tagged rows
+// Claude Code adds itself (notifications, slash command echoes) are not prompts.
+export function typedPromptOf(row) {
+  const content = row.message?.content
+  if (row.isMeta || row.isCompactSummary) return ''
+  const typed = typeof content === 'string'
+    ? content
+    : Array.isArray(content) && !content.some(block => block?.type === 'tool_result')
+      ? content.filter(block => block?.type === 'text').map(block => block.text).join('\n')
+      : ''
+  const text = typed.trim()
+  return text.startsWith('<') ? '' : text
+}
+// The text Claude wrote in an assistant row, leaving out tool calls and thinking.
+export function replyOf(row) {
+  const content = row.message?.content
+  if (!Array.isArray(content)) return ''
+  return content.filter(block => block?.type === 'text' && block.text).map(block => block.text).join('\n').trim()
+}
+
 function newTranscript(filePath) {
   const relative = path.relative(PROJECTS_DIR, filePath).split(path.sep)
   // <project>/<session>.jsonl, or <project>/<session>/subagents/agent-*.jsonl
@@ -112,31 +133,19 @@ function ingestRow(transcript, row) {
       if (row.toolUseResult?.backgroundTaskId) noteBackgroundShell(transcript, row, time)
       if (row.origin?.kind === 'task-notification') noteTaskNotifications(transcript, typeof message.content === 'string' ? message.content : JSON.stringify(message.content), time)
     }
-    // A typed prompt is a string; one sent with images is a list holding its text blocks.
-    const typed = typeof message.content === 'string'
-      ? message.content
-      : Array.isArray(message.content) && !message.content.some(block => block?.type === 'tool_result')
-        ? message.content.filter(block => block?.type === 'text').map(block => block.text).join('\n')
-        : ''
-    if (!row.isMeta && typed) {
-      const text = typed.trim()
-      if (text && !text.startsWith('<')) {
-        transcript.prompts++
-        if (!transcript.firstPrompt) transcript.firstPrompt = text.slice(0, 200)
-        transcript.lastPrompt = text.slice(0, 2000)
-        transcript.lastPromptAt = time
-      }
+    const text = typedPromptOf(row)
+    if (text) {
+      transcript.prompts++
+      if (!transcript.firstPrompt) transcript.firstPrompt = text.slice(0, 200)
+      transcript.lastPrompt = text.slice(0, 2000)
+      transcript.lastPromptAt = time
     }
     return
   }
   if (row.type !== 'assistant' || !message) return
   if (time) transcript.activeMinutes.add(Math.floor(time / 60000))
-  if (!row.isSidechain && !transcript.isSubagent && Array.isArray(message.content)) {
-    const reply = message.content
-      .filter(block => block?.type === 'text' && block.text)
-      .map(block => block.text)
-      .join('\n')
-      .trim()
+  if (!row.isSidechain && !transcript.isSubagent) {
+    const reply = replyOf(row)
     if (reply) {
       transcript.lastReply = reply.slice(0, 6000)
       transcript.lastReplyAt = time

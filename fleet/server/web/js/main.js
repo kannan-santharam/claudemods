@@ -15,6 +15,7 @@ import { office, startOffice } from './office/index.js'
 import { refreshLive, refreshReport } from './refresh.js'
 import { initReportControls } from './reports/controls.js'
 import { focusTab, loadOptions } from './sessions/actions.js'
+import { initConversation } from './sessions/conversation.js'
 import { initSessionEvents } from './sessions/events.js'
 import { initKeyboard } from './sessions/keyboard.js'
 import { initLayout } from './sessions/layout.js'
@@ -29,6 +30,7 @@ import { initTooltip } from './tooltip.js'
 initTheme()
 initLayout()
 initSessionEvents()
+initConversation(renderLive)
 initKeyboard()
 initNewSessionDialog()
 initResumeDialog()

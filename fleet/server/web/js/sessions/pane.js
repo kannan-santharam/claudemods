@@ -2,23 +2,26 @@
 // details or screen below.
 
 import { $ } from '../core/dom.js'
-import { escapeHtml, formatCost, formatTokens, markdown, shortModel, timeAgo } from '../core/format.js'
+import { escapeHtml, formatCost, formatTokens, shortModel, timeAgo } from '../core/format.js'
 import { modelOptions } from '../core/models.js'
 import { fieldValue, state } from '../core/state.js'
 import { permissionCard, questionCard } from './ask-cards.js'
+import { conversationHtml, messageBubble } from './conversation.js'
 import { screenHtml } from './screen.js'
 import { lastDelivery, statusPill } from './tree.js'
 
-// The last exchange as a chat: your prompt on the right, Claude's reply on the
-// left, in the order they happened, and a typing bubble while it works.
+// The conversation as a chat, read from the transcript as it is scrolled; until
+// that arrives, the last exchange the live view carries. Then a typing bubble
+// while it works, and any question it is waiting on.
 function chatThread(session, id) {
-  const messages = []
-  if (session.lastPrompt) messages.push({ from: 'you', at: session.lastPromptAt, html: escapeHtml(session.lastPrompt) })
-  if (session.lastReply) messages.push({ from: 'claude', at: session.lastReplyAt, html: markdown(session.lastReply) })
-  messages.sort((first, second) => (first.at || 0) - (second.at || 0))
-  const bubbles = messages.map(message => message.from === 'you'
-    ? `<div class="msg you"><div class="bubble">${message.html}</div><div class="stamp">You${message.at ? ' · ' + timeAgo(message.at) + ' ago' : ''}</div></div>`
-    : `<div class="msg claude"><span class="avatar" aria-hidden="true">C</span><div><div class="bubble md" data-reply="${id}">${message.html}</div><div class="stamp">Claude${message.at ? ' · ' + timeAgo(message.at) + ' ago' : ''}</div></div></div>`)
+  const lastExchange = () => {
+    const messages = []
+    if (session.lastPrompt) messages.push({ from: 'you', at: session.lastPromptAt, text: session.lastPrompt })
+    if (session.lastReply) messages.push({ from: 'claude', at: session.lastReplyAt, text: session.lastReply })
+    messages.sort((first, second) => (first.at || 0) - (second.at || 0))
+    return messages.map(message => messageBubble(message, session.sessionId)).join('')
+  }
+  const bubbles = [conversationHtml(session, id) ?? lastExchange()].filter(Boolean)
   if (session.status === 'busy') bubbles.push('<div class="msg claude"><span class="avatar" aria-hidden="true">C</span><div class="bubble typing" aria-label="Claude is working"><i></i><i></i><i></i></div></div>')
   const asks = session.asks || []
   for (const ask of asks) bubbles.push(`<div class="msg claude"><span class="avatar" aria-hidden="true">C</span><div class="ask-card">${ask.kind === 'question' ? questionCard(ask) : permissionCard(ask)}</div></div>`)
