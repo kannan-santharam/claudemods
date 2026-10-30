@@ -24,11 +24,18 @@
 .bubble.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); animation: typing 1.2s infinite; }
 .bubble.typing i:nth-child(2) { animation-delay: .15s; }
 .bubble.typing i:nth-child(3) { animation-delay: .3s; }
-/* The working bubble with a sentence: small dots before what Claude is doing. */
-.bubble.typing.doing { align-items: center; gap: 8px; padding: 8px 13px; white-space: normal; color: var(--text-secondary); font-size: 13px; }
-.bubble.typing.doing .dots { display: inline-flex; gap: 3px; flex: none; }
-.bubble.typing.doing .dots i { width: 5px; height: 5px; }
-.bubble.typing.doing .since { flex: none; font-size: 11px; color: var(--text-muted); }
+/* The live status while a session works: a spinner and a small line of text
+   with a light sweeping across it, set under the replies and not in a bubble. */
+.live-status { display: flex; align-items: center; gap: 8px; margin-left: 34px; min-width: 0; font-size: 12px; line-height: 1.4; }
+.live-status .spinner { flex: none; width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--accent) 25%, transparent); border-top-color: var(--accent); animation: live-spin 900ms linear infinite; }
+.live-status .what { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: transparent; background: linear-gradient(90deg, var(--text-muted) 35%, var(--text-primary) 50%, var(--text-muted) 65%) 0 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; animation: live-shimmer 1800ms linear infinite; }
+.live-status .since { flex: none; font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+@keyframes live-spin { to { transform: rotate(360deg); } }
+@keyframes live-shimmer { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .live-status .spinner { animation: none; }
+  .live-status .what { animation: none; color: var(--text-secondary); background: none; }
+}
 @keyframes typing { 0%, 60%, 100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .bubble.typing i { animation: none; } }
 .msg.claude .bubble.asking { background: var(--critical-soft); color: var(--critical); box-shadow: none; }

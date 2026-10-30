@@ -104,15 +104,22 @@ async function loadActivity(sessionId) {
   } catch {}
 }
 
-// The working bubble: what Claude is doing, in its own words where it gave
-// some, and for how long; the typing dots alone until there is something to say.
-export function workingBubble(session) {
+// The loader while it works: what Claude is doing, in its own words where it
+// gave some, and for how long, as a small shimmering status line rather than a
+// bubble, so it reads as live and not as a reply. The typing dots alone until
+// there is something to say.
+const SHIMMER_MS = 1800
+const SPIN_MS = 900
+export function workingStatus(session) {
   if (Date.now() - (activityReads[session.sessionId] || 0) >= ACTIVITY_EVERY_MS) loadActivity(session.sessionId)
   const activity = state.activity[session.sessionId]
   const dots = '<i></i><i></i><i></i>'
   if (!activity?.text) return `<div class="msg claude"><span class="avatar" aria-hidden="true">C</span><div class="bubble typing" aria-label="Claude is working">${dots}</div></div>`
   const since = activity.at ? `<span class="since">${timeAgo(activity.at)}</span>` : ''
-  return `<div class="msg claude"><span class="avatar" aria-hidden="true">C</span><div class="bubble typing doing" role="status"><span class="dots" aria-hidden="true">${dots}</span><span class="what">${escapeHtml(activity.text)}</span>${since}</div></div>`
+  // The pane is drawn again every two seconds; starting each animation part
+  // way through keeps it moving smoothly instead of jumping back to the start.
+  const phase = period => `animation-delay: -${Date.now() % period}ms`
+  return `<div class="live-status" role="status" aria-live="polite"><span class="spinner" style="${phase(SPIN_MS)}" aria-hidden="true"></span><span class="what" style="${phase(SHIMMER_MS)}">${escapeHtml(activity.text)}</span>${since}</div>`
 }
 
 export function initConversation(renderLive) {

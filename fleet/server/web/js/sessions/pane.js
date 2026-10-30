@@ -6,7 +6,7 @@ import { escapeHtml, formatCost, formatTokens, shortModel, timeAgo } from '../co
 import { modelOptions } from '../core/models.js'
 import { fieldValue, state } from '../core/state.js'
 import { permissionCard, questionCard } from './ask-cards.js'
-import { conversationHtml, messageBubble, workingBubble } from './conversation.js'
+import { conversationHtml, messageBubble, workingStatus } from './conversation.js'
 import { screenHtml } from './screen.js'
 import { lastDelivery, statusPill } from './tree.js'
 
@@ -22,7 +22,7 @@ function chatThread(session, id) {
     return messages.map(message => messageBubble(message, session.sessionId)).join('')
   }
   const bubbles = [conversationHtml(session, id) ?? lastExchange()].filter(Boolean)
-  if (session.status === 'busy') bubbles.push(workingBubble(session))
+  if (session.status === 'busy') bubbles.push(workingStatus(session))
   const asks = session.asks || []
   for (const ask of asks) bubbles.push(`<div class="msg claude"><span class="avatar" aria-hidden="true">C</span><div class="ask-card">${ask.kind === 'question' ? questionCard(ask) : permissionCard(ask)}</div></div>`)
   if (session.status === 'waiting' && !asks.length) bubbles.push(`<div class="msg claude"><span class="avatar" aria-hidden="true">C</span><div class="bubble asking">Waiting for you${session.waitingFor ? ': ' + escapeHtml(session.waitingFor) : ''}${session.hidden ? '. Open Screen below to see what it shows.' : ''}</div></div>`)
