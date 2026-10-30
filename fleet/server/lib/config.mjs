@@ -18,6 +18,8 @@ export function loadConfig() {
   const expand = entry => String(entry).replace(/^~(?=\/|$)/, HOME).replace(/\/+$/, '')
   settings.excludedRoots = (Array.isArray(config.excludePaths) ? config.excludePaths : []).map(expand).filter(Boolean)
   settings.newSessionRoot = expand(config.newSessionRoot || DEFAULT_CONFIG.newSessionRoot)
+  // Prices are read from Anthropic's pricing page once a day unless this is false.
+  settings.livePricing = config.livePricing !== false
   for (const sessionId of [...live.keys()]) if (isExcludedPath(live.get(sessionId).cwd)) live.delete(sessionId)
 }
 

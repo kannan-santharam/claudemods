@@ -5,6 +5,11 @@ import { $ } from './core/dom.js'
 import { escapeHtml, fillLevel, formatCost, formatTokens, rangeName, timeAgo } from './core/format.js'
 import { state } from './core/state.js'
 
+// Where the cost estimate's prices came from, for the cost tile's tooltip.
+function pricingNote(pricing) {
+  if (pricing?.source === 'live') return `Prices from Anthropic's pricing page, read ${timeAgo(pricing.fetchedAt)} ago, applied to each response as the API bills it`
+  return "Prices from Fleet's bundled copy of Anthropic's pricing page, applied to each response as the API bills it"
+}
 // Time left in a usage window: "resets in 2h 14m", or a day and time when days away.
 export function resetsIn(resetsAt) {
   const resetTime = Date.parse(resetsAt)
@@ -45,7 +50,7 @@ export function renderTiles() {
     <div class="tile"><div class="label">Tokens · ${rangeName(state.range)}</div><div class="value">${formatTokens(rangeTokens)}</div>
       <div class="sub">${cachePercent}% read from cache</div></div>
     <div class="tile"><div class="label">Est. cost · ${rangeName(state.range)}</div><div class="value">${formatCost(totals?.cost)}</div>
-      <div class="sub">Today ${formatCost(totals?.today.cost)} · API list prices</div></div>
+      <div class="sub" title="${escapeHtml(pricingNote(state.report?.pricing))}">Today ${formatCost(totals?.today.cost)} · API list prices</div></div>
     <div class="tile"><div class="label">Avg context fill</div><div class="value">${averageFill}%</div>
       <div class="sub">${hot ? hot + ' session' + (hot > 1 ? 's' : '') + ' above 70%' : 'All below 70%'}</div></div>
     <div class="tile"><div class="label">Plan usage</div>${limitHtml}</div>`

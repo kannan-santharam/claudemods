@@ -12,7 +12,7 @@ import { DEFAULT_PRICING } from './constants.mjs'
 export const secrets = { token: '', browserSecret: '' }
 
 // What pricing.json and config.json say, reloaded when either file changes.
-export const settings = { pricing: DEFAULT_PRICING, excludedRoots: [], newSessionRoot: '' }
+export const settings = { pricing: DEFAULT_PRICING, livePricing: true, excludedRoots: [], newSessionRoot: '' }
 
 export const live = new Map() // sessionId -> session row
 export const heartbeats = new Map() // sessionId -> heartbeat
