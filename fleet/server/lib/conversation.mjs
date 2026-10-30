@@ -1,9 +1,11 @@
 // A session's conversation, read on demand straight from its transcript: the
-// person's prompts and Claude's replies, newest first, a page at a time. Nothing
-// is kept between requests; the cursor is a byte offset into the file.
+// person's prompts and Claude's replies, newest first, a page at a time, and a
+// sentence on what it is doing now. Nothing is kept between requests; the
+// cursor is a byte offset into the file.
 
 import fsp from 'node:fs/promises'
 import { mainTranscriptOf } from './live-view.mjs'
+import { toolStarts } from './state.mjs'
 import { replyOf, typedPromptOf } from './transcripts.mjs'
 
 const CHUNK_BYTES = 256 * 1024
@@ -116,6 +118,90 @@ export async function readConversation(sessionId, before, limit) {
     return { messages, before: nextBefore, hasMore: !reachedStart && nextBefore > 0 }
   } catch {
     return empty
+  } finally {
+    await handle?.close()
+  }
+}
+
+// What a working session is doing right now, as a sentence a person can read,
+// taken from the newest row of its transcript: Claude's own short progress
+// line, the description it gave a command, or the file, search or helper a
+// tool call names. Never the command itself.
+const ACTIVITY_TAIL_BYTES = 512 * 1024
+const ACTIVITY_CHARS = 140
+const fileName = filePath => String(filePath || '').split('/').filter(Boolean).pop() || ''
+const quoted = text => `“${String(text).replace(/\s+/g, ' ').slice(0, 60)}”`
+const sentenceCase = text => text.charAt(0).toUpperCase() + text.slice(1)
+
+export function toolActivity(block) {
+  const input = block.input || {}
+  const name = String(block.name || '')
+  switch (name) {
+    case 'Bash': return input.description || ''
+    case 'Read': return input.file_path ? `Reading ${fileName(input.file_path)}` : ''
+    case 'Edit': case 'MultiEdit': case 'NotebookEdit': return input.file_path || input.notebook_path ? `Editing ${fileName(input.file_path || input.notebook_path)}` : ''
+    case 'Write': return input.file_path ? `Writing ${fileName(input.file_path)}` : ''
+    case 'Grep': return input.pattern ? `Searching the code for ${quoted(input.pattern)}` : ''
+    case 'Glob': return input.pattern ? `Looking for files matching ${quoted(input.pattern)}` : ''
+    case 'WebSearch': return input.query ? `Searching the web for ${quoted(input.query)}` : ''
+    case 'WebFetch': try { return `Reading ${new URL(input.url).hostname}` } catch { return '' }
+    case 'Agent': case 'Task': return input.description ? `Helper: ${input.description}` : ''
+    case 'Skill': return input.skill ? `Using the ${input.skill} skill` : ''
+    case 'TodoWrite': return input.activeForm || (input.todos || []).find(todo => todo.status === 'in_progress')?.activeForm || ''
+    default: {
+      if (input.description) return String(input.description)
+      // An MCP tool is named mcp__<server>__<tool>: "Using linear: save issue".
+      const [, server, tool] = name.match(/^mcp__([^_]+(?:_[^_]+)*?)__(.+)$/) || []
+      return server ? `Using ${server.replace(/^claude_ai_/, '').replace(/_/g, ' ')}: ${tool.replace(/_/g, ' ')}` : name ? `Using ${name}` : ''
+    }
+  }
+}
+
+// A tool the session's mod reported starting, as a sentence. The mod sends only
+// the fields toolActivity reads.
+export function noteToolStart(sessionId, tool, input) {
+  const text = toolActivity({ name: tool, input: input && typeof input === 'object' ? input : {} })
+  if (text) toolStarts.set(sessionId, { text: sentenceCase(text.replace(/\s+/g, ' ').trim()).slice(0, ACTIVITY_CHARS), at: Date.now() })
+}
+
+// The newer of what the mod reported and what the transcript shows; a prompt
+// newer than both means the turn has only just begun.
+export async function readActivity(sessionId) {
+  const fromTranscript = await transcriptActivity(sessionId)
+  const fromMod = toolStarts.get(sessionId)
+  return fromMod && fromMod.at > fromTranscript.at ? fromMod : fromTranscript
+}
+
+async function transcriptActivity(sessionId) {
+  const transcript = /^[\w-]{1,100}$/.test(sessionId) ? mainTranscriptOf(sessionId) : null
+  if (!transcript) return { text: '', at: 0 }
+  let handle
+  try {
+    handle = await fsp.open(transcript.filePath, 'r')
+    const { size } = await handle.stat()
+    const start = Math.max(0, size - ACTIVITY_TAIL_BYTES)
+    const tail = Buffer.alloc(size - start)
+    await handle.read(tail, 0, tail.length, start)
+    const lines = tail.toString('utf8').split('\n')
+    if (start > 0) lines.shift()
+    for (let index = lines.length - 1; index >= 0; index--) {
+      const line = lines[index]
+      if (!line.includes('"type":"assistant"') && !line.includes('"type":"user"')) continue
+      let row
+      try { row = JSON.parse(line) } catch { continue }
+      if (row.isSidechain) continue
+      const at = row.timestamp ? Date.parse(row.timestamp) : 0
+      // A new prompt with nothing after it yet: nothing to say beyond working.
+      if (row.type === 'user') { if (typedPromptOf(row)) return { text: '', at }; continue }
+      const blocks = Array.isArray(row.message?.content) ? row.message.content : []
+      for (const block of blocks.slice().reverse()) {
+        const found = block?.type === 'tool_use' ? toolActivity(block) : block?.type === 'text' ? String(block.text || '').trim().split('\n')[0] : ''
+        if (found) return { text: sentenceCase(found.replace(/\s+/g, ' ').trim()).slice(0, ACTIVITY_CHARS), at }
+      }
+    }
+    return { text: '', at: 0 }
+  } catch {
+    return { text: '', at: 0 }
   } finally {
     await handle?.close()
   }

@@ -23,6 +23,7 @@
 
 import type { EngineInterface, HookOf, MatchedHook } from 'claude-code'
 
+import { reportToolStart } from './activity'
 import { callServer } from './server'
 
 const DECLINED = 'Declined from the Fleet dashboard.'
@@ -147,6 +148,9 @@ export const askPermissionOnDashboard: HookOf<'tool.check'> = async ($, event, n
 // tool.call around every tool: the permission dialog runs inside `next`, so a
 // card tool.check posted for this call races it here.
 export const racePermissionDialog: HookOf<'tool.call'> = async ($, event, next) => {
+  // The engine takes one catch-all tool.call hook, so this one also tells the
+  // dashboard which tool is starting, for the sentence the chat shows.
+  reportToolStart($, event)
   const toolUseId = event.tool_use_id
   if (!toolUseId || event.tool === 'AskUserQuestion' || callsAwaitingCard.has(toolUseId)) return next(event)
   let handCard: (askId: string | undefined) => void = () => {}

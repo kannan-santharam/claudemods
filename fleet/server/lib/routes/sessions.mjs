@@ -2,6 +2,7 @@
 // start, resume, end, attach, /model /rename /compact, folders and history.
 
 import { isExcludedPath } from '../config.mjs'
+import { noteToolStart } from '../conversation.mjs'
 import { endSession } from '../end-sessions.mjs'
 import { browse } from '../folder-browser.mjs'
 import { attachHidden } from '../hidden-sessions.mjs'
@@ -36,6 +37,12 @@ export const postRoutes = {
       turns: typeof body.turns === 'number' ? body.turns : null,
       rateLimits: Array.isArray(body.rateLimits) ? body.rateLimits.slice(0, 5) : [],
     })
+    return send(response, 200, { ok: true })
+  },
+  // The tool a session's mod has just started, for the sentence its chat shows.
+  '/api/activity': ({ response, body }) => {
+    if (typeof body.sessionId !== 'string' || typeof body.tool !== 'string') return send(response, 400, { error: 'sessionId' })
+    noteToolStart(body.sessionId, body.tool.slice(0, 100), body.input)
     return send(response, 200, { ok: true })
   },
   '/api/focus': async ({ response, body }) => send(response, 200, await focusTab(String(body.sessionId || ''))),

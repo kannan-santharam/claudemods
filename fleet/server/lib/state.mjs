@@ -16,6 +16,7 @@ export const settings = { pricing: DEFAULT_PRICING, excludedRoots: [], newSessio
 
 export const live = new Map() // sessionId -> session row
 export const heartbeats = new Map() // sessionId -> heartbeat
+export const toolStarts = new Map() // sessionId -> { text, at }, the tool it started last
 export const branchCache = new Map() // cwd -> { at, branch }
 export const lastStatus = new Map() // sessionId -> status
 export const registryState = {

@@ -9,7 +9,7 @@ import { DAY_MS, HEARTBEAT_FRESH_MS, HISTORY_DAYS, REGISTRY_DIR, STATUS_LOG_FILE
 import { sweepAsks } from './asks.mjs'
 import { isExcludedPath } from './config.mjs'
 import { rememberClosed } from './recently-closed.mjs'
-import { branchCache, heartbeats, lastStatus, live, metaCache, registryState, transcripts } from './state.mjs'
+import { branchCache, heartbeats, lastStatus, live, metaCache, registryState, toolStarts, transcripts } from './state.mjs'
 import { baseName, run, writePrivate } from './utils.mjs'
 
 // A readable name for the process that started a session: a shell says nothing,
@@ -165,6 +165,7 @@ export async function scanRegistry() {
     rememberClosed(live.get(sessionId), now)
     live.delete(sessionId)
     heartbeats.delete(sessionId)
+    toolStarts.delete(sessionId)
     recordStatus({ t: now, sessionId, name: '', status: 'ended' })
     lastStatus.delete(sessionId)
   }
