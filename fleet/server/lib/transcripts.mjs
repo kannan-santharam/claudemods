@@ -4,7 +4,7 @@
 
 import fsp from 'node:fs/promises'
 import path from 'node:path'
-import { DAY_MS, HISTORY_DAYS, PROJECTS_DIR } from './constants.mjs'
+import { DAY_MS, PROJECTS_DIR, TRANSCRIPT_DAYS } from './constants.mjs'
 import { isExcludedProjectDir } from './config.mjs'
 import { baseModel, emptyTokens } from './pricing.mjs'
 import { transcripts, transcriptScan } from './state.mjs'
@@ -258,7 +258,7 @@ export async function scanTranscripts() {
   if (transcriptScan.isScanning) return
   transcriptScan.isScanning = true
   try {
-    const cutoff = Date.now() - HISTORY_DAYS * DAY_MS
+    const cutoff = Date.now() - TRANSCRIPT_DAYS * DAY_MS
     const listed = new Set()
     for (const { full, size, mtimeMs } of await listTranscripts(PROJECTS_DIR, cutoff)) {
       if (isExcludedProjectDir(path.relative(PROJECTS_DIR, full).split(path.sep)[0], full)) {

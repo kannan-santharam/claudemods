@@ -49,3 +49,8 @@ export function duration(milliseconds) {
 export function shortModel(model) {
   return String(model || '—').replace(/^claude-/, '').replace(/-(\d)-(\d)$/, ' $1.$2').replace(/-(\d)$/, ' $1')
 }
+
+// The report ranges as the tiles and panel hints name them.
+const RANGE_NAMES = { today: 'today', '7d': '7 days', '30d': '30 days' }
+export const rangeName = range => RANGE_NAMES[range] || RANGE_NAMES.today
+export const rangeHint = range => range === 'today' ? 'today' : 'last ' + rangeName(range)

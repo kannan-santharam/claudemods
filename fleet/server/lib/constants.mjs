@@ -27,7 +27,11 @@ export const WEB_DIR = path.join(SERVER_DIR, 'web')
 
 export const REGISTRY_POLL_MS = 2000
 export const TRANSCRIPT_POLL_MS = 15000
+// The status log feeds the 24-hour timeline; transcripts feed the reports, whose
+// longest range is the last 30 days.
 export const HISTORY_DAYS = 8
+export const TRANSCRIPT_DAYS = 31
+export const REPORT_RANGES = { today: 1, '7d': 7, '30d': 30 }
 export const HEARTBEAT_FRESH_MS = 15000
 export const IDLE_EXIT_MS = 60 * 60 * 1000
 export const ACTIVITY_GAP_MIN = 2

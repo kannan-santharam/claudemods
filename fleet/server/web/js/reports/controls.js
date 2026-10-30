@@ -1,4 +1,4 @@
-// The report range (Today or 7 days) and the cost or tokens measure.
+// The report range (Today, 7 days or 30 days) and the cost or tokens measure.
 
 import { state } from '../core/state.js'
 import { refreshReport } from '../refresh.js'

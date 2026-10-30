@@ -80,7 +80,7 @@ The first time you click **Open tab**, start a session or send a message to an o
 
 ### What it reads, runs and sends
 
-- Reads `~/.claude/sessions`, the transcripts under `~/.claude/projects` (the last 8 days), `ps` and `git` in each session's folder.
+- Reads `~/.claude/sessions`, the transcripts under `~/.claude/projects` (the last 31 days), `ps` and `git` in each session's folder.
 - Runs `osascript` to bring a tab to the front, type a message into an older session's tab, open a new Terminal or iTerm2 tab (or window) for a session you start or resume, and close a session's tab after it ends; `claude` to start or resume a session, and `claude --bg`, `claude logs`, `claude attach` and `claude stop` for hidden ones; and sends a session `SIGTERM` (or `SIGKILL` if you force it) when you end it from the dashboard.
 - Reads the output file of a session's background shells (under the temporary folder Claude Code writes them to) to show their last line.
 - Typing into a tab only happens while that session is idle with Claude in the foreground, never into a plain shell.

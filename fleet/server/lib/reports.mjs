@@ -1,7 +1,7 @@
 // Per-session summaries built from the transcript tallies, and the Reports tab:
 // usage by day and model, projects, tools and the activity timeline.
 
-import { ACTIVITY_GAP_MIN, DAY_MS } from './constants.mjs'
+import { ACTIVITY_GAP_MIN, DAY_MS, REPORT_RANGES } from './constants.mjs'
 import { includedTranscripts } from './config.mjs'
 import { addTokens, costOf, emptyTokens } from './pricing.mjs'
 import { live, registryState, settings, transcriptScan } from './state.mjs'
@@ -122,14 +122,15 @@ function statusSegments(sessionId, since, now) {
 
 export function buildReport(range) {
   const now = Date.now()
-  const days = range === 'today' ? 1 : 7
+  const days = REPORT_RANGES[range]
   const since = now - days * DAY_MS
   const startOfToday = new Date(new Date().setHours(0, 0, 0, 0)).getTime()
   const sinceDay = range === 'today' ? dayKey(now) : dayKey(since + DAY_MS)
   const summaries = sessionSummaries(sinceDay)
 
+  // The chart shows a bar per day: a week for Today and 7 days, a month for 30 days.
   const dayList = []
-  for (let offset = 6; offset >= 0; offset--) dayList.push(dayKey(now - offset * DAY_MS))
+  for (let offset = Math.max(days, 7) - 1; offset >= 0; offset--) dayList.push(dayKey(now - offset * DAY_MS))
   const perDay = Object.fromEntries(dayList.map(day => [day, {}]))
   const totals = { tokens: emptyTokens(), cost: 0, today: { tokens: emptyTokens(), cost: 0 } }
   const projects = {}
