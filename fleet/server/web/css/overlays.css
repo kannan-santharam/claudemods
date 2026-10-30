@@ -11,12 +11,15 @@
 .feed .msg { color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .overlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter: blur(3px); }
 .overlay[hidden] { display: none; }
-.dialog { width: min(420px, 100%); background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 22px 22px 18px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+.dialog { width: min(420px, 100%); background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 22px 22px 18px; box-shadow: 0 20px 60px rgba(0,0,0,.25); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow: auto; }
 .dialog h3 { margin: 10px 0 6px; font-size: 16px; }
 .dialog p { margin: 0 0 18px; color: var(--text-secondary); font-size: 13.5px; }
 .dialog-icon { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: var(--critical-soft); color: var(--critical); }
 .dialog-icon.ok { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good-text); }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+/* A tall dialog scrolls inside the window, and its buttons stay pinned to the
+   bottom edge so the main action is always in reach. */
+.dialog-actions { position: sticky; bottom: -18px; margin-bottom: -18px; padding: 10px 0 18px; background: var(--surface-1); }
 .dialog.wide { width: min(480px, 100%); }
 .dialog.wider { width: min(680px, 100%); }
 .field-row { display: grid; grid-template-columns: 1fr; gap: 12px; }
@@ -59,6 +62,13 @@
 .history .meta { font-size: 12px; color: var(--text-muted); text-align: right; white-space: nowrap; }
 .history .snippet { grid-column: 1 / -1; font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .history .empty { padding: 28px 0; }
+/* On a short window the lists give up height first, so the Resume dialog's
+   folder picker, list and buttons fit without much scrolling. */
+@media (max-height: 860px) {
+  .history { max-height: 200px; }
+  .history.closed { max-height: 150px; }
+  .picker .list { max-height: 130px; }
+}
 .field { display: grid; gap: 5px; margin-bottom: 12px; font-size: 12.5px; color: var(--text-secondary); }
 .field select, .field input, .control select, .control input { font: inherit; font-size: 13.5px; color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; outline: none; }
 .field select:focus, .field input:focus, .control select:focus, .control input:focus { border-color: var(--accent); background: var(--surface-1); }
