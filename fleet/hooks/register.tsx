@@ -4,7 +4,7 @@
 
 import type { Register } from 'claude-code'
 
-import { askPermissionOnDashboard, askQuestionOnDashboard, racePermissionDialog } from './lib/asks'
+import { askPermissionOnDashboard, askQuestionOnDashboard, postCardWhenDialogOpens, racePermissionDialog } from './lib/asks'
 import { runFleetCommand } from './lib/commands'
 import { isThisSessionExcluded } from './lib/excluded'
 import { INBOX_POLL_MS, deliverInbox } from './lib/messages'
@@ -65,6 +65,8 @@ export const register: Register = on => {
   on('tool.call', racePermissionDialog)
 
   on('tool.call', { tool: 'AskUserQuestion' }, askQuestionOnDashboard)
+
+  on('classic.PermissionRequest', postCardWhenDialogOpens)
 
   // Answered here, not passed on: the engine sees this hook answer its own command.
   on('command.run', { command: 'fleet' }, async ($, event) => runFleetCommand($, event))

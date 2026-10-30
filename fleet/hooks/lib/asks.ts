@@ -19,7 +19,9 @@
 // - Answered in the terminal, the card is cancelled: for a question as soon as
 //   the dialog closes; for a permission prompt by the server, which sees the
 //   dialog leave the screen, or by this hook once the call ends.
-// In auto mode the classifier settles asks itself, so those are left to it.
+// In auto mode the classifier settles most asks itself, and those never reach the
+// page. One it hands to the person opens the same dialog, announced by the
+// PermissionRequest event, and that is when its card goes up.
 
 import type { EngineInterface, HookOf, MatchedHook } from 'claude-code'
 
@@ -34,6 +36,10 @@ const allowedForSession = new Set<string>() // tools allowed for the rest of the
 // on the page: tool.check hands the card's id to the tool.call around it, which
 // races the page against the dialog. Keyed by tool_use_id.
 const callsAwaitingCard = new Map<string, (askId: string | undefined) => void>()
+
+// Asks auto mode's classifier is deciding, by tool_use_id: their card waits for
+// the dialog, which opens only if the classifier hands the ask to the person.
+const asksBeforeClassifier = new Map<string, { tool: string; input: unknown; reason: string }>()
 
 // Whether this session runs hidden, and the permission mode its last prompt was
 // sent under (the server reads it from the transcript).
@@ -129,7 +135,12 @@ export const askPermissionOnDashboard: HookOf<'tool.check'> = async ($, event, n
   if (!event.agentId && allowedForSession.has(event.tool)) return { ...verdict, decision: 'allow' as const }
   const handCardToCall = callsAwaitingCard.get(event.tool_use_id)
   const mode = await sessionMode($)
-  if (mode.permissionMode === 'auto') return verdict
+  if (mode.permissionMode === 'auto') {
+    if (!mode.hidden && handCardToCall && event.tool !== 'AskUserQuestion') {
+      asksBeforeClassifier.set(event.tool_use_id, { tool: event.tool, input: event.input, reason: verdict.reason ?? '' })
+    }
+    return verdict
+  }
   if (mode.hidden) {
     if (event.agentId) return verdict
     const answer = await askDashboard($, { kind: 'permission', toolName: event.tool, toolInput: event.input, reason: verdict.reason ?? '' }, next.signal)
@@ -168,8 +179,27 @@ export const racePermissionDialog: HookOf<'tool.call'> = async ($, event, next) 
     return await terminal
   } finally {
     callsAwaitingCard.delete(toolUseId)
+    asksBeforeClassifier.delete(toolUseId)
     handCard(undefined)
   }
+}
+
+// classic.PermissionRequest: a permission dialog is opening. In auto mode this
+// is the classifier handing an ask to the person, so its card goes up now, beside
+// the dialog. The event names the tool and its arguments but not the call, so the
+// call is found by those, or by the tool alone when only one such call waits.
+export const postCardWhenDialogOpens: HookOf<'classic.PermissionRequest'> = async ($, event, next) => {
+  const waiting = [...asksBeforeClassifier].filter(([, ask]) => ask.tool === event.tool_name)
+  const sameInput = JSON.stringify(event.tool_input)
+  const match = waiting.find(([, ask]) => JSON.stringify(ask.input) === sameInput) ?? (waiting.length === 1 ? waiting[0] : undefined)
+  if (match) {
+    const [toolUseId, ask] = match
+    asksBeforeClassifier.delete(toolUseId)
+    const handCardToCall = callsAwaitingCard.get(toolUseId)
+    // Posted on the side: the dialog opens without waiting for the page.
+    if (handCardToCall) void postAsk($, { kind: 'permission', inTerminal: true, toolName: ask.tool, toolInput: ask.input, reason: ask.reason }).then(handCardToCall)
+  }
+  return next(event)
 }
 
 // tool.call of AskUserQuestion: a question Claude puts to you, answered on the

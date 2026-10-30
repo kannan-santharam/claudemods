@@ -79,10 +79,22 @@ test('a permission prompt answered in the terminal takes its card off the page',
 test('an ask auto mode settles never reaches the page', async ($, on) => {
   const calls: string[] = []
   dashboard(on, undefined, calls, 'auto')
-  on('tool.check', () => ({ decision: 'ask' }))
-  on('classic.PermissionRequest', () => ({ decision: { behavior: 'allow' } }))
+  // The classifier's allow, which opens no dialog.
+  on('tool.check', () => ({ decision: 'allow' }))
+  on('tool.call', () => ({ result: { stdout: '', stderr: '', interrupted: false } }))
   await $.tool.call({ tool: 'Bash', command: 'true' }).catch(() => undefined)
   expect(calls.includes('/api/asks')).toBe(false)
+})
+
+test('an ask auto mode hands to the person gets its card when the dialog opens', async ($, on) => {
+  const calls: string[] = []
+  dashboard(on, { allow: false, remember: false, message: 'Not from auto mode' }, calls, 'auto')
+  on('tool.check', () => ({ decision: 'ask' }))
+  // The dialog the classifier opened, which nobody at the terminal answers.
+  on('classic.PermissionRequest', () => new Promise(() => {}))
+  const outcome: any = await $.tool.call({ tool: 'Bash', command: 'true' }).catch((error: unknown) => ({ rejected: String(error) }))
+  expect(JSON.stringify(outcome)).toContain('Not from auto mode')
+  expect(calls.includes('/api/asks')).toBe(true)
 })
 
 test('a hidden session asks the page alone, as before', async ($, on) => {
