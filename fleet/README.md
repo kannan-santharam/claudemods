@@ -18,6 +18,16 @@ Mac only, needs Node.js 18 or newer.
    /fleet web
    ```
 
+## Updating
+
+To get the latest version, run this in a terminal, then open a new Claude session:
+
+```
+claude plugin update fleet@claudemods
+```
+
+The first session on the new version replaces the old dashboard server by itself.
+
 ## Demo
 
 Fleet in one minute, with sound and subtitles.
