@@ -12,7 +12,7 @@ export const clock = time => new Date(time).toLocaleTimeString([], { hour: '2-di
 // headings, bullets and http(s) links.
 function inlineMarkdown(text) {
   return text
-    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+    .replace(/`([^`\n]+)`/g, '<code data-copy-inline title="Click to copy">$1</code>')
     .replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>')
     .replace(/__([^_\n]+?)__/g, '<strong>$1</strong>')
     .replace(/(^|[^\w*])\*([^*\s][^*\n]*?)\*(?!\w)/g, '$1<em>$2</em>')
@@ -21,7 +21,8 @@ function inlineMarkdown(text) {
 export function markdown(source) {
   const parts = escapeHtml(source).split(/^```[^\n]*\n?/m)
   return parts.map((part, index) => {
-    if (index % 2 === 1) return `<pre><code>${part.replace(/\n$/, '')}</code></pre>`
+    // A code block carries a Copy button: the chat redraws every 2 seconds, which makes dragging over it hard.
+    if (index % 2 === 1) return `<div class="code-block"><button type="button" class="code-copy" data-copy-code>Copy</button><pre><code>${part.replace(/\n$/, '')}</code></pre></div>`
     return part.split('\n').map(line => {
       // Inline code is set aside first so a * inside it is never read as emphasis.
       const heading = line.match(/^(#{1,6})\s+(.*)$/)

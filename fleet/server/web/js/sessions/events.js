@@ -53,6 +53,18 @@ export function initSessionEvents() {
     if (focusId) return focusTab(focusId)
     const attachId = dataAttribute('attach')
     if (attachId) return attachHidden(attachId)
+    // Code in a reply: the block's Copy button, or a click on inline code. Read
+    // from the page, so the text is exactly what is shown.
+    const codeCopy = target.closest('[data-copy-code]')
+    const inlineCode = codeCopy ? null : target.closest('code[data-copy-inline]')
+    if (codeCopy || inlineCode) {
+      const code = codeCopy ? codeCopy.parentElement.querySelector('pre').textContent : inlineCode.textContent
+      navigator.clipboard?.writeText(code).then(() => {
+        if (codeCopy) codeCopy.textContent = 'Copied ✓'
+        toast(codeCopy ? 'Copied the code' : `Copied ${code.length > 60 ? code.slice(0, 60) + '…' : code}`)
+      }, () => toast('Could not copy: select it and press ⌘C'))
+      return
+    }
     const copyText = dataAttribute('copy')
     if (copyText) { navigator.clipboard?.writeText(copyText).then(() => toast(`Copied ${copyText}`), () => toast(copyText)); return }
     if (sendId) return sendFromDraft(sendId)
