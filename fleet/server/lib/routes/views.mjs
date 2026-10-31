@@ -1,8 +1,8 @@
 // What the page reads: the live view, reports, recently closed sessions, a
-// session's conversation and what it is doing, and a hidden session's screen.
+// session's conversation and a hidden session's screen.
 
 import { REPORT_RANGES } from '../constants.mjs'
-import { readActivity, readConversation } from '../conversation.mjs'
+import { readConversation } from '../conversation.mjs'
 import { send } from '../http.mjs'
 import { liveView } from '../live-view.mjs'
 import { listRecentlyClosed } from '../recently-closed.mjs'
@@ -20,6 +20,5 @@ export const getRoutes = {
     const { searchParams } = url
     return send(response, 200, await readConversation(searchParams.get('sessionId') || '', searchParams.get('before'), searchParams.get('limit')))
   },
-  '/api/activity': async ({ response, url }) => send(response, 200, await readActivity(url.searchParams.get('sessionId') || '')),
   '/api/screen': async ({ response, url }) => send(response, 200, await hiddenScreen(url.searchParams.get('sessionId') || '')),
 }

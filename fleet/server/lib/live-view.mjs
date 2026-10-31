@@ -4,9 +4,11 @@
 import fs from 'node:fs'
 import { DAY_MS, HEARTBEAT_FRESH_MS } from './constants.mjs'
 import { pendingAsks } from './asks.mjs'
+import { activityOf } from './conversation.mjs'
 import { baseModel } from './pricing.mjs'
 import { displayName, sessionSummaries } from './reports.mjs'
 import { deliveries, heartbeats, live, liveCache, metaCache, transcriptIndexes, transcripts, transcriptScan } from './state.mjs'
+import { mainTranscriptOf } from './transcripts.mjs'
 import { baseName, dayKey, stripAnsi } from './utils.mjs'
 
 // Without the session's own report, the window is the model's: these run with 1M tokens.
@@ -37,16 +39,6 @@ function subagentTranscriptsOf(sessionId) {
 
 // The background shells a session still has running, with the end of their output.
 const SHELL_OUTPUT = /^\/(private\/)?tmp\/claude-[^/]+\/.+\/tasks\/[\w-]+\.output$/
-
-// A session's own transcript (not its subagents'), from an index rebuilt once per scan.
-export function mainTranscriptOf(sessionId) {
-  if (transcriptIndexes.mainFileIndex.version !== transcriptScan.version) {
-    const bySession = new Map()
-    for (const transcript of transcripts.values()) if (!transcript.isSubagent) bySession.set(transcript.sessionId, transcript)
-    transcriptIndexes.mainFileIndex = { version: transcriptScan.version, bySession }
-  }
-  return transcriptIndexes.mainFileIndex.bySession.get(sessionId)
-}
 
 export function shellsOf(session, now) {
   const transcript = mainTranscriptOf(session.sessionId)
@@ -179,6 +171,8 @@ function buildLiveView() {
       subagents: subagentsOf(session.sessionId, now),
       shells: shellsOf(session, now),
       asks: pendingAsks(session.sessionId),
+      // What it is doing, in a sentence, while it works.
+      activity: session.status === 'busy' ? activityOf(session.sessionId) : null,
       subagentCount: summary?.subagents || 0,
     }
   })

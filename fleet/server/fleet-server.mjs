@@ -31,7 +31,8 @@ import { loadStatusLog, pruneMemory, scanRegistry } from './lib/registry.mjs'
 import { loadSecret } from './lib/security.mjs'
 import { handleRequest } from './lib/server.mjs'
 import { live, registryState, secrets } from './lib/state.mjs'
-import { repriceTranscripts, scanTranscripts } from './lib/transcripts.mjs'
+import { readLiveTranscripts, repriceTranscripts, scanTranscripts } from './lib/transcripts.mjs'
+import { readActivities } from './lib/conversation.mjs'
 import { deliverTyped } from './lib/typing.mjs'
 import { log } from './lib/utils.mjs'
 import { loadWebFiles } from './lib/web-files.mjs'
@@ -70,6 +71,9 @@ server.listen(PORT, '127.0.0.1', () => {
     try {
       await scanRegistry()
       pruneMemory()
+      // Running sessions' new lines and what the working ones are doing, without waiting for the full scan.
+      await readLiveTranscripts([...live.keys()])
+      await readActivities([...live.values()].filter(session => session.status === 'busy').map(session => session.sessionId))
     } catch (error) {
       log('registry scan failed', error.message)
     }

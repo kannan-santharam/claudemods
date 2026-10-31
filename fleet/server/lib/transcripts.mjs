@@ -7,7 +7,7 @@ import path from 'node:path'
 import { DAY_MS, PROJECTS_DIR, TRANSCRIPT_DAYS } from './constants.mjs'
 import { isExcludedProjectDir } from './config.mjs'
 import { addTokens, baseModel, emptyTokens, responseCost } from './pricing.mjs'
-import { transcripts, transcriptScan } from './state.mjs'
+import { liveCache, transcriptIndexes, transcripts, transcriptScan } from './state.mjs'
 import { baseName, dayKey, log } from './utils.mjs'
 
 // What the person typed in a user row: a string, or the text blocks of one sent
@@ -298,6 +298,44 @@ export async function scanTranscripts() {
     for (const full of [...transcripts.keys()]) if (!listed.has(full)) transcripts.delete(full)
     transcriptScan.version++
     transcriptScan.readyAt = Date.now()
+  } finally {
+    transcriptScan.isScanning = false
+  }
+}
+
+// A session's own transcript (not its subagents'), from an index rebuilt once per scan.
+export function mainTranscriptOf(sessionId) {
+  if (transcriptIndexes.mainFileIndex.version !== transcriptScan.version) {
+    const bySession = new Map()
+    for (const transcript of transcripts.values()) if (!transcript.isSubagent) bySession.set(transcript.sessionId, transcript)
+    transcriptIndexes.mainFileIndex = { version: transcriptScan.version, bySession }
+  }
+  return transcriptIndexes.mainFileIndex.bySession.get(sessionId)
+}
+
+// The fast lane, every 2 seconds with the registry scan: a running session's
+// own transcript gets its new lines read now rather than at the next full scan
+// (every 15 seconds, which also finds new files). It shares the full scan's
+// lock, so no line is read twice.
+export async function readLiveTranscripts(sessionIds) {
+  if (transcriptScan.isScanning) return
+  transcriptScan.isScanning = true
+  try {
+    let hasNewLines = false
+    for (const sessionId of sessionIds) {
+      const transcript = mainTranscriptOf(sessionId)
+      if (!transcript) continue
+      try {
+        const { size } = await fsp.stat(transcript.filePath)
+        if (size <= transcript.offset) continue
+        await readNewLines(transcript, size)
+        transcript.size = size
+        hasNewLines = true
+      } catch (error) {
+        log('live read failed', transcript.filePath, error.message)
+      }
+    }
+    if (hasNewLines) liveCache.at = 0
   } finally {
     transcriptScan.isScanning = false
   }
