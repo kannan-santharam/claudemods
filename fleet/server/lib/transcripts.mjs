@@ -4,9 +4,9 @@
 
 import fsp from 'node:fs/promises'
 import path from 'node:path'
-import { DAY_MS, HISTORY_DAYS, PROJECTS_DIR } from './constants.mjs'
+import { DAY_MS, PROJECTS_DIR, TRANSCRIPT_DAYS } from './constants.mjs'
 import { isExcludedProjectDir } from './config.mjs'
-import { baseModel, emptyTokens } from './pricing.mjs'
+import { addTokens, baseModel, emptyTokens, responseCost } from './pricing.mjs'
 import { transcripts, transcriptScan } from './state.mjs'
 import { baseName, dayKey, log } from './utils.mjs'
 
@@ -188,15 +188,27 @@ function ingestRow(transcript, row) {
   const creation = usage.cache_creation || {}
   const write1h = creation.ephemeral_1h_input_tokens || 0
   const write5m = creation.ephemeral_5m_input_tokens ?? Math.max(0, (usage.cache_creation_input_tokens || 0) - write1h)
+  const response = {
+    input: usage.input_tokens || 0,
+    output: usage.output_tokens || 0,
+    cacheRead: usage.cache_read_input_tokens || 0,
+    cacheWrite5m: write5m,
+    cacheWrite1h: write1h,
+    messages: 1,
+    webSearches: usage.server_tool_use?.web_search_requests || 0,
+  }
+  // Priced now, response by response: the price can depend on this response's own prompt length, speed and region.
+  response.cost = responseCost(model, usage, response)
   const day = dayKey(time || Date.now())
   const byModel = (transcript.usage[day] ||= {})
-  const tokens = (byModel[model] ||= emptyTokens())
-  tokens.input += usage.input_tokens || 0
-  tokens.output += usage.output_tokens || 0
-  tokens.cacheRead += usage.cache_read_input_tokens || 0
-  tokens.cacheWrite5m += write5m
-  tokens.cacheWrite1h += write1h
-  tokens.messages += 1
+  addTokens((byModel[model] ||= emptyTokens()), response)
+}
+
+// New prices: every transcript is read again from the start on the next scan,
+// so each response is priced with them.
+export function repriceTranscripts() {
+  transcripts.clear()
+  transcriptScan.version++
 }
 
 async function readNewLines(transcript, size) {
@@ -258,7 +270,7 @@ export async function scanTranscripts() {
   if (transcriptScan.isScanning) return
   transcriptScan.isScanning = true
   try {
-    const cutoff = Date.now() - HISTORY_DAYS * DAY_MS
+    const cutoff = Date.now() - TRANSCRIPT_DAYS * DAY_MS
     const listed = new Set()
     for (const { full, size, mtimeMs } of await listTranscripts(PROJECTS_DIR, cutoff)) {
       if (isExcludedProjectDir(path.relative(PROJECTS_DIR, full).split(path.sep)[0], full)) {

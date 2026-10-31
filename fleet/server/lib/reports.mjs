@@ -1,9 +1,9 @@
 // Per-session summaries built from the transcript tallies, and the Reports tab:
 // usage by day and model, projects, tools and the activity timeline.
 
-import { ACTIVITY_GAP_MIN, DAY_MS } from './constants.mjs'
+import { ACTIVITY_GAP_MIN, DAY_MS, REPORT_RANGES } from './constants.mjs'
 import { includedTranscripts } from './config.mjs'
-import { addTokens, costOf, emptyTokens } from './pricing.mjs'
+import { addTokens, emptyTokens } from './pricing.mjs'
 import { live, registryState, settings, transcriptScan } from './state.mjs'
 import { baseName, dayKey } from './utils.mjs'
 
@@ -75,7 +75,7 @@ export function sessionSummaries(sinceDay) {
         addTokens(summary.tokens, tokens)
         const modelTokens = (summary.byModel[model] ||= emptyTokens())
         addTokens(modelTokens, tokens)
-        summary.cost += costOf(model, tokens)
+        summary.cost += tokens.cost
       }
     }
     for (const [tool, count] of Object.entries(transcript.tools)) summary.tools[tool] = (summary.tools[tool] || 0) + count
@@ -122,14 +122,15 @@ function statusSegments(sessionId, since, now) {
 
 export function buildReport(range) {
   const now = Date.now()
-  const days = range === 'today' ? 1 : 7
+  const days = REPORT_RANGES[range]
   const since = now - days * DAY_MS
   const startOfToday = new Date(new Date().setHours(0, 0, 0, 0)).getTime()
   const sinceDay = range === 'today' ? dayKey(now) : dayKey(since + DAY_MS)
   const summaries = sessionSummaries(sinceDay)
 
+  // The chart shows a bar per day: a week for Today and 7 days, a month for 30 days.
   const dayList = []
-  for (let offset = 6; offset >= 0; offset--) dayList.push(dayKey(now - offset * DAY_MS))
+  for (let offset = Math.max(days, 7) - 1; offset >= 0; offset--) dayList.push(dayKey(now - offset * DAY_MS))
   const perDay = Object.fromEntries(dayList.map(day => [day, {}]))
   const totals = { tokens: emptyTokens(), cost: 0, today: { tokens: emptyTokens(), cost: 0 } }
   const projects = {}
@@ -141,12 +142,12 @@ export function buildReport(range) {
         if (perDay[day]) {
           const entry = (perDay[day][model] ||= { tokens: 0, cost: 0 })
           entry.tokens += tokens.input + tokens.output + tokens.cacheRead + tokens.cacheWrite5m + tokens.cacheWrite1h
-          entry.cost += costOf(model, tokens)
+          entry.cost += tokens.cost
           models.add(model)
         }
         if (day === dayKey(now)) {
           addTokens(totals.today.tokens, tokens)
-          totals.today.cost += costOf(model, tokens)
+          totals.today.cost += tokens.cost
         }
       }
     }
@@ -225,6 +226,8 @@ export function buildReport(range) {
     days: dayList.map(day => ({ day, byModel: perDay[day] })),
     models: [...models].sort(),
     pricingModels: Object.keys(settings.pricing.models || {}),
+    // Where the prices came from: the pricing page (and when), or the bundled table.
+    pricing: { source: settings.pricing.source, fetchedAt: settings.pricing.fetchedAt },
     projects: Object.values(projects)
       .map(project => ({
         ...project,

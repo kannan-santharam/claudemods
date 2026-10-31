@@ -79,6 +79,11 @@
 .md code { font-family: var(--mono); font-size: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
 .md pre { margin: 6px 0; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; overflow-x: auto; white-space: pre; }
 .md pre code { background: none; border: 0; padding: 0; }
+.code-block { position: relative; }
+.code-block pre { padding-right: 64px; }
+.code-copy { position: absolute; top: 5px; right: 5px; font: inherit; font-size: 11px; line-height: 1.6; padding: 0 8px; border-radius: 5px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); cursor: pointer; }
+.code-copy:hover { color: var(--text-primary); border-color: var(--text-muted); }
+.md code[data-copy-inline] { cursor: copy; }
 .md strong { font-weight: 650; }
 .md .md-h { font-weight: 650; display: inline-block; margin-top: 2px; }
 .md a { color: var(--accent); }

@@ -184,6 +184,8 @@ function buildLiveView() {
   })
   // A question waiting on the page is the session waiting for you, whatever its registry says.
   for (const session of sessions) {
+    // Auto mode's ask shows once its dialog is open: the session waits, or its tab shows it.
+    session.asks = session.asks.filter(ask => !ask.whenWaiting || ask.wasSeen || session.status === 'waiting')
     if (!session.asks.length) continue
     session.status = 'waiting'
     session.waitingFor = session.asks[0].kind === 'question' ? 'a question for you' : `permission for ${session.asks[0].toolName}`

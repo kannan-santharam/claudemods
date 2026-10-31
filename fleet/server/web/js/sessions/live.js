@@ -95,12 +95,15 @@ export function renderLive() {
   // The List view's column, in its own order, which j and k then follow.
   const navOrder = renderNav(sessions, byId, childrenOf, belowOf)
   if (isListView()) state.visible = navOrder
-  renderPane(byId, belowOf)
+  // Text being selected in the pane is left alone: redrawing it would drop the selection mid-drag.
+  const selection = window.getSelection()
+  const isSelectingInPane = Boolean(selection && !selection.isCollapsed && pane.contains(selection.anchorNode))
+  if (!isSelectingInPane) renderPane(byId, belowOf)
   renderSide(byId)
   // Size the split before scrolling the chat, so it lands on the newest message.
   fitSplit()
   const newBody = pane.querySelector('.pane-body')
-  if (newBody) newBody.scrollTop = paneScroll && !paneScroll.atEnd ? paneScroll.top : newBody.scrollHeight
+  if (newBody && !isSelectingInPane) newBody.scrollTop = paneScroll && !paneScroll.atEnd ? paneScroll.top : newBody.scrollHeight
   for (const reply of area.querySelectorAll('[data-reply]')) if (replyScroll.has(reply.dataset.reply)) reply.scrollTop = replyScroll.get(reply.dataset.reply)
   if (keyAttr) {
     const field = area.querySelector(`[data-${keyAttr}="${CSS.escape(keyValue)}"]`)

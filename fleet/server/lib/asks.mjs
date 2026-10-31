@@ -44,6 +44,8 @@ export function createAsk(body) {
     sessionId,
     kind,
     inTerminal: body.inTerminal === true,
+    // Auto mode's: shown only once the session is seen waiting on its dialog.
+    whenWaiting: body.whenWaiting === true,
     toolName: cleanLine(body.toolName, 80) || (kind === 'question' ? 'AskUserQuestion' : 'a tool'),
     toolInput: kind === 'permission' ? boundedInput(body.toolInput) : {},
     suggestions: Array.isArray(body.suggestions) ? boundedInput(body.suggestions.slice(0, 6)) : [],
@@ -60,7 +62,7 @@ export function pendingAsks(sessionId) {
   const found = []
   for (const ask of asks.values()) {
     if (ask.sessionId !== sessionId || ask.answer) continue
-    found.push({ id: ask.id, kind: ask.kind, inTerminal: ask.inTerminal, toolName: ask.toolName, toolInput: ask.toolInput, reason: ask.reason, questions: ask.questions, createdAt: ask.createdAt })
+    found.push({ id: ask.id, kind: ask.kind, inTerminal: ask.inTerminal, whenWaiting: ask.whenWaiting, wasSeen: Boolean(ask.wasSeen), toolName: ask.toolName, toolInput: ask.toolInput, reason: ask.reason, questions: ask.questions, createdAt: ask.createdAt })
   }
   return found.sort((left, right) => left.createdAt - right.createdAt)
 }

@@ -2,7 +2,7 @@
 // projects and the messages sent from here.
 
 import { $ } from '../core/dom.js'
-import { clock, duration, escapeHtml, fillLevel, formatCost, formatTokens, timeAgo } from '../core/format.js'
+import { clock, duration, escapeHtml, fillLevel, formatCost, formatTokens, rangeHint, timeAgo } from '../core/format.js'
 import { state } from '../core/state.js'
 
 export function renderContextBars() {
@@ -55,7 +55,7 @@ export function renderProjects() {
       <td class="hide-sm"><div class="tags">${project.branches.slice(0, 2).map(branch => `<span class="tag">${escapeHtml(branch)}</span>`).join('')}${project.branches.length > 2 ? `<span class="tag">+${project.branches.length - 2}</span>` : ''}</div></td>
       <td class="hide-sm"><div class="tags">${project.topTools.slice(0, 3).map(usage => `<span class="tag">${escapeHtml(usage.tool)} ${usage.count}</span>`).join('')}</div></td>
     </tr>`).join('') || '<tr><td colspan="9" class="empty">No activity in this range</td></tr>'
-  document.querySelectorAll('[data-range-hint]').forEach(hint => { hint.textContent = state.range === 'today' ? 'today' : 'last 7 days' })
+  document.querySelectorAll('[data-range-hint]').forEach(hint => { hint.textContent = rangeHint(state.range) })
 }
 
 export function renderFeed() {

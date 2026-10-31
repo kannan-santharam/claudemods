@@ -5,8 +5,9 @@
 // down, heartbeats its own session into it, and delivers what the page sends.
 //
 // Reads: ~/.claude/sessions/*.json (who is running), `ps` (alive, which tty),
-// git (branch), ~/.claude/projects/**/*.jsonl (tokens, tools, activity).
-// Writes: ~/.claude/fleet/ (token, pricing, status log, server log).
+// git (branch), ~/.claude/projects/**/*.jsonl (tokens, tools, activity), and
+// once a day Anthropic's public pricing page (unless livePricing is false).
+// Writes: ~/.claude/fleet/ (token, prices read, status log, server log).
 
 import fs from 'node:fs'
 import http from 'node:http'
@@ -18,18 +19,19 @@ import {
   DATA_DIR,
   IDLE_EXIT_MS,
   PORT,
-  PRICING_FILE,
+  PRICING_CHECK_MS,
+  PRICING_OVERRIDES_FILE,
   REGISTRY_POLL_MS,
   TOKEN_FILE,
   TRANSCRIPT_POLL_MS,
 } from './lib/constants.mjs'
-import { loadPricing } from './lib/pricing.mjs'
+import { loadPricing, refreshLivePricing } from './lib/pricing.mjs'
 import { loadRecentlyClosed } from './lib/recently-closed.mjs'
 import { loadStatusLog, pruneMemory, scanRegistry } from './lib/registry.mjs'
 import { loadSecret } from './lib/security.mjs'
 import { handleRequest } from './lib/server.mjs'
 import { live, registryState, secrets } from './lib/state.mjs'
-import { scanTranscripts } from './lib/transcripts.mjs'
+import { repriceTranscripts, scanTranscripts } from './lib/transcripts.mjs'
 import { deliverTyped } from './lib/typing.mjs'
 import { log } from './lib/utils.mjs'
 import { loadWebFiles } from './lib/web-files.mjs'
@@ -52,13 +54,14 @@ fs.chmodSync(DATA_DIR, 0o700)
 secrets.token = loadSecret(TOKEN_FILE)
 secrets.browserSecret = loadSecret(BROWSER_SECRET_FILE)
 server.listen(PORT, '127.0.0.1', () => {
-  for (const file of ['server.log', 'status-log.jsonl', 'config.json', 'pricing.json']) {
+  for (const file of ['server.log', 'status-log.jsonl', 'config.json', 'pricing-live.json', 'pricing-overrides.json']) {
     try {
       fs.chmodSync(path.join(DATA_DIR, file), 0o600)
     } catch {}
   }
-  loadPricing()
+  // The config first: it says whether prices are read from the pricing page.
   loadConfig()
+  loadPricing()
   loadStatusLog()
   loadRecentlyClosed()
   log(`fleet listening on http://127.0.0.1:${PORT} (pid ${process.pid})`)
@@ -96,6 +99,14 @@ server.listen(PORT, '127.0.0.1', () => {
   registryLoop()
   transcriptLoop()
   typingLoop()
-  fs.watchFile(PRICING_FILE, { interval: 5000 }, loadPricing)
+  // Prices: the pricing page is read when the table in use is a day old, checked hourly.
+  const pricingLoop = async () => {
+    await refreshLivePricing(repriceTranscripts)
+    setTimeout(pricingLoop, PRICING_CHECK_MS)
+  }
+  pricingLoop()
+  fs.watchFile(PRICING_OVERRIDES_FILE, { interval: 5000 }, () => {
+    if (loadPricing()) repriceTranscripts()
+  })
   fs.watchFile(CONFIG_FILE, { interval: 5000 }, loadConfig)
 })

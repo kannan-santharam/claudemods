@@ -19,7 +19,10 @@
 // - Answered in the terminal, the card is cancelled: for a question as soon as
 //   the dialog closes; for a permission prompt by the server, which sees the
 //   dialog leave the screen, or by this hook once the call ends.
-// In auto mode the classifier settles asks itself, so those are left to it.
+// In auto mode the classifier settles most asks itself. Its card is posted at
+// once but held back by the server until the session is seen waiting on that
+// dialog, which happens only when the classifier hands the ask to the person; an
+// ask it settles ends the call, and the card with it, without ever showing.
 
 import type { EngineInterface, HookOf, MatchedHook } from 'claude-code'
 
@@ -129,7 +132,8 @@ export const askPermissionOnDashboard: HookOf<'tool.check'> = async ($, event, n
   if (!event.agentId && allowedForSession.has(event.tool)) return { ...verdict, decision: 'allow' as const }
   const handCardToCall = callsAwaitingCard.get(event.tool_use_id)
   const mode = await sessionMode($)
-  if (mode.permissionMode === 'auto') return verdict
+  const isAutoMode = mode.permissionMode === 'auto'
+  if (isAutoMode && mode.hidden) return verdict
   if (mode.hidden) {
     if (event.agentId) return verdict
     const answer = await askDashboard($, { kind: 'permission', toolName: event.tool, toolInput: event.input, reason: verdict.reason ?? '' }, next.signal)
@@ -141,7 +145,8 @@ export const askPermissionOnDashboard: HookOf<'tool.check'> = async ($, event, n
   }
   // A question's dialog is the question card's (askQuestionOnDashboard), not a permission.
   if (!handCardToCall || event.tool === 'AskUserQuestion') return verdict
-  handCardToCall(await postAsk($, { kind: 'permission', inTerminal: true, toolName: event.tool, toolInput: event.input, reason: verdict.reason ?? '' }))
+  // In auto mode the server shows it only once the session waits on the dialog.
+  handCardToCall(await postAsk($, { kind: 'permission', inTerminal: true, whenWaiting: isAutoMode, toolName: event.tool, toolInput: event.input, reason: verdict.reason ?? '' }))
   return verdict
 }
 

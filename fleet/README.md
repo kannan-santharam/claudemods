@@ -53,7 +53,7 @@ If you run Claude Code in many terminal tabs at once, Fleet gives you one place 
 - **Reports** in their own tab: estimated cost or tokens per day by model, a 24-hour activity timeline with the time each session waited for you, cost by project, top sessions, context fill, tool calls and a per-project table (sessions, prompts, commits, files edited, branches).
 - **Plan usage**: your 5-hour and weekly limits as Claude Code reports them, with the time left until each resets.
 
-Costs are an estimate at API list prices. On a Claude subscription they are not a bill; they show what the same traffic would cost on the API.
+Costs are an estimate at API list prices. On a Claude subscription they are not a bill; they show what the same traffic would cost on the API. Each response is priced on its own the way the API bills it, so Haiku 5.5's long-prompt prices, fast mode, US-only inference and web searches count where they apply. The prices come from Anthropic's public pricing page, which the server reads once a day; Fleet ships a copy for when it cannot.
 
 ## Requirements
 
@@ -80,7 +80,7 @@ The first time you click **Open tab**, start a session or send a message to an o
 
 ### What it reads, runs and sends
 
-- Reads `~/.claude/sessions`, the transcripts under `~/.claude/projects` (the last 8 days), `ps` and `git` in each session's folder.
+- Reads `~/.claude/sessions`, the transcripts under `~/.claude/projects` (the last 31 days), `ps` and `git` in each session's folder.
 - Runs `osascript` to bring a tab to the front, type a message into an older session's tab, open a new Terminal or iTerm2 tab (or window) for a session you start or resume, and close a session's tab after it ends; `claude` to start or resume a session, and `claude --bg`, `claude logs`, `claude attach` and `claude stop` for hidden ones; and sends a session `SIGTERM` (or `SIGKILL` if you force it) when you end it from the dashboard.
 - Reads the output file of a session's background shells (under the temporary folder Claude Code writes them to) to show their last line.
 - Typing into a tab only happens while that session is idle with Claude in the foreground, never into a plain shell.
@@ -101,7 +101,7 @@ The first time you click **Open tab**, start a session or send a message to an o
 
 To run a second dashboard beside the first, start the server with `FLEET_PORT` and `FLEET_DATA_DIR` set (for example `FLEET_PORT=8790 FLEET_DATA_DIR=~/.claude/fleet-preview node server/fleet-server.mjs`); the sessions only report to the one on 8770, and you sign in to the second by visiting `/auth?code=` with a code from its own `/api/login-code`.
 
-`~/.claude/fleet/pricing.json` holds the per-model prices used for the cost estimate, if you want to change them.
+To change a price, write `~/.claude/fleet/pricing-overrides.json`, for example `{ "models": { "claude-opus-5-5": { "input": 4, "output": 20 } } }`; what it names wins over the pricing page. To stop reading the pricing page, set `"livePricing": false` in `~/.claude/fleet/config.json`. (Older versions wrote `pricing.json`; it is no longer read.)
 
 ## Privacy and security
 
@@ -111,6 +111,7 @@ Everything stays on your machine. The server listens on 127.0.0.1 only and refus
 - The data folder `~/.claude/fleet` and every file in it are readable by you alone.
 - The page cannot be framed by another site, and actions need a header only the page sends.
 - The only network request the page makes is for Chart.js 4.4.1 from cdn.jsdelivr.net, checked against its integrity hash.
+- The only network request the server makes is a daily read of Anthropic's public pricing page (`platform.claude.com/docs/en/about-claude/pricing.md`), which sends nothing about you or your sessions; `"livePricing": false` in `config.json` turns it off.
 
 ## Layout
 

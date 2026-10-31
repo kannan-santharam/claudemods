@@ -6,7 +6,7 @@ const QUESTIONS = [{ question: 'Which colour?', header: 'Colour', multiSelect: f
 // page answers with, or undefined while nobody has answered there; a cancelled
 // card ends its long poll as the server does. `cancelled` settles once the card
 // is taken off, which happens after the call returns, without holding it up.
-function dashboard(on: any, answer: unknown, calls: string[], permissionMode = 'default', hidden = false) {
+function dashboard(on: any, answer: unknown, calls: string[], permissionMode = 'default', hidden = false, posted: any[] = []) {
   let endWait: (() => void) | undefined
   let markCancelled: () => void = () => {}
   const cancelled = new Promise<void>(resolve => { markCancelled = resolve })
@@ -18,7 +18,10 @@ function dashboard(on: any, answer: unknown, calls: string[], permissionMode = '
     calls.push(route)
     const reply = (body: unknown) => ({ value: { status: 200, ok: true, headers: {}, text: JSON.stringify(body) } })
     if (route === '/api/asks/mode') return reply({ hidden, permissionMode })
-    if (route === '/api/asks') return reply({ ok: true, id: 'ask-1', inTerminal: JSON.parse(event.init.body).inTerminal })
+    if (route === '/api/asks') {
+      posted.push(JSON.parse(event.init.body))
+      return reply({ ok: true, id: 'ask-1', inTerminal: JSON.parse(event.init.body).inTerminal })
+    }
     if (route === '/api/asks/cancel') {
       endWait?.()
       markCancelled()
@@ -79,10 +82,23 @@ test('a permission prompt answered in the terminal takes its card off the page',
 test('an ask auto mode settles never reaches the page', async ($, on) => {
   const calls: string[] = []
   dashboard(on, undefined, calls, 'auto')
-  on('tool.check', () => ({ decision: 'ask' }))
-  on('classic.PermissionRequest', () => ({ decision: { behavior: 'allow' } }))
+  // The classifier's allow, which opens no dialog.
+  on('tool.check', () => ({ decision: 'allow' }))
+  on('tool.call', () => ({ result: { stdout: '', stderr: '', interrupted: false } }))
   await $.tool.call({ tool: 'Bash', command: 'true' }).catch(() => undefined)
   expect(calls.includes('/api/asks')).toBe(false)
+})
+
+test('an ask auto mode hands to the person gets a card the server holds until the dialog opens', async ($, on) => {
+  const calls: string[] = []
+  const posted: any[] = []
+  dashboard(on, { allow: false, remember: false, message: 'Not from auto mode' }, calls, 'auto', false, posted)
+  on('tool.check', () => ({ decision: 'ask' }))
+  // The dialog the classifier opened, which nobody at the terminal answers.
+  on('classic.PermissionRequest', () => new Promise(() => {}))
+  const outcome: any = await $.tool.call({ tool: 'Bash', command: 'true' }).catch((error: unknown) => ({ rejected: String(error) }))
+  expect(JSON.stringify(outcome)).toContain('Not from auto mode')
+  expect(posted[0]?.whenWaiting).toBe(true)
 })
 
 test('a hidden session asks the page alone, as before', async ($, on) => {
