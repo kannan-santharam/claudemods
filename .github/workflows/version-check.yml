@@ -1,0 +1,19 @@
+name: Version bump
+
+# A change to a mod reaches people who installed it only with a higher version.
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Every changed mod raises its version
+        run: node .github/scripts/check-versions.mjs "${{ github.event.pull_request.base.sha }}"
