@@ -34,6 +34,11 @@ function hasNewReply(session) {
   // While it works, its replies are progress; the turn's end is what counts.
   return session.status !== 'busy' && replyAt > seenReplies[session.sessionId]
 }
+// Sessions that want you: waiting, or with a reply you have not opened. The
+// browser tab's title carries the count, so it shows from any other tab.
+export function attentionCount(sessions) {
+  return sessions.filter(session => session.status === 'waiting' || hasNewReply(session)).length
+}
 // How long ago it last did anything, to the minute, so the row is not redrawn every tick.
 const lastSeenAgo = session => (Date.now() - (session.lastActivityAt || 0) < 60_000 ? 'just now' : timeAgo(session.lastActivityAt) + ' ago')
 // The line under the folder: what it is doing while it works, what it needs while it waits.
