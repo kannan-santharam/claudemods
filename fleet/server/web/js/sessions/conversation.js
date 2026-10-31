@@ -1,7 +1,7 @@
 // A session's conversation in its pane, read from its transcript on demand: the
 // newest ten turns first, older ones as the chat is scrolled up, and while it
-// works, a sentence on what it is doing. What has been shown is held in this
-// page's memory only; nothing is saved anywhere.
+// works, the sentence the live view carries on what it is doing. What has been
+// shown is held in this page's memory only; nothing is saved anywhere.
 
 import { api } from '../core/api.js'
 import { escapeHtml, markdown, timeAgo } from '../core/format.js'
@@ -10,8 +10,6 @@ import { state } from '../core/state.js'
 const PAGE_SIZE = 10
 // Scrolled this close to the top, the chat fetches the page before.
 const LOAD_EDGE_PX = 120
-// What a working session is doing is read again this often while it is shown.
-const ACTIVITY_EVERY_MS = 2000
 // Set by initConversation: draws the Sessions tab again once a page arrives.
 let rerender = () => {}
 
@@ -91,35 +89,21 @@ export function conversationHtml(session, id) {
   return top + conversation.messages.map(message => messageBubble(message, session.sessionId + ':' + message.offset)).join('')
 }
 
-// What a working session is doing, read from its transcript while its chat is
-// open, at most every two seconds.
-const activityReads = {}
-async function loadActivity(sessionId) {
-  activityReads[sessionId] = Date.now()
-  try {
-    const result = await api('/api/activity?sessionId=' + encodeURIComponent(sessionId))
-    const previous = state.activity[sessionId]
-    state.activity[sessionId] = typeof result.text === 'string' ? { text: result.text, at: result.at || 0 } : null
-    if (previous?.text !== state.activity[sessionId]?.text) rerender()
-  } catch {}
-}
-
 // The loader while it works: what Claude is doing, in its own words where it
 // gave some, and for how long, as a small shimmering status line rather than a
 // bubble, so it reads as live and not as a reply. The typing dots alone until
 // there is something to say.
-const SHIMMER_MS = 1800
+export const SHIMMER_MS = 1800
 const SPIN_MS = 900
+// The page is drawn again every two seconds; starting an animation part way
+// through keeps it moving smoothly instead of jumping back to the start.
+export const animationPhase = period => `animation-delay: -${Date.now() % period}ms`
 export function workingStatus(session) {
-  if (Date.now() - (activityReads[session.sessionId] || 0) >= ACTIVITY_EVERY_MS) loadActivity(session.sessionId)
-  const activity = state.activity[session.sessionId]
+  const activity = session.activity
   const dots = '<i></i><i></i><i></i>'
   if (!activity?.text) return `<div class="msg claude"><span class="avatar" aria-hidden="true">C</span><div class="bubble typing" aria-label="Claude is working">${dots}</div></div>`
   const since = activity.at ? `<span class="since">${timeAgo(activity.at)}</span>` : ''
-  // The pane is drawn again every two seconds; starting each animation part
-  // way through keeps it moving smoothly instead of jumping back to the start.
-  const phase = period => `animation-delay: -${Date.now() % period}ms`
-  return `<div class="live-status" role="status" aria-live="polite"><span class="spinner" style="${phase(SPIN_MS)}" aria-hidden="true"></span><span class="what" style="${phase(SHIMMER_MS)}">${escapeHtml(activity.text)}</span>${since}</div>`
+  return `<div class="live-status" role="status" aria-live="polite"><span class="spinner" style="${animationPhase(SPIN_MS)}" aria-hidden="true"></span><span class="what" style="${animationPhase(SHIMMER_MS)}">${escapeHtml(activity.text)}</span>${since}</div>`
 }
 
 export function initConversation(renderLive) {

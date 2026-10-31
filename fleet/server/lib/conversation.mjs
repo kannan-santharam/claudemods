@@ -4,9 +4,8 @@
 // cursor is a byte offset into the file.
 
 import fsp from 'node:fs/promises'
-import { mainTranscriptOf } from './live-view.mjs'
 import { toolStarts } from './state.mjs'
-import { replyOf, typedPromptOf } from './transcripts.mjs'
+import { mainTranscriptOf, replyOf, typedPromptOf } from './transcripts.mjs'
 
 const CHUNK_BYTES = 256 * 1024
 // One request reads at most this much of a long transcript; the page then ends
@@ -164,12 +163,27 @@ export function noteToolStart(sessionId, tool, input) {
   if (text) toolStarts.set(sessionId, { text: sentenceCase(text.replace(/\s+/g, ' ').trim()).slice(0, ACTIVITY_CHARS), at: Date.now() })
 }
 
+// What each working session's transcript last showed, read again only when the
+// file has grown: sessionId -> { size, text, at }.
+const transcriptActivities = new Map()
+
+// Every 2 seconds with the registry scan, for the sessions at work.
+export async function readActivities(sessionIds) {
+  for (const sessionId of sessionIds) {
+    const transcript = mainTranscriptOf(sessionId)
+    if (!transcript || transcriptActivities.get(sessionId)?.size === transcript.size) continue
+    transcriptActivities.set(sessionId, { size: transcript.size, ...(await transcriptActivity(sessionId)) })
+  }
+  for (const sessionId of [...transcriptActivities.keys()]) if (!sessionIds.includes(sessionId)) transcriptActivities.delete(sessionId)
+}
+
 // The newer of what the mod reported and what the transcript shows; a prompt
 // newer than both means the turn has only just begun.
-export async function readActivity(sessionId) {
-  const fromTranscript = await transcriptActivity(sessionId)
+export function activityOf(sessionId) {
+  const fromTranscript = transcriptActivities.get(sessionId) || { text: '', at: 0 }
   const fromMod = toolStarts.get(sessionId)
-  return fromMod && fromMod.at > fromTranscript.at ? fromMod : fromTranscript
+  const newer = fromMod && fromMod.at > fromTranscript.at ? fromMod : fromTranscript
+  return newer.text ? { text: newer.text, at: newer.at } : null
 }
 
 async function transcriptActivity(sessionId) {

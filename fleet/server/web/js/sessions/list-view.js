@@ -5,6 +5,7 @@ import { $ } from '../core/dom.js'
 import { clock, escapeHtml, fillLevel, formatCost, formatTokens, shortModel, timeAgo } from '../core/format.js'
 import { MODEL_ALIASES, modelColor } from '../core/models.js'
 import { state } from '../core/state.js'
+import { remember, remembered } from '../core/storage.js'
 import { matchesFilter } from './filters.js'
 import { STATUS, byName } from './tree.js'
 
@@ -17,6 +18,34 @@ function navDot(session, below) {
   const isQuiet = session.status === 'idle' || session.status === 'shell'
   if (isQuiet && below && below.working + below.waiting) return `delegating ${below.waiting ? 'needs' : ''}`
   return { waiting: 'waiting', busy: 'busy', shell: 'shell' }[session.status] || ''
+}
+// A reply you have not opened yet: the newest reply time seen per session, in
+// this browser only. A session first met counts as read, so a first visit
+// lights nothing.
+const SEEN_KEY = 'fleet-seen-replies'
+const seenReplies = (() => { try { return JSON.parse(remembered(SEEN_KEY) || '{}') } catch { return {} } })()
+function hasNewReply(session) {
+  const replyAt = session.lastReplyAt || 0
+  const isOpen = state.open.has(session.sessionId)
+  if (!(session.sessionId in seenReplies) || isOpen) {
+    if (seenReplies[session.sessionId] !== replyAt) { seenReplies[session.sessionId] = replyAt; remember(SEEN_KEY, JSON.stringify(seenReplies)) }
+    return false
+  }
+  // While it works, its replies are progress; the turn's end is what counts.
+  return session.status !== 'busy' && replyAt > seenReplies[session.sessionId]
+}
+// Sessions that want you: waiting, or with a reply you have not opened. The
+// browser tab's title carries the count, so it shows from any other tab.
+export function attentionCount(sessions) {
+  return sessions.filter(session => session.status === 'waiting' || hasNewReply(session)).length
+}
+// How long ago it last did anything, to the minute, so the row is not redrawn every tick.
+const lastSeenAgo = session => (Date.now() - (session.lastActivityAt || 0) < 60_000 ? 'just now' : timeAgo(session.lastActivityAt) + ' ago')
+// The line under the folder: what it is doing while it works, what it needs while it waits.
+function navStatusLine(session) {
+  if (session.status === 'waiting') return `<div class="nav-state waiting">Waiting: ${escapeHtml(session.waitingFor || 'for you')}</div>`
+  if (session.status === 'busy' && session.activity?.text) return `<div class="nav-state" title="${escapeHtml(session.activity.text)}">${escapeHtml(session.activity.text)}</div>`
+  return ''
 }
 function navItem(session, depth, byId, belowOf) {
   const id = escapeHtml(session.sessionId)
@@ -38,11 +67,13 @@ function navItem(session, depth, byId, belowOf) {
   const isOpen = state.open.has(session.sessionId)
   const look = STATUS[session.status]?.label || session.status || ''
   return `<div class="nav-item ${isOpen ? 'selected' : ''} ${session.status === 'waiting' ? 'waiting' : ''} ${depth ? 'child' : ''}" data-id="${id}" role="option" aria-selected="${isOpen}">
+    ${hasNewReply(session) ? '<i class="nav-new" role="img" aria-label="New reply" title="A new reply you have not opened"></i>' : ''}
     <i class="nav-dot ${navDot(session, below)}" title="${escapeHtml(session.status === 'waiting' && session.waitingFor ? session.waitingFor : look)}"></i>
     <div class="nav-main">
       <div class="nav-line"><span class="nav-name" title="${escapeHtml(session.name)}">${escapeHtml(session.name)}</span><span class="chip"><i class="sw" style="background:${modelColor(session.model)}"></i>${escapeHtml(shortModel(session.model))}</span></div>
       <div class="nav-sub"><span class="folder" title="${escapeHtml(session.cwd || session.folder)}">${escapeHtml(session.folder)}</span>${badges}</div>
-      <div class="nav-ctx" data-tip="${formatTokens(session.contextTokens)} of ${formatTokens(session.contextWindow)} tokens"><div class="track"><b class="${fillLevel(session.contextPercent)}" style="width:${session.contextPercent}%"></b></div><span>${session.contextPercent}%</span></div>
+      ${navStatusLine(session)}
+      <div class="nav-ctx" data-tip="${formatTokens(session.contextTokens)} of ${formatTokens(session.contextWindow)} tokens"><div class="track"><b class="${fillLevel(session.contextPercent)}" style="width:${session.contextPercent}%"></b></div><span>${session.contextPercent}%</span>${session.status === 'busy' ? '' : `<span class="nav-ago">${lastSeenAgo(session)}</span>`}</div>
     </div>
     ${opener}
   </div>`

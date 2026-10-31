@@ -8,7 +8,7 @@ import { state } from '../core/state.js'
 import { renderBulkbar } from '../dialogs/end-session.js'
 import { matchesFilter, renderFilters } from './filters.js'
 import { fitSplit } from './layout.js'
-import { isListView, renderNav, renderSide } from './list-view.js'
+import { attentionCount, isListView, renderNav, renderSide } from './list-view.js'
 import { renderPane } from './pane.js'
 import { shellRows, subagentRows } from './table.js'
 import { byName, sessionTree, statusPill } from './tree.js'
@@ -94,6 +94,8 @@ export function renderLive() {
   body.innerHTML = rows.join('') || `<tr><td colspan="8" class="empty">${sessions.length ? 'No session matches.' : 'No Claude Code sessions are running.'}</td></tr>`
   // The List view's column, in its own order, which j and k then follow.
   const navOrder = renderNav(sessions, byId, childrenOf, belowOf)
+  const wanting = attentionCount(sessions)
+  document.title = wanting ? `(${wanting}) Fleet` : 'Fleet'
   if (isListView()) state.visible = navOrder
   // Text being selected in the pane is left alone: redrawing it would drop the selection mid-drag.
   const selection = window.getSelection()
