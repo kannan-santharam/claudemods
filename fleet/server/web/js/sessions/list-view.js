@@ -62,9 +62,10 @@ function navItem(session, depth, byId, belowOf) {
   const isOpen = state.open.has(session.sessionId)
   const look = STATUS[session.status]?.label || session.status || ''
   return `<div class="nav-item ${isOpen ? 'selected' : ''} ${session.status === 'waiting' ? 'waiting' : ''} ${depth ? 'child' : ''}" data-id="${id}" role="option" aria-selected="${isOpen}">
+    ${hasNewReply(session) ? '<i class="nav-new" role="img" aria-label="New reply" title="A new reply you have not opened"></i>' : ''}
     <i class="nav-dot ${navDot(session, below)}" title="${escapeHtml(session.status === 'waiting' && session.waitingFor ? session.waitingFor : look)}"></i>
     <div class="nav-main">
-      <div class="nav-line">${hasNewReply(session) ? '<i class="nav-new" title="A new reply you have not opened"></i>' : ''}<span class="nav-name" title="${escapeHtml(session.name)}">${escapeHtml(session.name)}</span><span class="chip"><i class="sw" style="background:${modelColor(session.model)}"></i>${escapeHtml(shortModel(session.model))}</span></div>
+      <div class="nav-line"><span class="nav-name" title="${escapeHtml(session.name)}">${escapeHtml(session.name)}</span><span class="chip"><i class="sw" style="background:${modelColor(session.model)}"></i>${escapeHtml(shortModel(session.model))}</span></div>
       <div class="nav-sub"><span class="folder" title="${escapeHtml(session.cwd || session.folder)}">${escapeHtml(session.folder)}</span>${badges}</div>
       ${navStatusLine(session)}
       <div class="nav-ctx" data-tip="${formatTokens(session.contextTokens)} of ${formatTokens(session.contextWindow)} tokens"><div class="track"><b class="${fillLevel(session.contextPercent)}" style="width:${session.contextPercent}%"></b></div><span>${session.contextPercent}%</span>${session.status === 'busy' ? '' : `<span class="nav-ago">${lastSeenAgo(session)}</span>`}</div>
