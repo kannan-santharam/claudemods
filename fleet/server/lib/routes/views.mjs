@@ -1,10 +1,11 @@
 // What the page reads: the live view, reports, recently closed sessions, a
-// session's conversation and a hidden session's screen.
+// session's conversation (or one of its subagents'), its subagents and a
+// hidden session's screen.
 
 import { REPORT_RANGES } from '../constants.mjs'
 import { readConversation } from '../conversation.mjs'
 import { send } from '../http.mjs'
-import { liveView } from '../live-view.mjs'
+import { listSubagents, liveView } from '../live-view.mjs'
 import { listRecentlyClosed } from '../recently-closed.mjs'
 import { buildReport } from '../reports.mjs'
 import { hiddenScreen } from '../screen.mjs'
@@ -18,7 +19,8 @@ export const getRoutes = {
   '/api/recently-closed': ({ response }) => send(response, 200, { sessions: listRecentlyClosed() }),
   '/api/conversation': async ({ response, url }) => {
     const { searchParams } = url
-    return send(response, 200, await readConversation(searchParams.get('sessionId') || '', searchParams.get('before'), searchParams.get('limit')))
+    return send(response, 200, await readConversation(searchParams.get('sessionId') || '', searchParams.get('before'), searchParams.get('limit'), searchParams.get('agentId') || ''))
   },
+  '/api/subagents': async ({ response, url }) => send(response, 200, { subagents: await listSubagents(url.searchParams.get('sessionId') || '') }),
   '/api/screen': async ({ response, url }) => send(response, 200, await hiddenScreen(url.searchParams.get('sessionId') || '')),
 }

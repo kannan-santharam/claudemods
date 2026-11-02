@@ -1,11 +1,12 @@
 // A session's conversation, read on demand straight from its transcript: the
 // person's prompts and Claude's replies, newest first, a page at a time, and a
-// sentence on what it is doing now. Nothing is kept between requests; the
+// sentence on what it is doing now. A subagent's reads the same way from its
+// own transcript: the task its session gave it, and its replies. Nothing is kept between requests; the
 // cursor is a byte offset into the file.
 
 import fsp from 'node:fs/promises'
 import { toolStarts } from './state.mjs'
-import { mainTranscriptOf, replyOf, typedPromptOf } from './transcripts.mjs'
+import { mainTranscriptOf, replyOf, subagentTranscriptOf, typedPromptOf } from './transcripts.mjs'
 
 const CHUNK_BYTES = 256 * 1024
 // One request reads at most this much of a long transcript; the page then ends
@@ -24,20 +25,25 @@ function clip(text, limit) {
 }
 
 // The message a transcript line holds, or nothing: rows Claude Code adds for
-// itself, tool traffic and subagents' rows are left out.
-function messageOf(line) {
+// itself, tool traffic and subagents' rows are left out. Every row of a
+// subagent's own transcript is a subagent's row, so there they count.
+function messageOf(line, isSubagent) {
   // Most lines are tool results and request records; skip them before parsing.
   if (!line.includes('"type":"user"') && !line.includes('"type":"assistant"')) return null
   let row
   try { row = JSON.parse(line) } catch { return null }
-  if (row.isSidechain) return null
+  if (row.isSidechain && !isSubagent) return null
   const at = row.timestamp ? Date.parse(row.timestamp) : 0
   if (row.type === 'user') {
     const text = typedPromptOf(row)
     return text ? { from: 'you', text, at } : null
   }
   if (row.type === 'assistant' && row.message?.model !== '<synthetic>') {
-    const text = replyOf(row)
+    // A subagent's final report is the message of its hand-back call.
+    const handback = isSubagent && Array.isArray(row.message?.content)
+      ? row.message.content.filter(block => block?.type === 'tool_use' && block.name === 'SubagentHandback').map(block => String(block.input?.message || '')).join('\n')
+      : ''
+    const text = [replyOf(row), handback].filter(Boolean).join('\n')
     return text ? { from: 'claude', text, at } : null
   }
   return null
@@ -60,9 +66,10 @@ function turnOf(rows) {
 // Up to `limit` whole turns that end before byte `before` (the file's end when
 // absent), read backwards in chunks. `before` in the answer is where the next
 // older page ends; `hasMore` is false once the start of the file is reached.
-export async function readConversation(sessionId, before, limit) {
+// With `agentId`, the conversation of that subagent of the session.
+export async function readConversation(sessionId, before, limit, agentId) {
   const empty = { messages: [], before: 0, hasMore: false }
-  const transcript = /^[\w-]{1,100}$/.test(sessionId) ? mainTranscriptOf(sessionId) : null
+  const transcript = agentId ? subagentTranscriptOf(sessionId, agentId) : /^[\w-]{1,100}$/.test(sessionId) ? mainTranscriptOf(sessionId) : null
   if (!transcript) return empty
   const pageSize = Math.min(Math.max(Number.parseInt(limit, 10) || PAGE_DEFAULT, 1), PAGE_MAX)
   let handle
@@ -93,7 +100,7 @@ export async function readConversation(sessionId, before, limit) {
       for (let index = joined.length - 1; index >= bodyStart - 1 && !isFull; index--) {
         if (index >= bodyStart && joined[index] !== 10) continue
         const lineStart = index + 1
-        const message = lineEnd > lineStart ? messageOf(joined.toString('utf8', lineStart, lineEnd)) : null
+        const message = lineEnd > lineStart ? messageOf(joined.toString('utf8', lineStart, lineEnd), transcript.isSubagent) : null
         lineEnd = index
         if (!message) continue
         message.offset = start + lineStart
@@ -146,6 +153,7 @@ export function toolActivity(block) {
     case 'WebFetch': try { return `Reading ${new URL(input.url).hostname}` } catch { return '' }
     case 'Agent': case 'Task': return input.description ? `Helper: ${input.description}` : ''
     case 'Skill': return input.skill ? `Using the ${input.skill} skill` : ''
+    case 'SubagentHandback': return 'Handing its report back'
     case 'TodoWrite': return input.activeForm || (input.todos || []).find(todo => todo.status === 'in_progress')?.activeForm || ''
     default: {
       if (input.description) return String(input.description)
@@ -172,7 +180,7 @@ export async function readActivities(sessionIds) {
   for (const sessionId of sessionIds) {
     const transcript = mainTranscriptOf(sessionId)
     if (!transcript || transcriptActivities.get(sessionId)?.size === transcript.size) continue
-    transcriptActivities.set(sessionId, { size: transcript.size, ...(await transcriptActivity(sessionId)) })
+    transcriptActivities.set(sessionId, { size: transcript.size, ...(await tailActivity(transcript)) })
   }
   for (const sessionId of [...transcriptActivities.keys()]) if (!sessionIds.includes(sessionId)) transcriptActivities.delete(sessionId)
 }
@@ -186,9 +194,13 @@ export function activityOf(sessionId) {
   return newer.text ? { text: newer.text, at: newer.at } : null
 }
 
-async function transcriptActivity(sessionId) {
-  const transcript = /^[\w-]{1,100}$/.test(sessionId) ? mainTranscriptOf(sessionId) : null
-  if (!transcript) return { text: '', at: 0 }
+// What a working subagent is doing, read when its session's subagents are shown.
+export async function subagentActivity(transcript) {
+  const found = await tailActivity(transcript)
+  return found.text ? found : null
+}
+
+async function tailActivity(transcript) {
   let handle
   try {
     handle = await fsp.open(transcript.filePath, 'r')
@@ -203,7 +215,7 @@ async function transcriptActivity(sessionId) {
       if (!line.includes('"type":"assistant"') && !line.includes('"type":"user"')) continue
       let row
       try { row = JSON.parse(line) } catch { continue }
-      if (row.isSidechain) continue
+      if (row.isSidechain && !transcript.isSubagent) continue
       const at = row.timestamp ? Date.parse(row.timestamp) : 0
       // A new prompt with nothing after it yet: nothing to say beyond working.
       if (row.type === 'user') { if (typedPromptOf(row)) return { text: '', at }; continue }

@@ -90,7 +90,7 @@ export function renderLive() {
   // A reply being read keeps its scroll position across the 2-second refresh, and so does the pane.
   const replyScroll = new Map([...area.querySelectorAll('[data-reply]')].map(reply => [reply.dataset.reply, reply.scrollTop]))
   const paneBody = pane.querySelector('.pane-body')
-  const paneScroll = paneBody && pane.dataset.session === [...state.open][0] ? { top: paneBody.scrollTop, atEnd: paneBody.scrollTop + paneBody.clientHeight >= paneBody.scrollHeight - 8 } : null
+  const paneScroll = paneBody && pane.dataset.session === [...state.open][0] ? { view: pane.dataset.view, top: paneBody.scrollTop, atEnd: paneBody.scrollTop + paneBody.clientHeight >= paneBody.scrollHeight - 8 } : null
   body.innerHTML = rows.join('') || `<tr><td colspan="8" class="empty">${sessions.length ? 'No session matches.' : 'No Claude Code sessions are running.'}</td></tr>`
   // The List view's column, in its own order, which j and k then follow.
   const navOrder = renderNav(sessions, byId, childrenOf, belowOf)
@@ -105,7 +105,9 @@ export function renderLive() {
   // Size the split before scrolling the chat, so it lands on the newest message.
   fitSplit()
   const newBody = pane.querySelector('.pane-body')
-  if (newBody && !isSelectingInPane) newBody.scrollTop = paneScroll && !paneScroll.atEnd ? paneScroll.top : newBody.scrollHeight
+  // A chat opens at its newest message; the subagent list at its top.
+  const isSameView = paneScroll && paneScroll.view === pane.dataset.view
+  if (newBody && !isSelectingInPane) newBody.scrollTop = isSameView && !paneScroll.atEnd ? paneScroll.top : pane.dataset.view === 'subagents' && !isSameView ? 0 : newBody.scrollHeight
   for (const reply of area.querySelectorAll('[data-reply]')) if (replyScroll.has(reply.dataset.reply)) reply.scrollTop = replyScroll.get(reply.dataset.reply)
   if (keyAttr) {
     const field = area.querySelector(`[data-${keyAttr}="${CSS.escape(keyValue)}"]`)

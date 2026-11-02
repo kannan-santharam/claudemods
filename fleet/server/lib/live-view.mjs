@@ -4,7 +4,7 @@
 import fs from 'node:fs'
 import { DAY_MS, HEARTBEAT_FRESH_MS } from './constants.mjs'
 import { pendingAsks } from './asks.mjs'
-import { activityOf } from './conversation.mjs'
+import { activityOf, subagentActivity } from './conversation.mjs'
 import { baseModel } from './pricing.mjs'
 import { displayName, sessionSummaries } from './reports.mjs'
 import { deliveries, heartbeats, live, liveCache, metaCache, transcriptIndexes, transcripts, transcriptScan } from './state.mjs'
@@ -68,7 +68,9 @@ function outputTail(file) {
   }
 }
 
-function subagentsOf(sessionId, now) {
+// Running subagents for the live view; with `withFinished`, the finished ones
+// too, for the session's Subagents tab.
+function subagentsOf(sessionId, now, withFinished = false) {
   const found = []
   for (const transcript of subagentTranscriptsOf(sessionId)) {
     let stat
@@ -89,8 +91,8 @@ function subagentsOf(sessionId, now) {
       }
     } catch {}
     const isRunning = meta.finished !== true && now - stat.mtimeMs < SUBAGENT_STALE_MS
-    // A subagent leaves the page as soon as it finishes.
-    if (!isRunning) continue
+    // A subagent leaves the live view as soon as it finishes.
+    if (!isRunning && !withFinished) continue
     found.push({
       agentId: baseName(transcript.filePath).replace(/^agent-|\.jsonl$/g, ''),
       description: String(meta.description || transcript.firstPrompt || 'subagent').slice(0, 120),
@@ -100,9 +102,22 @@ function subagentsOf(sessionId, now) {
       isRunning,
       startedAt: transcript.firstAt,
       lastAt: stat.mtimeMs,
+      ...(withFinished ? { transcript } : {}),
     })
   }
   return found.sort((left, right) => Number(right.isRunning) - Number(left.isRunning) || right.lastAt - left.lastAt)
+}
+
+// Every subagent a session started (in the transcripts read, the last 31
+// days), running ones first, each running one with what it is doing.
+const SUBAGENTS_SHOWN = 100
+export async function listSubagents(sessionId) {
+  const found = subagentsOf(sessionId, Date.now(), true).slice(0, SUBAGENTS_SHOWN)
+  for (const agent of found) {
+    if (agent.isRunning) agent.activity = await subagentActivity(agent.transcript)
+    delete agent.transcript
+  }
+  return found
 }
 
 // Each open dashboard asks every 2 seconds: one answer serves them all for a second.
