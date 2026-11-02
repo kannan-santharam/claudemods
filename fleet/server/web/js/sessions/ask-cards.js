@@ -3,7 +3,8 @@
 // its card says so: whichever is answered first counts. What was picked or
 // typed is kept in state.fields, so the 2-second refresh keeps it.
 
-import { escapeHtml, markdown, timeAgo } from '../core/format.js'
+import { escapeHtml, timeAgo } from '../core/format.js'
+import { markdown } from '../core/markdown.js'
 import { fieldValue } from '../core/state.js'
 
 function askAge(ask) {

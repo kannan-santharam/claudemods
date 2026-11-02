@@ -4,7 +4,8 @@
 // shown is held in this page's memory only; nothing is saved anywhere.
 
 import { api } from '../core/api.js'
-import { escapeHtml, markdown, timeAgo } from '../core/format.js'
+import { escapeHtml, timeAgo } from '../core/format.js'
+import { markdown } from '../core/markdown.js'
 import { state } from '../core/state.js'
 
 const PAGE_SIZE = 10

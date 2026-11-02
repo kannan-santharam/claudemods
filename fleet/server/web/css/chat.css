@@ -76,8 +76,27 @@
 .kv code { font-family: var(--mono); font-size: 12px; }
 .detail h4 { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
 .detail h4 .when { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text-muted); margin-left: 4px; }
+/* Rendered Markdown sets its own blocks, so the bubble's preserved line breaks give way. */
+.bubble.md, .md { white-space: normal; }
+.md p { margin: 0 0 8px; }
+.md > :last-child { margin-bottom: 0; }
+.md ul, .md ol { margin: 2px 0 8px; padding-left: 22px; }
+.md li { margin: 2px 0; }
+.md li > ul, .md li > ol { margin: 2px 0; }
+.md .md-task { color: var(--text-muted); }
+.md blockquote { margin: 4px 0 8px; padding: 2px 0 2px 11px; border-left: 3px solid var(--border); color: var(--text-secondary); }
+.md .md-h { display: block; font-weight: 650; margin: 10px 0 4px; }
+.md .md-h:first-child { margin-top: 0; }
+.md .md-h1 { font-size: 15.5px; }
+.md .md-h2 { font-size: 14.5px; }
+.md-table { max-width: 100%; overflow-x: auto; margin: 4px 0 8px; }
+.md table { border-collapse: collapse; font-size: 12.5px; line-height: 1.4; }
+.md th, .md td { border: 1px solid var(--border); padding: 4px 9px; text-align: left; vertical-align: top; }
+.md th { background: var(--surface-2); font-weight: 600; }
+.md del { color: var(--text-muted); }
+.code-block { margin: 4px 0 8px; }
 .md code { font-family: var(--mono); font-size: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
-.md pre { margin: 6px 0; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; overflow-x: auto; white-space: pre; }
+.md pre { margin: 0; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; overflow-x: auto; white-space: pre; }
 .md pre code { background: none; border: 0; padding: 0; }
 .code-block { position: relative; }
 .code-block pre { padding-right: 64px; }
@@ -85,7 +104,6 @@
 .code-copy:hover { color: var(--text-primary); border-color: var(--text-muted); }
 .md code[data-copy-inline] { cursor: copy; }
 .md strong { font-weight: 650; }
-.md .md-h { font-weight: 650; display: inline-block; margin-top: 2px; }
 .md a { color: var(--accent); }
 .md hr { border: 0; border-top: 1px solid var(--border); margin: 6px 0; }
 .tags { display: flex; flex-wrap: wrap; gap: 5px; }
