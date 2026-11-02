@@ -20,7 +20,7 @@ const LOOKUP_TOOLS = new Set(['Read', 'Glob', 'Grep', 'LS', 'WebFetch', 'WebSear
 const WAITING_COMMAND = /(^|[;&|(\s])(sleep|watch|until|while|wait)\s|tail\s+-f/
 // The line of an error that names the failure: a thrown error first, then any
 // line that says what went wrong.
-const THROWN = /\b\w*(Error|Exception)\b/
+const THROWN = /\b\w*(Error|Exception)\b:/
 const TELLING = /error|fail|cannot|can't|not found|no such|denied|invalid|exception|refused|missing|undefined/i
 
 const fileName = filePath => String(filePath || '').split('/').filter(Boolean).pop() || ''
