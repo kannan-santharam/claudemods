@@ -138,7 +138,15 @@ function drawHuman(scene, person, facing, pose, mirror) {
     const tapLeft = still || !speed ? 0 : Math.sin(time * speed) * 1.3
     const tapRight = still || !speed ? 0 : Math.sin(time * speed + 2) * 1.3
     block(scene, -11, torsoTop + 2 + tapLeft, 4, 9, 2, sleeve)
-    block(scene, 7, torsoTop + 2 + tapRight, 4, 9, 2, sleeve)
+    if (person.isStuck) {
+      // Scratching its head: the right hand up at the side of the head.
+      pen.save()
+      pen.translate(9, torsoTop + 3)
+      pen.rotate(-3.25 + (still ? 0 : Math.sin(time * 9) * 0.12))
+      block(scene, -2, 0, 4, 11, 2, sleeve)
+      disc(scene, 0, 12, 2.4, 2.4, person.skin)
+      pen.restore()
+    } else block(scene, 7, torsoTop + 2 + tapRight, 4, 9, 2, sleeve)
   } else if (activity === 'waiting' && facing === 'front' && pose !== 'walk') {
     block(scene, -11, torsoTop + 2, 4, 12, 2, sleeve)
     pen.save()
