@@ -33,6 +33,7 @@ import { handleRequest } from './lib/server.mjs'
 import { live, registryState, secrets } from './lib/state.mjs'
 import { readLiveTranscripts, repriceTranscripts, scanTranscripts } from './lib/transcripts.mjs'
 import { readActivities } from './lib/conversation.mjs'
+import { readStuck } from './lib/stuck.mjs'
 import { deliverTyped } from './lib/typing.mjs'
 import { log } from './lib/utils.mjs'
 import { loadWebFiles } from './lib/web-files.mjs'
@@ -71,9 +72,12 @@ server.listen(PORT, '127.0.0.1', () => {
     try {
       await scanRegistry()
       pruneMemory()
-      // Running sessions' new lines and what the working ones are doing, without waiting for the full scan.
+      // Running sessions' new lines, and what the working ones are doing and
+      // whether they may be stuck, without waiting for the full scan.
       await readLiveTranscripts([...live.keys()])
-      await readActivities([...live.values()].filter(session => session.status === 'busy').map(session => session.sessionId))
+      const working = [...live.values()].filter(session => session.status === 'busy').map(session => session.sessionId)
+      await readActivities(working)
+      await readStuck(working)
     } catch (error) {
       log('registry scan failed', error.message)
     }

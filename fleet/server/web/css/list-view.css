@@ -97,3 +97,8 @@
 .office-mini > header .hint { font-size: 11.5px; }
 .mini-stage { padding: 0 8px 8px; cursor: pointer; }
 #office-mini { display: block; width: 100%; height: 150px; border-radius: 8px; }
+/* May be stuck: an orange row until the session is opened, and its reason in the status line. */
+.nav-item.stuck { background: var(--warning-soft); border-color: color-mix(in srgb, var(--warning) 45%, transparent); }
+.nav-item.stuck:hover { background: color-mix(in srgb, var(--warning-soft) 80%, var(--surface-2)); }
+.nav-state.stuck { color: var(--warning-text); }
+.nav-sub .tag.stuck-tag { background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning-text); }

@@ -8,6 +8,7 @@ import { activityOf } from './conversation.mjs'
 import { baseModel } from './pricing.mjs'
 import { displayName, sessionSummaries } from './reports.mjs'
 import { deliveries, heartbeats, live, liveCache, metaCache, transcriptIndexes, transcripts, transcriptScan } from './state.mjs'
+import { stuckOf } from './stuck.mjs'
 import { mainTranscriptOf } from './transcripts.mjs'
 import { baseName, dayKey, stripAnsi } from './utils.mjs'
 
@@ -173,6 +174,8 @@ function buildLiveView() {
       asks: pendingAsks(session.sessionId),
       // What it is doing, in a sentence, while it works.
       activity: session.status === 'busy' ? activityOf(session.sessionId) : null,
+      // While it works, whether it may be going round in circles.
+      stuck: session.status === 'busy' ? stuckOf(session.sessionId) : null,
       subagentCount: summary?.subagents || 0,
     }
   })

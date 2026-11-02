@@ -114,3 +114,9 @@
 .delivery { font-size: 12px; color: var(--text-muted); }
 .delivery.bad { color: var(--critical); }
 .delivery.good { color: var(--good-text); }
+
+/* The note above the message box while a session may be stuck: dimmed, not a message. */
+.stuck-note { display: grid; gap: 2px; padding: 0 2px 2px 10px; border-left: 2px solid var(--warning); font-size: 12px; line-height: 1.45; min-width: 0; }
+.stuck-why { color: var(--warning-text); overflow-wrap: anywhere; }
+.stuck-why b { font-weight: 600; }
+.stuck-error { font-family: var(--mono); font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -34,16 +34,33 @@ function hasNewReply(session) {
   // While it works, its replies are progress; the turn's end is what counts.
   return session.status !== 'busy' && replyAt > seenReplies[session.sessionId]
 }
-// Sessions that want you: waiting, or with a reply you have not opened. The
-// browser tab's title carries the count, so it shows from any other tab.
+// A session that may be stuck and that you have not opened since: its row is
+// orange until you do. Which loop was seen is kept per session, in this browser
+// only, so a different loop lights it again; the turn's end forgets it.
+const SEEN_STUCK_KEY = 'fleet-seen-stuck'
+const seenStuck = (() => { try { return JSON.parse(remembered(SEEN_STUCK_KEY) || '{}') } catch { return {} } })()
+function isStuckUnseen(session) {
+  const { sessionId, stuck } = session
+  const mark = id => { if (seenStuck[sessionId] !== id) { if (id) seenStuck[sessionId] = id; else delete seenStuck[sessionId]; remember(SEEN_STUCK_KEY, JSON.stringify(seenStuck)) } }
+  if (!stuck) {
+    if (session.status !== 'busy' && session.status !== 'waiting') mark(undefined)
+    return false
+  }
+  if (state.open.has(sessionId)) { mark(stuck.id); return false }
+  return seenStuck[sessionId] !== stuck.id
+}
+// Sessions that want you: waiting, stuck, or with a reply you have not opened.
+// The browser tab's title carries the count, so it shows from any other tab.
 export function attentionCount(sessions) {
-  return sessions.filter(session => session.status === 'waiting' || hasNewReply(session)).length
+  return sessions.filter(session => session.status === 'waiting' || isStuckUnseen(session) || hasNewReply(session)).length
 }
 // How long ago it last did anything, to the minute, so the row is not redrawn every tick.
 const lastSeenAgo = session => (Date.now() - (session.lastActivityAt || 0) < 60_000 ? 'just now' : timeAgo(session.lastActivityAt) + ' ago')
-// The line under the folder: what it is doing while it works, what it needs while it waits.
+// The line under the folder: what it is doing while it works, why it may be
+// stuck, what it needs while it waits.
 function navStatusLine(session) {
   if (session.status === 'waiting') return `<div class="nav-state waiting">Waiting: ${escapeHtml(session.waitingFor || 'for you')}</div>`
+  if (session.stuck) return `<div class="nav-state stuck" title="${escapeHtml(session.stuck.reason)}">${escapeHtml(session.stuck.reason)}</div>`
   if (session.status === 'busy' && session.activity?.text) return `<div class="nav-state" title="${escapeHtml(session.activity.text)}">${escapeHtml(session.activity.text)}</div>`
   return ''
 }
@@ -54,6 +71,7 @@ function navItem(session, depth, byId, belowOf) {
   const runningShells = (session.shells || []).length
   const parent = session.parentSessionId && byId.get(session.parentSessionId)
   const badges = [
+    session.stuck ? '<span class="tag stuck-tag" title="Fleet sees the same failure coming back; open it to see why. It only flags, nothing is stopped.">may be stuck</span>' : '',
     session.hidden ? '<span class="tag hidden-tag" title="Runs hidden in Claude Code\'s background service: no terminal tab">hidden</span>' : !session.tty ? '<span class="tag">headless</span>' : '',
     runningSubagents ? `<span class="tag">${runningSubagents} subagent${runningSubagents > 1 ? 's' : ''}</span>` : '',
     runningShells ? `<span class="tag shell-kind" title="${escapeHtml((session.shells || []).map(shell => shell.description || shell.command).join('\n'))}">${runningShells} shell${runningShells > 1 ? 's' : ''}</span>` : '',
@@ -66,7 +84,7 @@ function navItem(session, depth, byId, belowOf) {
     : `<button class="btn small nav-open" disabled aria-label="No tab" title="Runs without a terminal${session.launcher ? ', started by ' + escapeHtml(session.launcher) : ''}">↗</button>`
   const isOpen = state.open.has(session.sessionId)
   const look = STATUS[session.status]?.label || session.status || ''
-  return `<div class="nav-item ${isOpen ? 'selected' : ''} ${session.status === 'waiting' ? 'waiting' : ''} ${depth ? 'child' : ''}" data-id="${id}" role="option" aria-selected="${isOpen}">
+  return `<div class="nav-item ${isOpen ? 'selected' : ''} ${session.status === 'waiting' ? 'waiting' : ''} ${isStuckUnseen(session) ? 'stuck' : ''} ${depth ? 'child' : ''}" data-id="${id}" role="option" aria-selected="${isOpen}">
     ${hasNewReply(session) ? '<i class="nav-new" role="img" aria-label="New reply" title="A new reply you have not opened"></i>' : ''}
     <i class="nav-dot ${navDot(session, below)}" title="${escapeHtml(session.status === 'waiting' && session.waitingFor ? session.waitingFor : look)}"></i>
     <div class="nav-main">

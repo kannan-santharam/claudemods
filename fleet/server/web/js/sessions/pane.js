@@ -8,6 +8,7 @@ import { fieldValue, state } from '../core/state.js'
 import { permissionCard, questionCard } from './ask-cards.js'
 import { conversationHtml, messageBubble, workingStatus } from './conversation.js'
 import { screenHtml } from './screen.js'
+import { stuckNoteHtml } from './stuck-note.js'
 import { lastDelivery, statusPill } from './tree.js'
 
 // The conversation as a chat, read from the transcript as it is scrolled; until
@@ -86,6 +87,7 @@ export function renderPane(byId, belowOf) {
     </div>
     <div class="pane-body">${content}</div>
     ${tab === 'chat' ? `<div class="pane-foot">
+      ${stuckNoteHtml(session)}
       <div class="composer chat">
         <textarea rows="2" data-draft="${id}" placeholder="Message ${escapeHtml(session.name)} — Enter to send, Shift+Enter for a new line">${escapeHtml(state.drafts[session.sessionId] || '')}</textarea>
         <button class="btn primary" data-send="${id}" aria-label="Send">Send ➤</button>
