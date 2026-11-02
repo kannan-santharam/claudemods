@@ -90,8 +90,10 @@ function stepsOf(lines) {
         // file not read first): it is put right at once, and nothing ran.
         if (block.is_error === true && text.trimStart().startsWith('<tool_use_error>')) { step.isWaiting = true; continue }
         step.isDone = true
-        step.isError = block.is_error === true
-        if (step.isError) step.error = errorOf(text)
+        step.error = block.is_error === true ? errorOf(text) : null
+        // A command that exits non-zero without a word (a search with no match,
+        // a test of a condition) answered a question; it did not fail.
+        step.isError = Boolean(step.error) && !(step.name === 'Bash' && !step.error.line)
       }
     } else if (row.message?.model !== '<synthetic>') {
       for (const block of blocks) {

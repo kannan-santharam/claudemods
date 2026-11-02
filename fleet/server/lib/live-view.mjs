@@ -185,6 +185,7 @@ function buildLiveView() {
     session.asks = session.asks.filter(ask => !ask.whenWaiting || ask.wasSeen || session.status === 'waiting')
     if (!session.asks.length) continue
     session.status = 'waiting'
+    session.stuck = null
     session.waitingFor = session.asks[0].kind === 'question' ? 'a question for you' : `permission for ${session.asks[0].toolName}`
   }
   const statusOrder = { waiting: 0, busy: 1, shell: 2, idle: 3 }
