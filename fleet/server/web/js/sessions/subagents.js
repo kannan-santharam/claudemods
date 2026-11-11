@@ -7,7 +7,7 @@ import { api } from '../core/api.js'
 import { escapeHtml, shortModel, timeAgo } from '../core/format.js'
 import { aliasedModel } from '../core/models.js'
 import { state } from '../core/state.js'
-import { conversationHtml, workingStatus } from './conversation.js'
+import { conversationHtml, conversationKey, workingStatus } from './conversation.js'
 
 const REFRESH_MS = 2000
 // Set by initSubagents: draws the Sessions tab again once the list arrives.
@@ -55,7 +55,7 @@ function listHtml(session, list) {
 // replies on the left, and while it runs, what it is doing.
 function agentHtml(session, agent) {
   const target = { sessionId: session.sessionId, agentId: agent.agentId, lastAt: agent.lastAt }
-  const thread = conversationHtml(target, `From ${session.name}`) ?? '<div class="stamp">Loading its conversation…</div>'
+  const thread = conversationHtml(target, `From ${session.name}`) ?? `<div class="stamp">${state.conversations[conversationKey(target)]?.isLoaded ? 'Nothing said yet.' : 'Loading its conversation…'}</div>`
   return `<div class="subagent-head">
       <button type="button" class="btn small" data-close-subagent="${escapeHtml(session.sessionId)}">‹ All subagents</button>
       <div class="subagent-title"><b>${escapeHtml(agent.description || 'Subagent')}</b><span>${agent.startedAt ? agentLine(agent) : ''}</span></div>

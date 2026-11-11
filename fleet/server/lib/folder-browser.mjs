@@ -32,7 +32,7 @@ export async function browse(target) {
   const home = fs.realpathSync(HOME)
   const real = insideHome(target) || insideHome(settings.newSessionRoot) || home
   if (isExcludedPath(real)) return { ok: false, reason: 'That folder is excluded from the fleet.' }
-  let entries = []
+  let entries
   try {
     entries = await fsp.readdir(real, { withFileTypes: true })
   } catch {

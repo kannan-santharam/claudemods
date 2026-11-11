@@ -71,7 +71,7 @@ export async function listHistory(folderPath) {
   } catch {}
   const candidates = []
   for (const dir of projectDirs) {
-    let names = []
+    let names
     try {
       names = await fsp.readdir(path.join(PROJECTS_DIR, dir))
     } catch {

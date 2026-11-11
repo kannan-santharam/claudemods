@@ -34,19 +34,18 @@ function hasNewReply(session) {
   // While it works, its replies are progress; the turn's end is what counts.
   return session.status !== 'busy' && replyAt > seenReplies[session.sessionId]
 }
-// A session that may be stuck and that you have not opened since: its row is
-// orange until you do. Which loop was seen is kept per session, in this browser
-// only, so a different loop lights it again; the turn's end forgets it.
+// A session that may be stuck and that you have not looked at since: its row
+// is orange until you open it with the page in view. Which loop was seen is
+// kept per session, in this browser only; it is forgotten as soon as the
+// session is no longer stuck, so the same loop coming back lights it again.
 const SEEN_STUCK_KEY = 'fleet-seen-stuck'
 const seenStuck = (() => { try { return JSON.parse(remembered(SEEN_STUCK_KEY) || '{}') } catch { return {} } })()
-function isStuckUnseen(session) {
+export function isStuckUnseen(session) {
   const { sessionId, stuck } = session
   const mark = id => { if (seenStuck[sessionId] !== id) { if (id) seenStuck[sessionId] = id; else delete seenStuck[sessionId]; remember(SEEN_STUCK_KEY, JSON.stringify(seenStuck)) } }
-  if (!stuck) {
-    if (session.status !== 'busy' && session.status !== 'waiting') mark(undefined)
-    return false
-  }
-  if (state.open.has(sessionId)) { mark(stuck.id); return false }
+  if (!stuck) { mark(undefined); return false }
+  // Open in the pane counts as seen only while the page is on screen.
+  if (state.open.has(sessionId) && document.visibilityState === 'visible') { mark(stuck.id); return false }
   return seenStuck[sessionId] !== stuck.id
 }
 // Sessions that want you: waiting, stuck, or with a reply you have not opened.

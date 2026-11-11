@@ -17,13 +17,15 @@ import { cleanLine, shellQuote } from './utils.mjs'
 // update: the newest of each family that anyone can pick, dearest first, and
 // any other listed model in `alsoIds` (the ones running sessions are on).
 export const modelLabel = id => id.replace(/^claude-/, '').replace(/^[a-z]/, letter => letter.toUpperCase()).replace(/-(\d+)-(\d+)$/, ' $1.$2').replace(/-(\d+)$/, ' $1')
-export const isKnownModel = id => Object.hasOwn(settings.pricing.models, id)
+// An id is typed into a terminal as `/model <id>`, so it is held to a model
+// id's shape whatever the price table (or an overrides file) lists.
+export const isKnownModel = id => /^claude-[a-z0-9-]{1,60}$/.test(id) && Object.hasOwn(settings.pricing.models, id)
 export function offeredModels(alsoIds = []) {
   const models = settings.pricing.models
   const newest = new Map()
   for (const [id, rate] of Object.entries(models)) {
     const family = id.match(/^claude-([a-z]+)-/)?.[1]
-    if (!family || rate.isLimited) continue
+    if (!family || rate.isLimited || !isKnownModel(id) || !Number.isFinite(rate.input)) continue
     if (!newest.has(family) || isNewer(id, newest.get(family))) newest.set(family, id)
   }
   const ids = [...newest.values()].sort((left, right) => models[right].input - models[left].input)
@@ -32,7 +34,7 @@ export function offeredModels(alsoIds = []) {
 }
 
 export async function listFolders() {
-  let entries = []
+  let entries
   try {
     entries = await fsp.readdir(settings.newSessionRoot, { withFileTypes: true })
   } catch {

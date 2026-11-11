@@ -101,6 +101,7 @@
 .nav-item.stuck { background: var(--warning-soft); border-color: color-mix(in srgb, var(--warning) 45%, transparent); }
 .nav-item.stuck:hover { background: color-mix(in srgb, var(--warning-soft) 80%, var(--surface-2)); }
 .nav-state.stuck { color: var(--warning-text); }
-.nav-sub .tag.stuck-tag { background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning-text); }
+.tag.stuck-tag { background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning-text); }
 .side-list .item.open-subagent { cursor: pointer; }
 .side-list .item.open-subagent:hover b { color: var(--accent); }
+tr.session.stuck > td { background: var(--warning-soft); }

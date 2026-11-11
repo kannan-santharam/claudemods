@@ -12,7 +12,7 @@ export function modelColor(model) {
   // (shared with the one it replaces) rather than Other's grey; an older
   // unlisted one stays Other.
   const family = String(model).match(/^claude-[a-z]+-/)?.[0]
-  const version = id => Number((id.match(/\d+/g) || []).slice(0, 2).join('.'))
+  const version = id => { const [major = 0, minor = 0] = (id.match(/\d+/g) || []).map(Number); return major * 1000 + minor }
   const newest = family ? MODEL_SLOTS.findIndex(slot => slot.startsWith(family)) : -1
   const index = MODEL_SLOTS.includes(model) || newest < 0 || version(model) <= version(MODEL_SLOTS[newest]) ? MODEL_SLOTS.indexOf(model) : newest
   return index < 0 ? cssVariable('--series-other') : cssVariable(`--series-${index + 1}`)

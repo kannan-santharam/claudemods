@@ -15,7 +15,7 @@ const RESCAN_INTERVAL_MS = 2000
 const WEB_TYPES = { html: 'text/html; charset=utf-8', css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8' }
 
 async function listWebFolder(folder, urlPrefix, extension, depth, found) {
-  let entries = []
+  let entries
   try {
     entries = await fsp.readdir(folder, { withFileTypes: true })
   } catch {

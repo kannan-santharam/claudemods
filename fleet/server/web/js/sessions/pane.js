@@ -53,7 +53,7 @@ export function renderPane(byId, belowOf) {
     ? `<button class="btn small" data-focus="${id}" title="Bring its terminal tab to the front">Open tab ↗</button>`
     : `<button class="btn small" disabled title="Runs without a terminal${session.launcher ? ', started by ' + escapeHtml(session.launcher) : ''}">No tab</button>`
   const tabButton = (key, label) => `<button type="button" role="tab" data-pane-tab="${key}" data-session="${id}" aria-selected="${tab === key}">${label}</button>`
-  let content = ''
+  let content
   if (tab === 'files') content = files.length ? `<div class="drawer files">${filesHtml}</div>` : '<div class="pane-empty">No files edited today.</div>'
   else if (tab === 'screen' && session.hidden) content = `<div class="drawer screen-drawer">${screenHtml(session)}</div>`
   else if (tab === 'details') content = `<dl class="drawer kv">

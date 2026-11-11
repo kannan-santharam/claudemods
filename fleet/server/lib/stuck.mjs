@@ -17,7 +17,8 @@ const EDIT_TOOLS = new Set(['Edit', 'MultiEdit', 'Write', 'NotebookEdit'])
 const WAITING_TOOLS = new Set(['TodoWrite', 'BashOutput', 'TaskOutput', 'TaskStop', 'KillShell', 'Monitor', 'ScheduleWakeup'])
 // Looking things up: a file or page that is not there is a miss, not a loop.
 const LOOKUP_TOOLS = new Set(['Read', 'Glob', 'Grep', 'LS', 'WebFetch', 'WebSearch'])
-const WAITING_COMMAND = /(^|[;&|(\s])(sleep|watch|until|while|wait)\s|tail\s+-f/
+// The word starts a command, so one inside a quoted message does not count.
+const WAITING_COMMAND = /(^|[;&|(]\s*)(sleep|watch|until|while|wait)\s|tail\s+-f/
 // The line of an error that names the failure: a thrown error first, then any
 // line that says what went wrong.
 const THROWN = /\b\w*(Error|Exception)\b:/
@@ -45,7 +46,7 @@ function resultText(block) {
   return Array.isArray(content) ? content.filter(part => part?.type === 'text').map(part => part.text).join('\n') : ''
 }
 function errorOf(text) {
-  const lines = String(text).split('\n').map(line => line.trim()).filter(line => line && !/^Exit code \d+$/.test(line))
+  const lines = String(text).replace(/<\/?tool_use_error>/g, '').split('\n').map(line => line.trim()).filter(line => line && !/^Exit code \d+$/.test(line))
   const line = lines.find(candidate => THROWN.test(candidate)) || lines.find(candidate => TELLING.test(candidate)) || lines[0] || ''
   return { line: clip(line, 160), key: normalised(line) }
 }
@@ -61,7 +62,7 @@ function stepOf(block, at) {
   const file = input.file_path || input.notebook_path || ''
   const target = file ? fileName(file) : clip(input.pattern || input.url || input.query || input.description || '', 50)
   const change = name === 'Edit' ? { from: String(input.old_string ?? ''), to: String(input.new_string ?? '') } : null
-  return { name, at, file, change, key: name + ' ' + normalised(file || target), label: target ? `${name} ${target}` : name, isWaiting: WAITING_TOOLS.has(name) }
+  return { name, at, file, change, key: name + ' ' + (file || normalised(target)), label: target ? `${name} ${target}` : name, isWaiting: WAITING_TOOLS.has(name) }
 }
 
 // The steps of the newest turn: every tool call since the last typed prompt,
@@ -86,10 +87,11 @@ function stepsOf(lines) {
         const step = block?.type === 'tool_result' && byId.get(block.tool_use_id)
         if (!step) continue
         const text = resultText(block)
-        // Claude Code turned the call down before it ran (a malformed call, a
-        // file not read first): it is put right at once, and nothing ran.
-        if (block.is_error === true && text.trimStart().startsWith('<tool_use_error>')) { step.isWaiting = true; continue }
         step.isDone = true
+        // Claude Code turned the call down before it ran (a malformed call, a
+        // file not read first). One of those is put right at once; only the
+        // same call turned down the same way again and again is a loop.
+        step.isRefused = block.is_error === true && text.trimStart().startsWith('<tool_use_error>')
         step.error = block.is_error === true ? errorOf(text) : null
         // A command that exits non-zero without a word (a search with no match,
         // a test of a condition) answered a question; it did not fail.
@@ -107,9 +109,9 @@ function stepsOf(lines) {
   return steps
 }
 
-// Why the turn looks stuck, or null: the same call failing again and again,
-// one file edited over and over while its checks keep failing, or the same
-// error coming back whatever is tried. `id` stays the same while it is the
+// Why the turn looks stuck, or null: the same call failing the same way again
+// and again, one file edited over and over while the same check keeps failing,
+// or the same error coming back whatever is tried. `id` stays the same while it is the
 // same loop, so the page can tell one it has shown from a new one.
 function loopOf(steps) {
   const active = steps.filter(step => step.isDone && !step.isWaiting)
@@ -118,11 +120,15 @@ function loopOf(steps) {
 
   const runs = new Map()
   active.forEach((step, index) => {
+    // A run is the same call failing with the same error: a different failure
+    // each time is one thing after another being fixed.
     const run = runs.get(step.key)
+    const isSame = run && run.step.error.key === step.error?.key
     if (!step.isError) runs.set(step.key, null)
-    else runs.set(step.key, { count: (run?.count || 0) + 1, since: run ? run.since : step.at, index, step })
+    else runs.set(step.key, { count: isSame ? run.count + 1 : 1, since: isSame ? run.since : step.at, index, step })
   })
-  const failing = [...runs.values()].filter(run => run && run.count >= REPEATS && isRecent(run.index)).sort(byCount)[0]
+  // A call Claude Code turned down is usually put right on the next try, so it takes one more.
+  const failing = [...runs.values()].filter(run => run && run.count >= REPEATS + (run.step.isRefused ? 1 : 0) && isRecent(run.index)).sort(byCount)[0]
   if (failing) {
     const { step } = failing
     return { id: clip('call:' + step.key, 160), since: failing.since, reason: `${step.name === 'Bash' ? 'Ran' : 'Tried'} “${step.label}” ${failing.count} times, failing each time`, evidence: step.error.line }
@@ -141,9 +147,11 @@ function loopOf(steps) {
   })
   for (const [filePath, file] of [...edits].sort((left, right) => byCount(left[1], right[1]))) {
     if (file.count < EDITS && !file.hasUndone) continue
+    // Its check is the last command run since the first edit; what counts is
+    // how often that same command has failed, not any command that did.
     const checks = active.map((step, index) => ({ step, index })).filter(({ step, index }) => index > file.first && step.name === 'Bash')
-    const failed = checks.filter(({ step }) => step.isError).length
     const last = checks.at(-1)
+    const failed = checks.filter(({ step }) => step.isError && step.key === last.step.key).length
     if (!last?.step.isError || !isRecent(last.index) || failed < (file.hasUndone ? 2 : REPEATS)) continue
     return {
       id: clip('edits:' + filePath, 160),
@@ -156,7 +164,7 @@ function loopOf(steps) {
   const errors = new Map()
   let lastFailure = -1
   active.forEach((step, index) => {
-    if (!step.isError || !step.error.key || LOOKUP_TOOLS.has(step.name)) return
+    if (!step.isError || !step.error.key || step.isRefused || LOOKUP_TOOLS.has(step.name)) return
     lastFailure = index
     const error = errors.get(step.error.key) || { count: 0, since: step.at, tries: new Set(), line: step.error.line }
     error.count++

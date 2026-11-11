@@ -84,6 +84,7 @@ export function initSessionEvents() {
       const sessionId = openSubagent.dataset.session
       if (!state.open.has(sessionId)) state.open = new Set([sessionId])
       state.paneTab[sessionId] = 'subagents'
+      state.showScreen = new Set()
       state.subagent[sessionId] = openSubagent.dataset.openSubagent
       return renderLive()
     }
@@ -119,6 +120,11 @@ export function initSessionEvents() {
     if (field) state.fields[field] = event.target.value
   })
   $('#view-sessions').addEventListener('keydown', event => {
+    // A row that acts as a button answers Enter and Space like one.
+    if ((event.key === 'Enter' || event.key === ' ') && event.target.matches?.('[role="button"][data-open-subagent]')) {
+      event.preventDefault()
+      return event.target.click()
+    }
     const id = event.target.dataset && event.target.dataset.draft
     if (id && event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault()

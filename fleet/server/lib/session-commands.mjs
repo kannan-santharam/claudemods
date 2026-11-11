@@ -17,7 +17,7 @@ export async function runSessionCommand(body) {
   const session = live.get(String(body.sessionId || ''))
   if (!session) return { ok: false, reason: 'That session is no longer running.' }
   const command = String(body.command || '')
-  let args = ''
+  let args
   if (command === 'model') {
     args = String(body.args || '')
     if (!isKnownModel(args)) return { ok: false, reason: 'Unknown model.' }

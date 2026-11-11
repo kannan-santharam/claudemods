@@ -78,7 +78,7 @@ async function readBranch(cwd) {
 }
 
 export async function scanRegistry() {
-  let names = []
+  let names
   try {
     names = (await fsp.readdir(REGISTRY_DIR)).filter(name => name.endsWith('.json'))
   } catch {

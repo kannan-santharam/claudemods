@@ -247,7 +247,7 @@ async function readNewLines(transcript, size) {
 }
 
 async function listTranscripts(dir, cutoff, found = []) {
-  let entries = []
+  let entries
   try {
     entries = await fsp.readdir(dir, { withFileTypes: true })
   } catch {
