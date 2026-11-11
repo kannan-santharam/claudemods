@@ -10,6 +10,9 @@ import { log, writePrivate } from './utils.mjs'
 
 const FETCH_TIMEOUT_MS = 10_000
 const PAGE_MAX_BYTES = 2 * 1024 * 1024
+// Raised when the parsed table gains a field (2: isLimited): a table kept by
+// an older version is set aside for the bundled one until the page is read.
+const TABLE_VERSION = 2
 // A table missing any of these is a page this parser no longer understands.
 const REQUIRED_MODELS = ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-fable-5-1']
 
@@ -82,7 +85,7 @@ export function isUsablePricing(pricing) {
 export function readCachedPricing() {
   try {
     const cached = JSON.parse(fs.readFileSync(LIVE_PRICING_FILE, 'utf8'))
-    return isUsablePricing(cached) ? cached : null
+    return isUsablePricing(cached) && cached.version === TABLE_VERSION ? cached : null
   } catch {
     return null
   }
@@ -96,7 +99,7 @@ export async function fetchLivePricing() {
     if (!response.ok) throw new Error('HTTP ' + response.status)
     const page = await response.text()
     if (page.length > PAGE_MAX_BYTES) throw new Error('page too large')
-    const pricing = { ...parsePricingPage(page), source: 'live', fetchedAt: Date.now() }
+    const pricing = { ...parsePricingPage(page), source: 'live', version: TABLE_VERSION, fetchedAt: Date.now() }
     if (!isUsablePricing(pricing)) throw new Error('page did not parse into a whole price table')
     writePrivate(LIVE_PRICING_FILE, JSON.stringify(pricing, null, 2))
     return pricing

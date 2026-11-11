@@ -1,8 +1,8 @@
 // A session's conversation, read on demand straight from its transcript: the
 // person's prompts and Claude's replies, newest first, a page at a time, and a
 // sentence on what it is doing now. A subagent's reads the same way from its
-// own transcript: the task its session gave it, and its replies. Nothing is kept between requests; the
-// cursor is a byte offset into the file.
+// own transcript: the task its session gave it, and its replies. Nothing is
+// kept between requests; the cursor is a byte offset into the file.
 
 import fsp from 'node:fs/promises'
 import { toolStarts } from './state.mjs'

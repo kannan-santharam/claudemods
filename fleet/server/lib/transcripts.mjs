@@ -303,7 +303,6 @@ export async function scanTranscripts() {
   }
 }
 
-// A session's own transcript (not its subagents'), from an index rebuilt once per scan.
 // A subagent's transcript, <session>/subagents/agent-<id>.jsonl, found in the
 // index so nothing outside the projects folder is ever opened.
 export function subagentTranscriptOf(sessionId, agentId) {
@@ -313,6 +312,7 @@ export function subagentTranscriptOf(sessionId, agentId) {
   return null
 }
 
+// A session's own transcript (not its subagents'), from an index rebuilt once per scan.
 export function mainTranscriptOf(sessionId) {
   if (transcriptIndexes.mainFileIndex.version !== transcriptScan.version) {
     const bySession = new Map()
