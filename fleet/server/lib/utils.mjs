@@ -53,7 +53,7 @@ export function stripControls(text) {
 
 // A leading / or ! would run a command or a shell line instead of being read.
 export function guardLeading(text) {
-  return /^[\/!]/.test(text) ? ' ' + text : text
+  return /^[/!]/.test(text) ? ' ' + text : text
 }
 
 export const stripAnsi = text => String(text).replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')
