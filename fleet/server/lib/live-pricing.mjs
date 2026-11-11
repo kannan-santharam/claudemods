@@ -47,6 +47,8 @@ export function parsePricingPage(page) {
     if (!id) continue
     const [input, cacheWrite5m, cacheWrite1h, cacheRead, output] = cells.slice(1, 6).map(priceOf)
     const rate = { input, cacheWrite5m, cacheWrite1h, cacheRead, output }
+    // Priced, but not one everybody can pick: left out of the model pickers.
+    if (/limited availability/i.test(cells[0])) rate.isLimited = true
     // Haiku 5.5's second row: the prices for a prompt over a number of tokens.
     const over = cells[0].match(/over\s+([\d,]+)\s+tokens/i)
     if (over && models[id]) models[id].long = { overTokens: Number(over[1].replace(/,/g, '')), ...rate }

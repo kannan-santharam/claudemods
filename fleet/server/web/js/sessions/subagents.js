@@ -5,7 +5,7 @@
 
 import { api } from '../core/api.js'
 import { escapeHtml, shortModel, timeAgo } from '../core/format.js'
-import { MODEL_ALIASES } from '../core/models.js'
+import { aliasedModel } from '../core/models.js'
 import { state } from '../core/state.js'
 import { conversationHtml, workingStatus } from './conversation.js'
 
@@ -34,7 +34,7 @@ function listOf(sessionId) {
   return list
 }
 
-const modelName = agent => (agent.model ? shortModel(MODEL_ALIASES[agent.model] || agent.model) : '')
+const modelName = agent => (agent.model ? shortModel(aliasedModel(agent.model)) : '')
 function agentLine(agent) {
   return [agent.agentType || 'subagent', modelName(agent), agent.isRunning ? `running for ${timeAgo(agent.startedAt)}` : `finished ${timeAgo(agent.lastAt)} ago`].filter(Boolean).map(escapeHtml).join(' · ')
 }

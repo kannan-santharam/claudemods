@@ -6,7 +6,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { READ_ITERM_TAB, READ_TERMINAL_TAB, TYPE_INTO_ITERM, TYPE_INTO_TAB, osascript } from './applescript.mjs'
 import { HOME } from './constants.mjs'
-import { MODELS, MODEL_IDS } from './new-sessions.mjs'
+import { isKnownModel, modelLabel } from './new-sessions.mjs'
 import { baseModel } from './pricing.mjs'
 import { hasMod } from './registry.mjs'
 import { heartbeats, live, messaging, watchedModelSwitches } from './state.mjs'
@@ -20,7 +20,7 @@ export async function runSessionCommand(body) {
   let args = ''
   if (command === 'model') {
     args = String(body.args || '')
-    if (!MODEL_IDS.has(args)) return { ok: false, reason: 'Unknown model.' }
+    if (!isKnownModel(args)) return { ok: false, reason: 'Unknown model.' }
   } else if (command === 'rename') {
     args = cleanLine(body.args, 80)
     if (!args) return { ok: false, reason: 'Give it a name.' }
@@ -61,7 +61,7 @@ function restoreDefaultModel(model) {
 async function answerModelQuestion(sessionId, model) {
   if (watchedModelSwitches.has(sessionId)) return
   watchedModelSwitches.add(sessionId)
-  const label = MODELS.find(option => option.id === model)?.label || model
+  const label = modelLabel(model)
   const defaultBefore = readDefaultModel()
   const deadline = Date.now() + MESSAGE_TTL_MS
   let isAnswered = false, isRestored = false, quietPolls = 0

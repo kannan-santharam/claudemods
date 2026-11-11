@@ -7,7 +7,8 @@ import { endSession } from '../end-sessions.mjs'
 import { browse } from '../folder-browser.mjs'
 import { attachHidden } from '../hidden-sessions.mjs'
 import { send } from '../http.mjs'
-import { MODELS, listFolders, startSession } from '../new-sessions.mjs'
+import { liveView } from '../live-view.mjs'
+import { listFolders, offeredModels, startSession } from '../new-sessions.mjs'
 import { listHistory, resumeSession } from '../resume.mjs'
 import { runSessionCommand } from '../session-commands.mjs'
 import { heartbeats, settings } from '../state.mjs'
@@ -21,7 +22,8 @@ export const getRoutes = {
     return send(response, 200, await listHistory(url.searchParams.get('folder') || ''))
   },
   '/api/options': async ({ response }) => {
-    return send(response, 200, { root: settings.newSessionRoot, folders: await listFolders(), models: MODELS })
+    const inUse = liveView().sessions.map(session => session.model)
+    return send(response, 200, { root: settings.newSessionRoot, folders: await listFolders(), models: offeredModels(inUse) })
   },
 }
 
