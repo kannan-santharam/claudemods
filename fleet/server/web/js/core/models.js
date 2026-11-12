@@ -8,11 +8,20 @@ import { state } from './state.js'
 // Color follows the model, never its rank: a fixed slot per known model; the rest fold into Other.
 export const MODEL_SLOTS = ['claude-opus-5-5', 'claude-fable-5-1', 'claude-sonnet-5-5', 'claude-opus-5', 'claude-haiku-5-5', 'claude-fable-5', 'claude-sonnet-5']
 export function modelColor(model) {
-  const index = MODEL_SLOTS.indexOf(model)
+  // A model newer than every slot of its family wears that family's colour
+  // (shared with the one it replaces) rather than Other's grey; an older
+  // unlisted one stays Other.
+  const family = String(model).match(/^claude-[a-z]+-/)?.[0]
+  const version = id => { const [major = 0, minor = 0] = (id.match(/\d+/g) || []).map(Number); return major * 1000 + minor }
+  const newest = family ? MODEL_SLOTS.findIndex(slot => slot.startsWith(family)) : -1
+  const index = MODEL_SLOTS.includes(model) || newest < 0 || version(model) <= version(MODEL_SLOTS[newest]) ? MODEL_SLOTS.indexOf(model) : newest
   return index < 0 ? cssVariable('--series-other') : cssVariable(`--series-${index + 1}`)
 }
-// A subagent's model is often an alias (fable, opus): the chip wants the model.
-export const MODEL_ALIASES = { fable: 'claude-fable-5-1', opus: 'claude-opus-5-5', sonnet: 'claude-sonnet-5-5', haiku: 'claude-haiku-5-5' }
+// A subagent's model is often an alias (fable, opus): the chip wants the
+// model, which is the offered one of that family (the newest).
+export function aliasedModel(model) {
+  return (state.options?.models || []).find(option => option.id.startsWith(`claude-${model}-`))?.id || model
+}
 export function modelOptions(selected) {
   const models = (state.options?.models || []).filter(model => model.id)
   const known = models.some(model => model.id === selected)

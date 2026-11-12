@@ -58,7 +58,7 @@ export async function refreshLivePricing(onChange) {
 // The table's row for a model, or for an unlisted one the newest listed model
 // of its family (claude-opus-6 would be priced as the newest Opus).
 const versionOf = id => (id.match(/\d+/g) || []).map(Number)
-const isNewer = (left, right) => {
+export const isNewer = (left, right) => {
   const [leftVersion, rightVersion] = [versionOf(left), versionOf(right)]
   for (let index = 0; index < Math.max(leftVersion.length, rightVersion.length); index++) {
     const [leftPart, rightPart] = [leftVersion[index] || 0, rightVersion[index] || 0]

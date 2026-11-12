@@ -18,6 +18,7 @@ import { focusTab, loadOptions } from './sessions/actions.js'
 import { initConversation } from './sessions/conversation.js'
 import { initSessionEvents } from './sessions/events.js'
 import { initKeyboard } from './sessions/keyboard.js'
+import { initSubagents } from './sessions/subagents.js'
 import { initLayout } from './sessions/layout.js'
 import { renderLive } from './sessions/live.js'
 import { refreshScreens } from './sessions/screen.js'
@@ -31,6 +32,7 @@ initTheme()
 initLayout()
 initSessionEvents()
 initConversation(renderLive)
+initSubagents(renderLive)
 initKeyboard()
 initNewSessionDialog()
 initResumeDialog()

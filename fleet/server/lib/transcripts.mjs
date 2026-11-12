@@ -184,7 +184,7 @@ function ingestRow(transcript, row) {
     transcript.model = model
     transcript.contextTokens =
       (usage.input_tokens || 0) + (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0)
-  }
+  } else if (transcript.isSubagent) transcript.model = model
   const creation = usage.cache_creation || {}
   const write1h = creation.ephemeral_1h_input_tokens || 0
   const write5m = creation.ephemeral_5m_input_tokens ?? Math.max(0, (usage.cache_creation_input_tokens || 0) - write1h)
@@ -247,7 +247,7 @@ async function readNewLines(transcript, size) {
 }
 
 async function listTranscripts(dir, cutoff, found = []) {
-  let entries = []
+  let entries
   try {
     entries = await fsp.readdir(dir, { withFileTypes: true })
   } catch {
@@ -301,6 +301,15 @@ export async function scanTranscripts() {
   } finally {
     transcriptScan.isScanning = false
   }
+}
+
+// A subagent's transcript, <session>/subagents/agent-<id>.jsonl, found in the
+// index so nothing outside the projects folder is ever opened.
+export function subagentTranscriptOf(sessionId, agentId) {
+  if (!/^[\w-]{1,100}$/.test(sessionId) || !/^[\w-]{1,64}$/.test(agentId)) return null
+  const name = `agent-${agentId}.jsonl`
+  for (const transcript of transcripts.values()) if (transcript.isSubagent && transcript.sessionId === sessionId && baseName(transcript.filePath) === name) return transcript
+  return null
 }
 
 // A session's own transcript (not its subagents'), from an index rebuilt once per scan.

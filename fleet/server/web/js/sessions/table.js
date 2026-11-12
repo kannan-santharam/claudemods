@@ -2,11 +2,11 @@
 // their session.
 
 import { escapeHtml, shortModel, timeAgo } from '../core/format.js'
-import { MODEL_ALIASES, modelColor } from '../core/models.js'
+import { aliasedModel, modelColor } from '../core/models.js'
 
 export function subagentRows(session, depth) {
   return session.subagents.map(agent => {
-    const model = MODEL_ALIASES[agent.model] || agent.model
+    const model = aliasedModel(agent.model)
     return `
     <tr class="subagent">
       <td></td>

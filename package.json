@@ -1,0 +1,16 @@
+{
+  "name": "claudemods",
+  "private": true,
+  "description": "Tooling for this repository's mods: linting only. The mods themselves have no dependencies.",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.14.0",
+    "globals": "17.14.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.2"
+  }
+}

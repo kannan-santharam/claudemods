@@ -7,21 +7,34 @@ import path from 'node:path'
 import { isExcludedPath } from './config.mjs'
 import { SYSTEM_FOLDERS, insideHome } from './folder-browser.mjs'
 import { startHidden } from './hidden-sessions.mjs'
+import { isNewer } from './pricing.mjs'
 import { settings } from './state.mjs'
 import { openInTerminal } from './terminal.mjs'
 import { cleanLine, shellQuote } from './utils.mjs'
 
-export const MODELS = [
-  { id: '', label: 'Default (your settings)' },
-  { id: 'claude-fable-5-1', label: 'Fable 5.1' },
-  { id: 'claude-opus-5-5', label: 'Opus 5.5' },
-  { id: 'claude-sonnet-5-5', label: 'Sonnet 5.5' },
-  { id: 'claude-haiku-5-5', label: 'Haiku 5.5' },
-]
-export const MODEL_IDS = new Set(MODELS.map(model => model.id).filter(Boolean))
+// The models offered come from the price table in use, which is read from
+// Anthropic's pricing page each day, so a new model shows up without an
+// update: the newest of each family that anyone can pick, dearest first, and
+// any other listed model in `alsoIds` (the ones running sessions are on).
+export const modelLabel = id => id.replace(/^claude-/, '').replace(/^[a-z]/, letter => letter.toUpperCase()).replace(/-(\d+)-(\d+)$/, ' $1.$2').replace(/-(\d+)$/, ' $1')
+// An id is typed into a terminal as `/model <id>`, so it is held to a model
+// id's shape whatever the price table (or an overrides file) lists.
+export const isKnownModel = id => /^claude-[a-z0-9-]{1,60}$/.test(id) && Object.hasOwn(settings.pricing.models, id)
+export function offeredModels(alsoIds = []) {
+  const models = settings.pricing.models
+  const newest = new Map()
+  for (const [id, rate] of Object.entries(models)) {
+    const family = id.match(/^claude-([a-z]+)-/)?.[1]
+    if (!family || rate.isLimited || !isKnownModel(id) || !Number.isFinite(rate.input)) continue
+    if (!newest.has(family) || isNewer(id, newest.get(family))) newest.set(family, id)
+  }
+  const ids = [...newest.values()].sort((left, right) => models[right].input - models[left].input)
+  for (const id of alsoIds) if (isKnownModel(id) && !ids.includes(id)) ids.push(id)
+  return [{ id: '', label: 'Default (your settings)' }, ...ids.map(id => ({ id, label: modelLabel(id) }))]
+}
 
 export async function listFolders() {
-  let entries = []
+  let entries
   try {
     entries = await fsp.readdir(settings.newSessionRoot, { withFileTypes: true })
   } catch {
@@ -41,7 +54,7 @@ export async function startSession(body) {
   const folderPath = insideHome(body.folder)
   if (!folderPath || isExcludedPath(folderPath)) return { ok: false, reason: 'Pick a folder inside your home folder.' }
   const model = String(body.model || '')
-  if (model && !MODEL_IDS.has(model)) return { ok: false, reason: 'Unknown model.' }
+  if (model && !isKnownModel(model)) return { ok: false, reason: 'Unknown model.' }
   const name = cleanLine(body.name, 80)
   const command = [
     `cd ${shellQuote(folderPath)} &&`,

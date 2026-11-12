@@ -42,6 +42,7 @@ export function refreshColors(scene) {
     accentSoft: officeCssVariable('--accent-soft'),
     critical: officeCssVariable('--critical'),
     warning: officeCssVariable('--series-4'),
+    stuck: officeCssVariable('--warning'),
     good: officeCssVariable('--good'),
     shirts: SHIRT_TOKENS.map(name => officeCssVariable(name)),
     wood,

@@ -12,6 +12,7 @@
 .office-ticker .ticker-item i { font-style: normal; color: var(--text-muted); margin-left: 2px; }
 .office-ticker .ticker-item::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; background: var(--border); vertical-align: 1px; }
 .office-ticker .kind-waiting::before { background: var(--critical); }
+.office-ticker .kind-stuck::before { background: var(--warning); }
 .office-ticker .kind-commit::before, .office-ticker .kind-push::before { background: var(--good); }
 .office-ticker .kind-compact::before, .office-ticker .kind-helper::before { background: var(--accent); }
 .office-ticker .kind-shell::before { background: var(--accent); opacity: .7; }

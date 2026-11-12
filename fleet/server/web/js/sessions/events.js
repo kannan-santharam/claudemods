@@ -78,9 +78,23 @@ export function initSessionEvents() {
     const menuId = dataAttribute('actionsMenu')
     if (menuId) { state.actionsMenu = state.actionsMenu === menuId ? '' : menuId; return renderLive() }
     if (state.actionsMenu && !target.closest('.actions-menu')) { state.actionsMenu = ''; renderLive() }
+    // A subagent's conversation, from the Subagents tab or the side card, and back to the list.
+    const openSubagent = target.closest('[data-open-subagent]')
+    if (openSubagent) {
+      const sessionId = openSubagent.dataset.session
+      if (!state.open.has(sessionId)) state.open = new Set([sessionId])
+      state.paneTab[sessionId] = 'subagents'
+      state.showScreen = new Set()
+      state.subagent[sessionId] = openSubagent.dataset.openSubagent
+      return renderLive()
+    }
+    const closeSubagent = dataAttribute('closeSubagent')
+    if (closeSubagent) { delete state.subagent[closeSubagent]; return renderLive() }
     const paneTab = target.closest('[data-pane-tab]')
     if (paneTab) {
       const sessionId = paneTab.dataset.session, tab = paneTab.dataset.paneTab
+      // The Subagents tab opens on its list.
+      if (tab === 'subagents') delete state.subagent[sessionId]
       state.paneTab[sessionId] = tab
       state.showScreen = tab === 'screen' ? new Set([sessionId]) : new Set()
       renderLive()
@@ -106,6 +120,11 @@ export function initSessionEvents() {
     if (field) state.fields[field] = event.target.value
   })
   $('#view-sessions').addEventListener('keydown', event => {
+    // A row that acts as a button answers Enter and Space like one.
+    if ((event.key === 'Enter' || event.key === ' ') && event.target.matches?.('[role="button"][data-open-subagent]')) {
+      event.preventDefault()
+      return event.target.click()
+    }
     const id = event.target.dataset && event.target.dataset.draft
     if (id && event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault()

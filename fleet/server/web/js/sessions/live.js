@@ -8,7 +8,7 @@ import { state } from '../core/state.js'
 import { renderBulkbar } from '../dialogs/end-session.js'
 import { matchesFilter, renderFilters } from './filters.js'
 import { fitSplit } from './layout.js'
-import { attentionCount, isListView, renderNav, renderSide } from './list-view.js'
+import { attentionCount, isListView, isStuckUnseen, renderNav, renderSide } from './list-view.js'
 import { renderPane } from './pane.js'
 import { shellRows, subagentRows } from './table.js'
 import { byName, sessionTree, statusPill } from './tree.js'
@@ -56,13 +56,13 @@ export function renderLive() {
     ].filter(Boolean).join(' · ')
     const id = escapeHtml(session.sessionId)
     rows.push(`
-      <tr class="session ${isOpen ? 'selected' : ''}" data-id="${id}" aria-selected="${isOpen}">
+      <tr class="session ${isOpen ? 'selected' : ''} ${isStuckUnseen(session) ? 'stuck' : ''}" data-id="${id}" aria-selected="${isOpen}">
         <td><input type="checkbox" data-select="${id}" ${state.selected.has(session.sessionId) ? 'checked' : ''} aria-label="Select ${escapeHtml(session.name)}"></td>
         <td>${statusPill(session, belowOf.get(session.sessionId))}</td>
         <td>
           <div class="nested" style="padding-left:${depth * 22}px">${depth ? '<span class="branch">↳</span>' : ''}<div>
           <div class="name">${escapeHtml(session.name)} <span class="link ${session.hasMod ? 'on' : ''}" aria-label="${session.hasMod ? 'connected' : 'not connected'}" title="${session.hasMod ? 'Connected: exact figures, and messages arrive as a prompt' : 'Started before the mod: figures read from its transcript, and messages are typed into its tab when it is idle'}">${session.hasMod ? 'connected' : 'not connected'}</span>${runningShells ? ` <span class="shell-tag" title="${escapeHtml((session.shells || []).map(shell => shell.description || shell.command).join('\n'))}"><i></i>${runningShells} shell${runningShells > 1 ? 's' : ''} running</span>` : ''}</div>
-          <div class="where"><span>${escapeHtml(session.folder)}</span>${session.hidden ? `<span class="tag hidden-tag" title="Runs hidden in Claude Code's background service: no terminal tab">hidden</span><span class="sid" data-copy="${escapeHtml(session.jobId)}" title="Its id (click to copy). claude attach ${escapeHtml(session.jobId)} opens it in a terminal">${escapeHtml(session.jobId)}</span>` : !session.tty ? '<span class="tag">headless</span>' : ''}${depth && session.launcher ? `<span class="tag">started by ${escapeHtml(session.launcher)}</span>` : ''}${nestedLabel ? `<button class="nest" data-toggle="${id}" aria-expanded="${!isCollapsed}">${isCollapsed ? '▸' : '▾'} ${escapeHtml(nestedLabel)}</button>` : ''}</div>
+          <div class="where"><span>${escapeHtml(session.folder)}</span>${session.stuck ? `<span class="tag stuck-tag" title="${escapeHtml(session.stuck.reason)}">may be stuck</span>` : ''}${session.hidden ? `<span class="tag hidden-tag" title="Runs hidden in Claude Code's background service: no terminal tab">hidden</span><span class="sid" data-copy="${escapeHtml(session.jobId)}" title="Its id (click to copy). claude attach ${escapeHtml(session.jobId)} opens it in a terminal">${escapeHtml(session.jobId)}</span>` : !session.tty ? '<span class="tag">headless</span>' : ''}${depth && session.launcher ? `<span class="tag">started by ${escapeHtml(session.launcher)}</span>` : ''}${nestedLabel ? `<button class="nest" data-toggle="${id}" aria-expanded="${!isCollapsed}">${isCollapsed ? '▸' : '▾'} ${escapeHtml(nestedLabel)}</button>` : ''}</div>
           </div></div>
         </td>
         <td class="hide-sm"><span class="chip"><i class="sw" style="background:${modelColor(session.model)}"></i>${escapeHtml(shortModel(session.model))}</span></td>
@@ -90,7 +90,7 @@ export function renderLive() {
   // A reply being read keeps its scroll position across the 2-second refresh, and so does the pane.
   const replyScroll = new Map([...area.querySelectorAll('[data-reply]')].map(reply => [reply.dataset.reply, reply.scrollTop]))
   const paneBody = pane.querySelector('.pane-body')
-  const paneScroll = paneBody && pane.dataset.session === [...state.open][0] ? { top: paneBody.scrollTop, atEnd: paneBody.scrollTop + paneBody.clientHeight >= paneBody.scrollHeight - 8 } : null
+  const paneScroll = paneBody && pane.dataset.session === [...state.open][0] ? { view: pane.dataset.view, top: paneBody.scrollTop, atEnd: paneBody.scrollTop + paneBody.clientHeight >= paneBody.scrollHeight - 8 } : null
   body.innerHTML = rows.join('') || `<tr><td colspan="8" class="empty">${sessions.length ? 'No session matches.' : 'No Claude Code sessions are running.'}</td></tr>`
   // The List view's column, in its own order, which j and k then follow.
   const navOrder = renderNav(sessions, byId, childrenOf, belowOf)
@@ -105,7 +105,11 @@ export function renderLive() {
   // Size the split before scrolling the chat, so it lands on the newest message.
   fitSplit()
   const newBody = pane.querySelector('.pane-body')
-  if (newBody && !isSelectingInPane) newBody.scrollTop = paneScroll && !paneScroll.atEnd ? paneScroll.top : newBody.scrollHeight
+  // A chat opens at its newest message and follows it; the subagent list
+  // opens at its top and stays where it is put.
+  const isSameView = paneScroll && paneScroll.view === pane.dataset.view
+  const isList = pane.dataset.view === 'subagents'
+  if (newBody && !isSelectingInPane) newBody.scrollTop = isList ? (isSameView ? paneScroll.top : 0) : isSameView && !paneScroll.atEnd ? paneScroll.top : newBody.scrollHeight
   for (const reply of area.querySelectorAll('[data-reply]')) if (replyScroll.has(reply.dataset.reply)) reply.scrollTop = replyScroll.get(reply.dataset.reply)
   if (keyAttr) {
     const field = area.querySelector(`[data-${keyAttr}="${CSS.escape(keyValue)}"]`)

@@ -8,7 +8,7 @@ import { PROJECTS_DIR, SESSION_ID_PATTERN } from './constants.mjs'
 import { isExcludedPath } from './config.mjs'
 import { insideHome } from './folder-browser.mjs'
 import { startHidden } from './hidden-sessions.mjs'
-import { MODEL_IDS } from './new-sessions.mjs'
+import { isKnownModel } from './new-sessions.mjs'
 import { baseModel } from './pricing.mjs'
 import { live } from './state.mjs'
 import { openInTerminal } from './terminal.mjs'
@@ -71,7 +71,7 @@ export async function listHistory(folderPath) {
   } catch {}
   const candidates = []
   for (const dir of projectDirs) {
-    let names = []
+    let names
     try {
       names = await fsp.readdir(path.join(PROJECTS_DIR, dir))
     } catch {
@@ -118,7 +118,7 @@ export async function resumeSession(body) {
   if (!SESSION_ID_PATTERN.test(sessionId)) return { ok: false, reason: 'Not a session id.' }
   if (live.has(sessionId)) return { ok: false, reason: live.get(sessionId).hidden ? 'That session is already running hidden: open it from its row.' : 'That session is already running: use Open tab.' }
   const model = String(body.model || '')
-  if (model && !MODEL_IDS.has(model)) return { ok: false, reason: 'Unknown model.' }
+  if (model && !isKnownModel(model)) return { ok: false, reason: 'Unknown model.' }
   let found = ''
   for (const dir of await fsp.readdir(PROJECTS_DIR).catch(() => [])) {
     const candidate = path.join(PROJECTS_DIR, dir, `${sessionId}.jsonl`)

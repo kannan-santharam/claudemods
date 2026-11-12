@@ -34,7 +34,7 @@ function describe(scene, person) {
   // An idle session says where in the lounge it is: the sofa, a game, or napping.
   const idleSpot = person.activity === 'idle' && person.home?.zone !== 'desk' ? IDLE_SPOT_LABEL[person.home?.pose] : ''
   const doing = person.trip ? TRIP_LABEL[person.trip.kind] : person.errand?.kind === 'shred' ? 'shredding its old context' : idleSpot || ACTIVITY_LABEL[person.activity] || person.activity
-  const status = person.leaving ? 'Session ended' : person.activity === 'waiting' ? statusLabel + (person.isUrgent ? ` for ${timeAgo(scene.waitingSince.get(session.sessionId))}` : '') : `${statusLabel} · ${doing}`
+  const status = person.leaving ? 'Session ended' : person.activity === 'waiting' ? statusLabel + (person.isUrgent ? ` for ${timeAgo(scene.waitingSince.get(session.sessionId))}` : '') : person.isStuck ? `May be stuck · ${session.stuck.reason}` : `${statusLabel} · ${doing}`
   const helpers = session.subagents.filter(agent => agent.isRunning).length
   const shells = session.shells || []
   return [

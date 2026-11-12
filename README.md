@@ -28,6 +28,10 @@ Fleet, Mac only, needs Node.js 18 or newer.
 
 Each mod installs on its own: `/plugin install <mod> --marketplace kannan-santharam/claudemods`. Its README covers what it needs and how to use it.
 
+## Developing
+
+The mods have no dependencies. The repository's own tooling is the linter: `npm install`, then `npm run lint`. Every pull request is linted, and must raise the version of any mod it changes.
+
 ## License
 
 MIT

@@ -38,12 +38,13 @@ function tripWanted(session, activity) {
 }
 function noticeChanges(scene, session, person) {
   const before = scene.previous.get(session.sessionId)
-  const now = { status: session.status, commits: session.commits || 0, pushes: session.pushes || 0, contextTokens: session.contextTokens || 0, helpers: new Set(session.subagents.filter(agent => agent.isRunning).map(agent => agent.agentId)), shells: new Map((session.shells || []).map(shell => [shell.id, shell])) }
+  const now = { status: session.status, stuck: session.stuck?.id || '', commits: session.commits || 0, pushes: session.pushes || 0, contextTokens: session.contextTokens || 0, helpers: new Set(session.subagents.filter(agent => agent.isRunning).map(agent => agent.agentId)), shells: new Map((session.shells || []).map(shell => [shell.id, shell])) }
   scene.previous.set(session.sessionId, now)
   if (!before) { if (scene.hasSynced) addEvent(scene, `${session.name} came in`, 'join', session.sessionId); return }
   const desk = scene.layout.deskBySession.get(session.sessionId)
   const from = desk ? { gx: desk.gx, gy: desk.gy - 0.1 } : { gx: person.gx, gy: person.gy }
   if (now.status === 'waiting' && before.status !== 'waiting') { addEvent(scene, `${session.name} needs you`, 'waiting', session.sessionId); chime(scene); setTimeout(() => focusOn(scene, scene.people.get(session.sessionId)), 1200) }
+  if (now.stuck && now.stuck !== before.stuck) addEvent(scene, `${session.name} may be stuck`, 'stuck', session.sessionId)
   if (before.status === 'busy' && now.status === 'idle') addEvent(scene, `${session.name} finished`, 'done', session.sessionId)
   if (now.commits > before.commits) { addEvent(scene, `${session.name} committed${session.branch ? ' on ' + session.branch : ''}`, 'commit', session.sessionId); launch(scene, 'parcel', from) }
   if (now.pushes > before.pushes) { addEvent(scene, `${session.name} pushed${session.branch ? ' ' + session.branch : ''}`, 'push', session.sessionId); launch(scene, 'plane', from) }
@@ -177,6 +178,8 @@ export function sync(scene, live) {
       if (!scene.waitingSince.has(key)) scene.waitingSince.set(key, scene.hasSynced ? now : Math.min(now, session.updatedAt || now))
     } else scene.waitingSince.delete(key)
     person.isUrgent = activity === 'waiting' && now - (scene.waitingSince.get(key) || now) > WAIT_ALERT_MS
+    // Going round in circles: it scratches its head under an orange "?".
+    person.isStuck = activity !== 'waiting' && Boolean(session.stuck)
     if (activity === 'waiting' && person.errand) { person.errand = null; person.carrying = '' }
     const trip = !robot && activity !== 'waiting' ? scene.tripOf.get(key) : null
     if (trip) {

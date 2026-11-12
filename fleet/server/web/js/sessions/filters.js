@@ -6,7 +6,7 @@ import { state } from '../core/state.js'
 // Which sessions the table lists: the segment picked above it and the search box.
 const FILTERS = [
   ['all', 'All', () => true],
-  ['waiting', 'Needs you', session => session.status === 'waiting'],
+  ['waiting', 'Needs you', session => session.status === 'waiting' || Boolean(session.stuck)],
   ['working', 'Working', session => session.status === 'busy'],
   ['idle', 'Idle', session => session.status === 'idle' || session.status === 'shell'],
   ['hidden', 'Hidden', session => session.hidden],
