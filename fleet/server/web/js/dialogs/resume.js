@@ -20,7 +20,7 @@ function renderHistory() {
     <div class="item ${session.isLive ? 'live' : ''}" role="option" data-resume="${escapeHtml(session.sessionId)}" aria-selected="${resume.chosen === session.sessionId}">
       <span class="title">${escapeHtml(session.name)}</span>
       <span class="meta">${session.isLive ? '<b>running</b> · ' : ''}${timeAgo(session.lastAt)} ago${session.model ? ' · ' + escapeHtml(shortModel(session.model)) : ''}</span>
-      <span class="snippet">${session.subfolder ? `<code>${escapeHtml(session.subfolder)}</code> · ` : ''}Last: ${escapeHtml(session.lastPrompt || session.firstPrompt)}</span>
+      <span class="snippet">${session.subfolder ? `<code>${escapeHtml(session.subfolder)}</code> · ` : ''}Last: <span class="mine">${escapeHtml(session.lastPrompt || session.firstPrompt)}</span></span>
     </div>`).join('') || `<div class="empty">${resume.sessions.length ? 'Nothing matches the filter' : 'No past sessions in this folder'}</div>`
   $('#resume-start').disabled = !resume.chosen
 }
@@ -47,7 +47,7 @@ async function loadRecentlyClosed() {
         <span class="title">${escapeHtml(session.name)}</span>
         <span class="meta">${escapeHtml(session.folder)} · closed ${timeAgo(session.endedAt)} ago${session.model ? ' · ' + escapeHtml(shortModel(session.model)) : ''}</span>
         <button type="button" class="btn small primary" data-resume-closed="${escapeHtml(session.sessionId)}">Resume</button>
-        <span class="snippet">${session.lastPrompt ? 'Last: ' + escapeHtml(session.lastPrompt) : '&nbsp;'}</span>
+        <span class="snippet">${session.lastPrompt ? 'Last: <span class="mine">' + escapeHtml(session.lastPrompt) + '</span>' : '&nbsp;'}</span>
       </div>`).join('')
   } catch { $('#closed-section').hidden = true }
 }

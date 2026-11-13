@@ -2,7 +2,7 @@
 // describes a person, dragging the zoomed room, ctrl or pinch to zoom, a click
 // that opens the session in the list and a double click that opens its tab.
 
-import { shortModel, timeAgo } from '../core/format.js'
+import { placeOf, shortModel, timeAgo } from '../core/format.js'
 import { sessionById, state } from '../core/state.js'
 import { isListView } from '../sessions/list-view.js'
 import { STATUS } from '../sessions/tree.js'
@@ -41,7 +41,7 @@ function describe(scene, person) {
     session.name,
     status,
     `${shortModel(session.model) || 'model unknown'}${person.outfit ? ' · ' + OUTFIT_LABEL[person.outfit] : ''} · context ${session.contextPercent}%`,
-    session.folder + (session.branch ? ` · ${session.branch}` : ''),
+    placeOf(session).folder + (placeOf(session).branch ? ` · ${placeOf(session).branch}` : ''),
     helpers ? `${helpers} helper${helpers > 1 ? 's' : ''} running` : '',
     shells.length ? `${shells.length} background shell${shells.length > 1 ? 's' : ''}: ${shells.slice(0, 3).map(shell => truncate(shell.description || shell.command, 34)).join(', ')}${shells.length > 3 ? '…' : ''}` : '',
     session.hidden ? `Hidden · ${session.jobId} · reached only from this page` : '',

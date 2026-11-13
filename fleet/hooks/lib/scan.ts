@@ -29,6 +29,8 @@ type TranscriptFacts = {
   readAt: number
   model: string
   contextTokens: number
+  /** Nothing has been said since the last compaction. */
+  isContextFromCompaction: boolean
   lastPrompt: string
 }
 
@@ -68,6 +70,8 @@ async function readTranscript(
   const lines = tail.stdout.split('\n')
   let model = ''
   let contextTokens = -1
+  let isContextFromCompaction = false
+  let summaryLength = 0
   let lastPrompt = ''
   for (let index = lines.length - 1; index >= 1; index--) {
     const line = lines[index]
@@ -80,6 +84,18 @@ async function readTranscript(
     }
     if (row.isSidechain) continue
     const message = row.message
+    // Read backwards, a compaction met before any response means nothing has
+    // been said since: the context is what the compaction left, which it reports
+    // itself or which the summary it wrote (the row after it) stands in for.
+    if (contextTokens < 0 && row.isCompactSummary) {
+      const content = message?.content
+      summaryLength = typeof content === 'string' ? content.length : Array.isArray(content) ? content.reduce((total: number, block: any) => total + String(block?.text ?? '').length, 0) : 0
+    }
+    if (contextTokens < 0 && row.type === 'system' && row.subtype === 'compact_boundary') {
+      const tokensAfter = Number(row.compactMetadata?.postTokens)
+      contextTokens = tokensAfter > 0 ? tokensAfter : Math.round(summaryLength / 4)
+      isContextFromCompaction = true
+    }
     if (contextTokens < 0 && row.type === 'assistant' && message?.usage && message.model !== '<synthetic>') {
       const usage = message.usage
       model = String(message.model ?? '')
@@ -99,6 +115,7 @@ async function readTranscript(
     readAt: now,
     model: model || cached?.model || '',
     contextTokens: contextTokens >= 0 ? contextTokens : cached?.contextTokens ?? 0,
+    isContextFromCompaction: contextTokens >= 0 ? isContextFromCompaction : cached?.isContextFromCompaction ?? false,
     lastPrompt: lastPrompt || cached?.lastPrompt || '',
   }
   transcriptCache.set(registration.sessionId, facts)
@@ -179,7 +196,7 @@ export async function scan($: EngineInterface): Promise<void> {
         if (isSelf) {
           const usage = await $.session.usage()
           model = await $.session.model()
-          contextTokens = usage.context.tokens ?? contextTokens
+          if (!facts?.isContextFromCompaction) contextTokens = usage.context.tokens ?? contextTokens
           contextWindow = usage.context.window || contextWindow
         }
         const tty = ttyByPid.get(registration.pid) ?? ''

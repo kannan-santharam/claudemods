@@ -11,6 +11,7 @@ import { deliveries, heartbeats, live, liveCache, metaCache, transcriptIndexes, 
 import { stuckOf } from './stuck.mjs'
 import { mainTranscriptOf } from './transcripts.mjs'
 import { baseName, dayKey, stripAnsi } from './utils.mjs'
+import { workPlaceOf } from './work-place.mjs'
 
 // Without the session's own report, the window is the model's: these run with 1M tokens.
 const MILLION_TOKEN_MODELS = /^claude-(fable-5|opus-5|opus-4-[6-9]|sonnet-5|sonnet-4-6|haiku-5)/
@@ -72,6 +73,7 @@ function outputTail(file) {
 // too, for the session's Subagents tab.
 function subagentsOf(sessionId, now, withFinished = false) {
   const found = []
+  const since = (live.get(sessionId)?.startedAt || 0) - 10_000
   for (const transcript of subagentTranscriptsOf(sessionId)) {
     let stat
     try {
@@ -90,7 +92,13 @@ function subagentsOf(sessionId, now, withFinished = false) {
         metaCache.set(metaPath, { mtimeMs: metaStat.mtimeMs, meta })
       }
     } catch {}
-    const isRunning = meta.finished !== true && now - stat.mtimeMs < SUBAGENT_STALE_MS
+    // A background subagent that ended its turn with shells of its own still
+    // running is not done: it is woken when they finish. One that has handed
+    // its report back is done whatever it left running. Shells from before
+    // this process started died with the old one, as a session's do.
+    let waitingShells = 0
+    if (meta.finished === true && transcript.lastTool !== 'SubagentHandback') for (const shell of transcript.shells?.values() || []) if (!shell.endedAt && shell.startedAt >= since && now - shell.startedAt < DAY_MS) waitingShells++
+    const isRunning = waitingShells > 0 || (meta.finished !== true && now - stat.mtimeMs < SUBAGENT_STALE_MS)
     // A subagent leaves the live view as soon as it finishes.
     if (!isRunning && !withFinished) continue
     found.push({
@@ -100,6 +108,7 @@ function subagentsOf(sessionId, now, withFinished = false) {
       model: String(meta.model || transcript.model || ''),
       isBackground: meta.requestShape === 'background',
       isRunning,
+      waitingShells,
       startedAt: transcript.firstAt,
       lastAt: stat.mtimeMs,
       ...(withFinished ? { transcript } : {}),
@@ -114,7 +123,7 @@ const SUBAGENTS_SHOWN = 100
 export async function listSubagents(sessionId) {
   const found = subagentsOf(sessionId, Date.now(), true).slice(0, SUBAGENTS_SHOWN)
   for (const agent of found) {
-    if (agent.isRunning) agent.activity = await subagentActivity(agent.transcript)
+    if (agent.isRunning && !agent.waitingShells) agent.activity = await subagentActivity(agent.transcript)
     delete agent.transcript
   }
   return found
@@ -142,7 +151,8 @@ function buildLiveView() {
     let model = summary?.model || ''
     if (hasMod) {
       model = baseModel(heartbeat.model) || model
-      if (heartbeat.context?.tokens != null) contextTokens = heartbeat.context.tokens
+      // Straight after a compaction the session still reports its last response's size.
+      if (heartbeat.context?.tokens != null && !summary?.isContextFromCompaction) contextTokens = heartbeat.context.tokens
       if (heartbeat.context?.window) contextWindow = heartbeat.context.window
       for (const limit of heartbeat.rateLimits || []) {
         const known = rateLimits.get(limit.kind)
@@ -183,6 +193,8 @@ function buildLiveView() {
       pushes: summary?.pushes || 0,
       topTools,
       filesTouched,
+      // Set when its work is in another repository than the folder it was started in.
+      work: workPlaceOf(session.cwd, summary?.workPlaces),
       lastActivityAt: Math.max(summary?.lastAt || 0, session.updatedAt || 0),
       subagents: subagentsOf(session.sessionId, now),
       shells: shellsOf(session, now),

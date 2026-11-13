@@ -2,13 +2,14 @@
 // subagents, details or screen below.
 
 import { $ } from '../core/dom.js'
-import { escapeHtml, formatCost, formatTokens, shortModel, timeAgo } from '../core/format.js'
+import { escapeHtml, formatCost, formatTokens, placeOf, shortModel, timeAgo } from '../core/format.js'
 import { modelOptions } from '../core/models.js'
 import { fieldValue, state } from '../core/state.js'
 import { permissionCard, questionCard } from './ask-cards.js'
-import { conversationHtml, messageBubble, workingStatus } from './conversation.js'
+import { conversationHtml, messageBubble, shownMessages, workingStatus } from './conversation.js'
 import { screenHtml } from './screen.js'
 import { stuckNoteHtml } from './stuck-note.js'
+import { matchOutbox, outgoingBubble } from './outbox.js'
 import { subagentCount, subagentsHtml } from './subagents.js'
 import { lastDelivery, statusPill } from './tree.js'
 
@@ -16,20 +17,27 @@ import { lastDelivery, statusPill } from './tree.js'
 // that arrives, the last exchange the live view carries. Then a typing bubble
 // while it works, and any question it is waiting on.
 function chatThread(session) {
-  const lastExchange = () => {
-    const messages = []
-    if (session.lastPrompt) messages.push({ from: 'you', at: session.lastPromptAt, text: session.lastPrompt })
-    if (session.lastReply) messages.push({ from: 'claude', at: session.lastReplyAt, text: session.lastReply })
-    messages.sort((first, second) => (first.at || 0) - (second.at || 0))
-    return messages.map(message => messageBubble(message, session.sessionId)).join('')
-  }
-  const bubbles = [conversationHtml(session) ?? lastExchange()].filter(Boolean)
+  const lastMessages = []
+  if (session.lastPrompt) lastMessages.push({ from: 'you', at: session.lastPromptAt, text: session.lastPrompt })
+  if (session.lastReply) lastMessages.push({ from: 'claude', at: session.lastReplyAt, text: session.lastReply })
+  lastMessages.sort((first, second) => (first.at || 0) - (second.at || 0))
+  // What you sent from here: ticked on its transcript bubble once that exists,
+  // and until then shown at the end as its own bubble.
+  const shown = shownMessages(session)
+  const sent = matchOutbox(session.sessionId, shown.length ? shown : lastMessages)
+  const bubbles = [conversationHtml(session, 'You', sent.tickOf) ?? lastMessages.map(message => messageBubble(message, session.sessionId, 'You', sent.tickOf(message))).join('')].filter(Boolean)
+  for (const entry of sent.waiting) bubbles.push(outgoingBubble(entry))
   if (session.status === 'busy') bubbles.push(workingStatus(session))
   const asks = session.asks || []
   for (const ask of asks) bubbles.push(`<div class="msg claude"><span class="avatar" aria-hidden="true">C</span><div class="ask-card">${ask.kind === 'question' ? questionCard(ask) : permissionCard(ask)}</div></div>`)
   if (session.status === 'waiting' && !asks.length) bubbles.push(`<div class="msg claude"><span class="avatar" aria-hidden="true">C</span><div class="bubble asking">Waiting for you${session.waitingFor ? ': ' + escapeHtml(session.waitingFor) : ''}${session.hidden ? '. Open Screen below to see what it shows.' : ''}</div></div>`)
   return bubbles.join('') || '<div class="stamp">No messages yet</div>'
 }
+// A message's own bubble carries its ticks, so the line under the message box
+// is kept for what has no bubble: commands, and a message that did not arrive
+// and is no longer in this page's memory.
+const isShownInChat = delivery => (delivery.via === 'prompt' || delivery.via === 'typed into its tab') && (delivery.isDelivered || Object.values(state.outbox).flat().some(entry => entry.serverId === delivery.id))
+
 // The selected session, docked on the right: who it is, what you can do to it,
 // and its conversation, files, subagents, details or screen as tabs. `view`
 // names what the body shows, and `conversation` the chat that scrolling up
@@ -40,6 +48,7 @@ export function renderPane(byId, belowOf) {
   pane.dataset.session = session ? session.sessionId : ''
   if (!session) { pane.innerHTML = '<div class="pane-empty">Pick a session to see its conversation here.</div>'; pane.dataset.view = pane.dataset.conversation = ''; return }
   const id = escapeHtml(session.sessionId)
+  const place = placeOf(session)
   const tab = state.paneTab[session.sessionId] || 'chat'
   const agentId = tab === 'subagents' ? state.subagent[session.sessionId] || '' : ''
   pane.dataset.view = agentId ? 'subagent:' + agentId : tab
@@ -60,7 +69,9 @@ export function renderPane(byId, belowOf) {
       <dt>Path</dt><dd><code>${escapeHtml(session.cwd)}</code></dd>
       <dt>Session id</dt><dd><code>${escapeHtml(session.sessionId)}</code></dd>
       ${session.hidden ? `<dt>Hidden</dt><dd>job <code>${escapeHtml(session.jobId)}</code> · <code>claude attach ${escapeHtml(session.jobId)}</code> opens it in a terminal · pid ${session.pid}</dd>` : `<dt>Terminal</dt><dd><code>${escapeHtml(session.tty || '—')}</code> · pid ${session.pid}</dd>`}
-      ${session.branch ? `<dt>Branch</dt><dd><code>${escapeHtml(session.branch)}</code></dd>` : ''}
+      ${session.branch ? `<dt>${place.isElsewhere ? 'Its branch' : 'Branch'}</dt><dd><code>${escapeHtml(session.branch)}</code></dd>` : ''}
+      ${place.isElsewhere ? `<dt>Working in</dt><dd><code>${escapeHtml(place.path)}</code>${place.branch ? ` on <code>${escapeHtml(place.branch)}</code>` : ''}</dd>` : ''}
+      ${session.work?.others?.length ? `<dt>Also worked in</dt><dd>${session.work.others.map(other => `<code title="${escapeHtml(other.path)}">${escapeHtml(other.folder)}</code>${other.branch ? ` on <code>${escapeHtml(other.branch)}</code>` : ''}`).join(', ')}</dd>` : ''}
       <dt>Started</dt><dd>${session.startedAt ? new Date(session.startedAt).toLocaleString() + ' · ' + timeAgo(session.startedAt) + ' ago' : '—'}</dd>
       ${session.sessionCostUsd != null ? `<dt>Session cost</dt><dd>${formatCost(session.sessionCostUsd)} (as /cost reports it)</dd>` : ''}
       <dt>Today</dt><dd>${session.prompts} prompts · ${session.commits} commits · ${session.subagentCount} subagents · ${formatTokens(session.todayTokens)} tokens · ${formatCost(session.todayCost)}</dd>
@@ -72,7 +83,7 @@ export function renderPane(byId, belowOf) {
   pane.innerHTML = `
     <div class="pane-head">
       <div class="pane-title"><h2>${escapeHtml(session.name)}</h2>${statusPill(session, belowOf?.get(session.sessionId))}</div>
-      <div class="pane-where"><span>${escapeHtml(session.folder)}</span><span>·</span><span>${escapeHtml(shortModel(session.model))}</span>${session.branch ? `<span>·</span><span>${escapeHtml(session.branch)}</span>` : ''}${session.hidden ? `<span class="tag hidden-tag">hidden</span><span class="sid" data-copy="${escapeHtml(session.jobId)}" title="Click to copy">${escapeHtml(session.jobId)}</span>` : ''}<span class="link ${session.hasMod ? 'on' : ''}">${session.hasMod ? 'connected' : 'not connected'}</span></div>
+      <div class="pane-where"><span title="${escapeHtml(place.note)}">${escapeHtml(place.folder)}</span><span>·</span><span>${escapeHtml(shortModel(session.model))}</span>${place.branch ? `<span>·</span><span title="${escapeHtml(place.note)}">${escapeHtml(place.branch)}</span>` : ''}${place.isElsewhere ? `<span class="tag" title="${escapeHtml(place.note)}">started in ${escapeHtml(session.folder)}</span>` : ''}${session.hidden ? `<span class="tag hidden-tag">hidden</span><span class="sid" data-copy="${escapeHtml(session.jobId)}" title="Click to copy">${escapeHtml(session.jobId)}</span>` : ''}<span class="link ${session.hasMod ? 'on' : ''}">${session.hasMod ? 'connected' : 'not connected'}</span></div>
       <div class="pane-tools">
         ${opener}
         <button class="btn small" data-compact="${id}" title="Summarise the conversation so far to free up context (${session.contextPercent}% full)">Compact · ${session.contextPercent}%</button>
@@ -96,10 +107,10 @@ export function renderPane(byId, belowOf) {
     ${tab === 'chat' ? `<div class="pane-foot">
       ${stuckNoteHtml(session)}
       <div class="composer chat">
-        <textarea rows="2" data-draft="${id}" placeholder="Message ${escapeHtml(session.name)} — Enter to send, Shift+Enter for a new line">${escapeHtml(state.drafts[session.sessionId] || '')}</textarea>
+        <textarea rows="2" data-draft="${id}" placeholder="Message ${escapeHtml(session.name)} — Enter to send, Shift+Enter for a new line, ↑ for your earlier messages">${escapeHtml(state.drafts[session.sessionId] || '')}</textarea>
         <button class="btn primary" data-send="${id}" aria-label="Send">Send ➤</button>
       </div>
-      ${delivery ? `<div class="delivery ${delivery.isDelivered ? 'good' : 'bad'}">${delivery.isDelivered ? '✓ Delivered' : '✕ Not delivered'} as a ${escapeHtml(delivery.via)} ${timeAgo(delivery.at)} ago${delivery.reason ? ' — ' + escapeHtml(delivery.reason) : ''}: “${escapeHtml(delivery.text.slice(0, 90))}”</div>` : ''}
+      ${delivery && !isShownInChat(delivery) ? `<div class="delivery ${delivery.isDelivered ? 'good' : 'bad'}">${delivery.isDelivered ? '✓ Delivered' : '✕ Not delivered'} as a ${escapeHtml(delivery.via)} ${timeAgo(delivery.at)} ago${delivery.reason ? ' — ' + escapeHtml(delivery.reason) : ''}: “<span class="mine">${escapeHtml(delivery.text.slice(0, 90))}</span>”</div>` : ''}
       ${session.hasMod ? '' : session.hidden ? '<div class="delivery bad">Not connected: a hidden session takes messages only through the Fleet mod, which has not reported in from it.</div>' : '<div class="delivery">Not connected: messages and commands are typed into its tab once it is idle.</div>'}
     </div>` : ''}`
 }

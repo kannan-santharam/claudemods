@@ -2,7 +2,7 @@
 // on the right.
 
 import { $ } from '../core/dom.js'
-import { clock, escapeHtml, fillLevel, formatCost, formatTokens, shortModel, timeAgo } from '../core/format.js'
+import { clock, escapeHtml, fillLevel, formatCost, formatTokens, placeOf, shortModel, timeAgo } from '../core/format.js'
 import { aliasedModel, modelColor } from '../core/models.js'
 import { state } from '../core/state.js'
 import { remember, remembered } from '../core/storage.js'
@@ -65,6 +65,7 @@ function navStatusLine(session) {
 }
 function navItem(session, depth, byId, belowOf) {
   const id = escapeHtml(session.sessionId)
+  const place = placeOf(session)
   const below = belowOf.get(session.sessionId)
   const runningSubagents = (session.subagents || []).filter(agent => agent.isRunning).length
   const runningShells = (session.shells || []).length
@@ -88,7 +89,7 @@ function navItem(session, depth, byId, belowOf) {
     <i class="nav-dot ${navDot(session, below)}" title="${escapeHtml(session.status === 'waiting' && session.waitingFor ? session.waitingFor : look)}"></i>
     <div class="nav-main">
       <div class="nav-line"><span class="nav-name" title="${escapeHtml(session.name)}">${escapeHtml(session.name)}</span><span class="chip"><i class="sw" style="background:${modelColor(session.model)}"></i>${escapeHtml(shortModel(session.model))}</span></div>
-      <div class="nav-sub"><span class="folder" title="${escapeHtml(session.cwd || session.folder)}">${escapeHtml(session.folder)}</span>${badges}</div>
+      <div class="nav-sub"><span class="folder" title="${escapeHtml(place.note)}">${escapeHtml(place.isElsewhere ? place.folder + (place.branch ? ' · ' + place.branch : '') : place.folder)}</span>${badges}</div>
       ${navStatusLine(session)}
       <div class="nav-ctx" data-tip="${formatTokens(session.contextTokens)} of ${formatTokens(session.contextWindow)} tokens"><div class="track"><b class="${fillLevel(session.contextPercent)}" style="width:${session.contextPercent}%"></b></div><span>${session.contextPercent}%</span>${session.status === 'busy' ? '' : `<span class="nav-ago">${lastSeenAgo(session)}</span>`}</div>
     </div>
@@ -136,7 +137,7 @@ export function renderSide(byId) {
         <dt>Started</dt><dd>${session.startedAt ? clock(session.startedAt) + ' · ' + timeAgo(session.startedAt) + ' ago' : '—'}</dd>
         <dt>Files edited</dt><dd>${(session.filesTouched || []).length}</dd>
       </dl>
-      ${subagents.length ? `<div class="side-list"><h4>Subagents running · ${subagents.length}</h4>${subagents.map(agent => `<div class="item open-subagent" role="button" tabindex="0" data-open-subagent="${escapeHtml(agent.agentId)}" data-session="${escapeHtml(session.sessionId)}" title="Open its conversation"><b title="${escapeHtml(agent.description)}">${escapeHtml(agent.description)}</b><span>${escapeHtml(agent.agentType || 'subagent')}${agent.model ? ' · ' + escapeHtml(shortModel(aliasedModel(agent.model))) : ''} · for ${timeAgo(agent.startedAt)}</span></div>`).join('')}</div>` : ''}
+      ${subagents.length ? `<div class="side-list"><h4>Subagents at work · ${subagents.length}</h4>${subagents.map(agent => `<div class="item open-subagent" role="button" tabindex="0" data-open-subagent="${escapeHtml(agent.agentId)}" data-session="${escapeHtml(session.sessionId)}" title="Open its conversation"><b title="${escapeHtml(agent.description)}">${escapeHtml(agent.description)}</b><span>${escapeHtml(agent.agentType || 'subagent')}${agent.model ? ' · ' + escapeHtml(shortModel(aliasedModel(agent.model))) : ''} · ${agent.waitingShells ? `waiting on ${agent.waitingShells} background shell${agent.waitingShells > 1 ? 's' : ''}` : 'for ' + timeAgo(agent.startedAt)}</span></div>`).join('')}</div>` : ''}
       ${shells.length ? `<div class="side-list"><h4>Background shells · ${shells.length}</h4>${shells.map(shell => `<div class="item"><b title="${escapeHtml(shell.command)}">${escapeHtml(shell.description || shell.command || 'Background shell')}</b>${shell.lastOutput ? `<code title="${escapeHtml(shell.lastOutput)}">${escapeHtml(shell.lastOutput)}</code>` : `<span>for ${timeAgo(shell.startedAt)}</span>`}</div>`).join('')}</div>` : ''}`
   }
   if (holder.innerHTML !== html) holder.innerHTML = html

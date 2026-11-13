@@ -39,6 +39,7 @@ export function sessionSummaries(sinceDay) {
         byModel: {},
         tools: {},
         filesTouched: {},
+        workPlaces: new Map(),
       }
       sessions.set(transcript.sessionId, summary)
     }
@@ -63,6 +64,7 @@ export function sessionSummaries(sinceDay) {
         summary.lastToolAt = transcript.lastToolAt
       }
       summary.contextTokens = transcript.contextTokens
+      summary.isContextFromCompaction = transcript.isContextFromCompaction
       summary.prompts += transcript.prompts
     }
     summary.firstAt = summary.firstAt ? Math.min(summary.firstAt, transcript.firstAt || summary.firstAt) : transcript.firstAt
@@ -81,6 +83,8 @@ export function sessionSummaries(sinceDay) {
     for (const [tool, count] of Object.entries(transcript.tools)) summary.tools[tool] = (summary.tools[tool] || 0) + count
     for (const [file, count] of Object.entries(transcript.filesTouched))
       summary.filesTouched[file] = (summary.filesTouched[file] || 0) + count
+    // Its subagents' work is its own.
+    for (const [folder, at] of transcript.workPlaces) if (at > (summary.workPlaces.get(folder) || 0)) summary.workPlaces.set(folder, at)
   }
   // A session known only from its subagents' files takes their cwd: one pass, not one per session.
   const cwdBySession = new Map()

@@ -36,7 +36,7 @@ function listOf(sessionId) {
 
 const modelName = agent => (agent.model ? shortModel(aliasedModel(agent.model)) : '')
 function agentLine(agent) {
-  return [agent.agentType || 'subagent', modelName(agent), agent.isRunning ? `running for ${timeAgo(agent.startedAt)}` : `finished ${timeAgo(agent.lastAt)} ago`].filter(Boolean).map(escapeHtml).join(' · ')
+  return [agent.agentType || 'subagent', modelName(agent), agent.waitingShells ? `waiting on ${agent.waitingShells} background shell${agent.waitingShells > 1 ? 's' : ''}` : agent.isRunning ? `running for ${timeAgo(agent.startedAt)}` : `finished ${timeAgo(agent.lastAt)} ago`].filter(Boolean).map(escapeHtml).join(' · ')
 }
 
 function listHtml(session, list) {
@@ -45,7 +45,7 @@ function listHtml(session, list) {
   const sessionId = escapeHtml(session.sessionId)
   return `<div class="subagent-list">${list.agents.map(agent => `
     <button type="button" class="subagent-row" data-open-subagent="${escapeHtml(agent.agentId)}" data-session="${sessionId}">
-      <i class="nav-dot ${agent.isRunning ? 'busy' : ''}" aria-hidden="true"></i>
+      <i class="nav-dot ${agent.waitingShells ? 'shell' : agent.isRunning ? 'busy' : ''}" aria-hidden="true"></i>
       <span class="subagent-main"><b>${escapeHtml(agent.description)}</b><span>${agentLine(agent)}</span>${agent.isRunning && agent.activity?.text ? `<span class="subagent-doing">${escapeHtml(agent.activity.text)}</span>` : ''}</span>
       <span class="subagent-go" aria-hidden="true">›</span>
     </button>`).join('')}</div>`
@@ -60,7 +60,7 @@ function agentHtml(session, agent) {
       <button type="button" class="btn small" data-close-subagent="${escapeHtml(session.sessionId)}">‹ All subagents</button>
       <div class="subagent-title"><b>${escapeHtml(agent.description || 'Subagent')}</b><span>${agent.startedAt ? agentLine(agent) : ''}</span></div>
     </div>
-    <div class="thread">${thread}${agent.isRunning ? workingStatus(agent) : ''}</div>
+    <div class="thread">${thread}${agent.isRunning && !agent.waitingShells ? workingStatus(agent) : ''}</div>
     <div class="stamp subagent-note">Subagents take no messages. What it reports goes back to ${escapeHtml(session.name)}.</div>`
 }
 

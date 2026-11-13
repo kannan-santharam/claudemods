@@ -15,6 +15,7 @@ import { office, startOffice } from './office/index.js'
 import { refreshLive, refreshReport } from './refresh.js'
 import { initReportControls } from './reports/controls.js'
 import { focusTab, loadOptions } from './sessions/actions.js'
+import { initOutbox } from './sessions/outbox.js'
 import { initConversation } from './sessions/conversation.js'
 import { initSessionEvents } from './sessions/events.js'
 import { initKeyboard } from './sessions/keyboard.js'
@@ -23,15 +24,18 @@ import { initLayout } from './sessions/layout.js'
 import { renderLive } from './sessions/live.js'
 import { refreshScreens } from './sessions/screen.js'
 import { initTabs, setTab } from './tabs.js'
+import { initPrivacy } from './privacy.js'
 import { initTheme } from './theme.js'
 import { initTooltip } from './tooltip.js'
 
 // Listeners first, and the order matters: where two share a target, the first
 // added runs first.
 initTheme()
+initPrivacy()
 initLayout()
 initSessionEvents()
 initConversation(renderLive)
+initOutbox(renderLive, refreshLive)
 initSubagents(renderLive)
 initKeyboard()
 initNewSessionDialog()

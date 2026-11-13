@@ -14,7 +14,7 @@ const FILTERS = [
 export function matchesFilter(session) {
   const test = (FILTERS.find(filter => filter[0] === state.filter) || FILTERS[0])[2]
   const query = state.search.trim().toLowerCase()
-  return test(session) && (!query || `${session.name} ${session.folder} ${session.branch || ''} ${session.jobId || ''}`.toLowerCase().includes(query))
+  return test(session) && (!query || `${session.name} ${session.folder} ${session.branch || ''} ${session.work?.folder || ''} ${session.work?.branch || ''} ${session.jobId || ''}`.toLowerCase().includes(query))
 }
 export function renderFilters(sessions) {
   const html = FILTERS.map(([key, label, test]) => {

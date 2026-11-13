@@ -2,13 +2,14 @@
 // column, keeping focus, caret and scroll across each 2-second refresh.
 
 import { $ } from '../core/dom.js'
-import { escapeHtml, fillLevel, formatCost, formatTokens, shortModel, timeAgo } from '../core/format.js'
+import { escapeHtml, fillLevel, formatCost, formatTokens, placeOf, shortModel, timeAgo } from '../core/format.js'
 import { modelColor } from '../core/models.js'
 import { state } from '../core/state.js'
 import { renderBulkbar } from '../dialogs/end-session.js'
 import { matchesFilter, renderFilters } from './filters.js'
 import { fitSplit } from './layout.js'
 import { attentionCount, isListView, isStuckUnseen, renderNav, renderSide } from './list-view.js'
+import { reconcileOutbox } from './outbox.js'
 import { renderPane } from './pane.js'
 import { shellRows, subagentRows } from './table.js'
 import { byName, sessionTree, statusPill } from './tree.js'
@@ -20,6 +21,7 @@ export function selectSession(sessionId) {
 }
 
 export function renderLive() {
+  reconcileOutbox()
   const sessions = state.live?.sessions || []
   const connected = sessions.filter(session => session.hasMod).length
   $('#live-hint').textContent = `${connected} of ${sessions.length} connected through the fleet mod`
@@ -55,6 +57,7 @@ export function renderLive() {
       childCount ? `${childCount} child session${childCount > 1 ? 's' : ''}` : '',
     ].filter(Boolean).join(' · ')
     const id = escapeHtml(session.sessionId)
+    const place = placeOf(session)
     rows.push(`
       <tr class="session ${isOpen ? 'selected' : ''} ${isStuckUnseen(session) ? 'stuck' : ''}" data-id="${id}" aria-selected="${isOpen}">
         <td><input type="checkbox" data-select="${id}" ${state.selected.has(session.sessionId) ? 'checked' : ''} aria-label="Select ${escapeHtml(session.name)}"></td>
@@ -62,7 +65,7 @@ export function renderLive() {
         <td>
           <div class="nested" style="padding-left:${depth * 22}px">${depth ? '<span class="branch">↳</span>' : ''}<div>
           <div class="name">${escapeHtml(session.name)} <span class="link ${session.hasMod ? 'on' : ''}" aria-label="${session.hasMod ? 'connected' : 'not connected'}" title="${session.hasMod ? 'Connected: exact figures, and messages arrive as a prompt' : 'Started before the mod: figures read from its transcript, and messages are typed into its tab when it is idle'}">${session.hasMod ? 'connected' : 'not connected'}</span>${runningShells ? ` <span class="shell-tag" title="${escapeHtml((session.shells || []).map(shell => shell.description || shell.command).join('\n'))}"><i></i>${runningShells} shell${runningShells > 1 ? 's' : ''} running</span>` : ''}</div>
-          <div class="where"><span>${escapeHtml(session.folder)}</span>${session.stuck ? `<span class="tag stuck-tag" title="${escapeHtml(session.stuck.reason)}">may be stuck</span>` : ''}${session.hidden ? `<span class="tag hidden-tag" title="Runs hidden in Claude Code's background service: no terminal tab">hidden</span><span class="sid" data-copy="${escapeHtml(session.jobId)}" title="Its id (click to copy). claude attach ${escapeHtml(session.jobId)} opens it in a terminal">${escapeHtml(session.jobId)}</span>` : !session.tty ? '<span class="tag">headless</span>' : ''}${depth && session.launcher ? `<span class="tag">started by ${escapeHtml(session.launcher)}</span>` : ''}${nestedLabel ? `<button class="nest" data-toggle="${id}" aria-expanded="${!isCollapsed}">${isCollapsed ? '▸' : '▾'} ${escapeHtml(nestedLabel)}</button>` : ''}</div>
+          <div class="where"><span title="${escapeHtml(place.note)}">${escapeHtml(place.isElsewhere ? place.folder + (place.branch ? ' · ' + place.branch : '') : place.folder)}</span>${session.stuck ? `<span class="tag stuck-tag" title="${escapeHtml(session.stuck.reason)}">may be stuck</span>` : ''}${session.hidden ? `<span class="tag hidden-tag" title="Runs hidden in Claude Code's background service: no terminal tab">hidden</span><span class="sid" data-copy="${escapeHtml(session.jobId)}" title="Its id (click to copy). claude attach ${escapeHtml(session.jobId)} opens it in a terminal">${escapeHtml(session.jobId)}</span>` : !session.tty ? '<span class="tag">headless</span>' : ''}${depth && session.launcher ? `<span class="tag">started by ${escapeHtml(session.launcher)}</span>` : ''}${nestedLabel ? `<button class="nest" data-toggle="${id}" aria-expanded="${!isCollapsed}">${isCollapsed ? '▸' : '▾'} ${escapeHtml(nestedLabel)}</button>` : ''}</div>
           </div></div>
         </td>
         <td class="hide-sm"><span class="chip"><i class="sw" style="background:${modelColor(session.model)}"></i>${escapeHtml(shortModel(session.model))}</span></td>
