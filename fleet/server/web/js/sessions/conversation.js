@@ -29,10 +29,11 @@ const queryOf = conversation => `sessionId=${encodeURIComponent(conversation.ses
 // One bubble: your prompt on the right, Claude's reply on the left. `key` tells
 // each reply apart, so its own scroll survives the 2-second refresh. In a
 // subagent's conversation the right-hand side is its session, named by `from`.
-export function messageBubble(message, key, from = 'You') {
+// `tick` is the mark beside a message of yours that was sent from this page.
+export function messageBubble(message, key, from = 'You', tick = '') {
   const stamp = message.at ? ' · ' + timeAgo(message.at) + ' ago' : ''
   return message.from === 'you'
-    ? `<div class="msg you"><div class="bubble">${escapeHtml(message.text)}</div><div class="stamp">${escapeHtml(from)}${stamp}</div></div>`
+    ? `<div class="msg you"><div class="bubble">${from === 'You' ? `<span class="mine">${escapeHtml(message.text)}</span>` : escapeHtml(message.text)}</div><div class="stamp">${escapeHtml(from)}${stamp}${tick ? ' ' + tick : ''}</div></div>`
     : `<div class="msg claude"><span class="avatar" aria-hidden="true">C</span><div><div class="bubble md" data-reply="${escapeHtml(key)}">${markdown(message.text)}</div><div class="stamp">Claude${stamp}</div></div></div>`
 }
 
@@ -62,7 +63,7 @@ async function loadNewest(target) {
 }
 
 // The page before the oldest one shown, keeping the reader's place.
-async function loadOlder(key) {
+export async function loadOlder(key) {
   const conversation = state.conversations[key]
   if (!conversation?.isLoaded || !conversation.hasMore || conversation.isLoading) return
   conversation.isLoading = true
@@ -86,8 +87,10 @@ async function loadOlder(key) {
 // The conversation's bubbles for the pane, or null until the first page is in
 // (or when it cannot be read): the pane then shows the last exchange it has.
 // Asks for the newest page whenever the session (or subagent) has said
-// something since. `from` names the right-hand side.
-export function conversationHtml(target, from) {
+// something since. `from` names the right-hand side, and `tickOf` gives the
+// mark for a message of yours.
+export const shownMessages = target => state.conversations[conversationKey(target)]?.messages || []
+export function conversationHtml(target, from, tickOf = () => '') {
   const conversation = conversationOf(target)
   const key = conversationKey(target)
   const isStale = latestActivity(target) > conversation.seenAt
@@ -96,7 +99,7 @@ export function conversationHtml(target, from) {
   const top = conversation.hasMore
     ? `<div class="thread-top"><button type="button" class="btn small" data-load-earlier="${escapeHtml(key)}"${conversation.isLoading ? ' disabled' : ''}>${conversation.isLoading ? 'Loading…' : 'Earlier messages'}</button></div>`
     : '<div class="thread-top">Start of the conversation</div>'
-  return top + conversation.messages.map(message => messageBubble(message, key + ':' + message.offset, from)).join('')
+  return top + conversation.messages.map(message => messageBubble(message, key + ':' + message.offset, from, tickOf(message))).join('')
 }
 
 // The loader while it works: what Claude is doing, in its own words where it

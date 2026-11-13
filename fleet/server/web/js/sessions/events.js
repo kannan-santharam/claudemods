@@ -11,6 +11,8 @@ import { attachHidden, focusTab, sendFromDraft, sessionCommand } from './actions
 import { answerAsk, pickOption } from './asks.js'
 import { drawOfficeMini, placeTiles, wideQuery } from './layout.js'
 import { renderLive, selectSession } from './live.js'
+import { discardSent, resend } from './outbox.js'
+import { recallStep, resetRecall, wantsRecall } from './recall.js'
 import { refreshScreens } from './screen.js'
 import { setTab } from '../tabs.js'
 
@@ -67,7 +69,11 @@ export function initSessionEvents() {
     }
     const copyText = dataAttribute('copy')
     if (copyText) { navigator.clipboard?.writeText(copyText).then(() => toast(`Copied ${copyText}`), () => toast(copyText)); return }
-    if (sendId) return sendFromDraft(sendId)
+    if (sendId) { resetRecall(sendId); return sendFromDraft(sendId) }
+    const resendId = target.closest('[data-resend]')?.dataset.resend
+    if (resendId) return resend(resendId)
+    const discardId = target.closest('[data-discard-sent]')?.dataset.discardSent
+    if (discardId) return discardSent(discardId)
     const modelId = dataAttribute('applyModel'), renameId = dataAttribute('applyRename')
     if (modelId) { event.preventDefault(); return askToSwitchModel(modelId, fieldValue('model:' + modelId, sessionById(modelId)?.model || '')) }
     if (renameId) { event.preventDefault(); return sessionCommand(renameId, 'rename', fieldValue('rename:' + renameId, sessionById(renameId)?.name || '')) }
@@ -111,7 +117,7 @@ export function initSessionEvents() {
   })
   $('#view-sessions').addEventListener('input', event => {
     const id = event.target.dataset && event.target.dataset.draft
-    if (id) state.drafts[id] = event.target.value
+    if (id) { state.drafts[id] = event.target.value; resetRecall(id) }
     const field = event.target.dataset && event.target.dataset.field
     if (field) state.fields[field] = event.target.value
   })
@@ -128,7 +134,13 @@ export function initSessionEvents() {
     const id = event.target.dataset && event.target.dataset.draft
     if (id && event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault()
+      resetRecall(id)
       sendFromDraft(id)
+    }
+    const isPlainArrow = (event.key === 'ArrowUp' || event.key === 'ArrowDown') && !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey && !event.isComposing
+    if (id && isPlainArrow && wantsRecall(event.target, event.key)) {
+      event.preventDefault()
+      recallStep(id, event.key)
     }
     const field = event.target.dataset && event.target.dataset.field
     if (field && field.startsWith('rename:') && event.key === 'Enter') {

@@ -62,6 +62,6 @@ export function renderFeed() {
   const list = (state.live?.deliveries || []).slice().reverse()
   $('#feed').innerHTML = list.map(delivery => `
     <div><span>${delivery.isDelivered ? '✓' : '✕'}</span>
-      <span class="msg"><b>${escapeHtml(delivery.name)}</b> · ${escapeHtml(delivery.via)} · “${escapeHtml(delivery.text)}”${delivery.reason ? ' — ' + escapeHtml(delivery.reason) : ''}</span>
+      <span class="msg"><b>${escapeHtml(delivery.name)}</b> · ${escapeHtml(delivery.via)} · “<span class="mine">${escapeHtml(delivery.text)}</span>”${delivery.reason ? ' — ' + escapeHtml(delivery.reason) : ''}</span>
       <span class="t">${timeAgo(delivery.at)} ago</span></div>`).join('') || '<div class="empty" style="display:block">Nothing sent yet. Open a session in the list and message it from there.</div>'
 }

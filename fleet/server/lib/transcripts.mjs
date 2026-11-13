@@ -9,6 +9,7 @@ import { isExcludedProjectDir } from './config.mjs'
 import { addTokens, baseModel, emptyTokens, responseCost } from './pricing.mjs'
 import { liveCache, transcriptIndexes, transcripts, transcriptScan } from './state.mjs'
 import { baseName, dayKey, log } from './utils.mjs'
+import { bashWorkFolder, noteWorkPlace } from './work-place.mjs'
 
 // What the person typed in a user row: a string, or the text blocks of one sent
 // with images. Tool results, meta rows, compaction summaries and the tagged rows
@@ -61,9 +62,12 @@ function newTranscript(filePath) {
     commits: 0,
     pushes: 0,
     contextTokens: 0,
+    isContextFromCompaction: false, // nothing has been said since the last compaction
+    isAwaitingSummary: false,
     usage: {}, // day -> model -> tokens
     tools: {},
     filesTouched: {},
+    workPlaces: new Map(), // folder -> when it last edited a file or changed a repository there
     activeMinutes: new Set(),
     shells: new Map(), // background shell id -> what it runs and when it ended
     bashInputs: new Map(), // tool_use id -> the Bash call, until its result says whether it went to the background
@@ -113,6 +117,10 @@ function noteBackgroundShell(transcript, row, time) {
   if (transcript.shells.size > SHELLS_KEPT) transcript.shells.delete(transcript.shells.keys().next().value)
 }
 
+// A rough size for text whose token count nothing reports.
+const CHARS_PER_TOKEN = 4
+const textLength = content => (typeof content === 'string' ? content.length : Array.isArray(content) ? content.reduce((total, block) => total + String(block?.text || '').length, 0) : 0)
+
 function ingestRow(transcript, row) {
   if (row.cwd) transcript.cwd = row.cwd
   if (row.gitBranch) transcript.branch = row.gitBranch
@@ -126,10 +134,25 @@ function ingestRow(transcript, row) {
     transcript.lastAt = Math.max(transcript.lastAt, time)
   }
   const message = row.message
+  // A compaction is followed by no response until the session is next used, so
+  // the last response's usage is still the old, full context. Take the size the
+  // compaction reports, or failing that the size of the summary it wrote.
+  if (!row.isSidechain && !transcript.isSubagent) {
+    if (row.type === 'system' && row.subtype === 'compact_boundary') {
+      const tokensAfter = Number(row.compactMetadata?.postTokens)
+      transcript.isContextFromCompaction = true
+      transcript.isAwaitingSummary = !(tokensAfter > 0)
+      transcript.contextTokens = tokensAfter > 0 ? tokensAfter : 0
+    } else if (row.isCompactSummary && transcript.isAwaitingSummary) {
+      transcript.isAwaitingSummary = false
+      transcript.contextTokens = Math.round(textLength(message?.content) / CHARS_PER_TOKEN)
+    }
+  }
   if (row.type === 'queue-operation' && typeof row.content === 'string' && !transcript.isSubagent) noteTaskNotifications(transcript, row.content, time)
   if (row.type === 'user' && message) {
     if (time) transcript.activeMinutes.add(Math.floor(time / 60000))
-    if (!row.isSidechain && !transcript.isSubagent) {
+    // A session's shells are in its own transcript, and a subagent's in its own file.
+    if (!row.isSidechain || transcript.isSubagent) {
       if (row.toolUseResult?.backgroundTaskId) noteBackgroundShell(transcript, row, time)
       if (row.origin?.kind === 'task-notification') noteTaskNotifications(transcript, typeof message.content === 'string' ? message.content : JSON.stringify(message.content), time)
     }
@@ -159,13 +182,17 @@ function ingestRow(transcript, row) {
       transcript.lastTool = tool
       transcript.lastToolAt = time
     }
+    // A subagent's last tool says whether it has handed its report back.
+    if (transcript.isSubagent) transcript.lastTool = tool
     const input = block.input || {}
     if (EDIT_TOOLS.has(tool) && (input.file_path || input.notebook_path)) {
       const touched = input.file_path || input.notebook_path
       transcript.filesTouched[touched] = (transcript.filesTouched[touched] || 0) + 1
+      noteWorkPlace(transcript.workPlaces, path.dirname(String(touched)), time)
     }
-    if (SHELL_STOP_TOOLS.has(tool) && !row.isSidechain && !transcript.isSubagent) noteShellStopped(transcript, input, time)
-    if (tool === 'Bash' && !row.isSidechain && !transcript.isSubagent && block.id) {
+    if (tool === 'Bash') noteWorkPlace(transcript.workPlaces, bashWorkFolder(input.command, row.cwd), time)
+    if (SHELL_STOP_TOOLS.has(tool) && (!row.isSidechain || transcript.isSubagent)) noteShellStopped(transcript, input, time)
+    if (tool === 'Bash' && (!row.isSidechain || transcript.isSubagent) && block.id) {
       transcript.bashInputs.set(block.id, { command: input.command, description: input.description })
       if (transcript.bashInputs.size > 60) transcript.bashInputs.delete(transcript.bashInputs.keys().next().value)
     }
@@ -182,6 +209,7 @@ function ingestRow(transcript, row) {
   const model = baseModel(message.model)
   if (!row.isSidechain && !transcript.isSubagent) {
     transcript.model = model
+    transcript.isContextFromCompaction = transcript.isAwaitingSummary = false
     transcript.contextTokens =
       (usage.input_tokens || 0) + (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0)
   } else if (transcript.isSubagent) transcript.model = model
