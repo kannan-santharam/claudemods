@@ -14,6 +14,8 @@
   document.documentElement.dataset.theme = savedTheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
   // Whether your own messages are blurred, for a screen other people can see.
   try { if (localStorage.getItem('fleet-hide-mine') === '1') document.documentElement.dataset.mine = 'hidden' } catch {}
+  // Whether the List view's right column is put away, so the chat takes its room.
+  try { if (localStorage.getItem('fleet-hide-side') === '1') document.documentElement.dataset.side = 'hidden' } catch {}
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
@@ -54,6 +56,7 @@
     <button class="btn" id="resume-session">Resume session</button>
     <button class="btn primary" id="new-session">+ New session</button>
     <button class="icon-btn" id="hide-mine" aria-pressed="false" title="Hide my messages" aria-label="Hide my messages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="slash" d="M4 4l16 16"/></svg></button>
+    <button class="icon-btn" id="toggle-side" aria-pressed="false" title="Hide the right column" aria-label="Hide the right column"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
     <button class="icon-btn" id="theme" title="Toggle theme" aria-label="Toggle theme">◐</button>
   </div>
 

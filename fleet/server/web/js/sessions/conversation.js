@@ -33,8 +33,8 @@ const queryOf = conversation => `sessionId=${encodeURIComponent(conversation.ses
 export function messageBubble(message, key, from = 'You', tick = '') {
   const stamp = message.at ? ' · ' + timeAgo(message.at) + ' ago' : ''
   return message.from === 'you'
-    ? `<div class="msg you"><div class="bubble">${from === 'You' ? `<span class="mine">${escapeHtml(message.text)}</span>` : escapeHtml(message.text)}</div><div class="stamp">${escapeHtml(from)}${stamp}${tick ? ' ' + tick : ''}</div></div>`
-    : `<div class="msg claude"><span class="avatar" aria-hidden="true">C</span><div><div class="bubble md" data-reply="${escapeHtml(key)}">${markdown(message.text)}</div><div class="stamp">Claude${stamp}</div></div></div>`
+    ? `<div class="msg you" data-key="you:${escapeHtml(key)}"><div class="bubble">${from === 'You' ? `<span class="mine">${escapeHtml(message.text)}</span>` : escapeHtml(message.text)}</div><div class="stamp">${escapeHtml(from)}${stamp}${tick ? ' ' + tick : ''}</div></div>`
+    : `<div class="msg claude" data-key="claude:${escapeHtml(key)}"><span class="avatar" aria-hidden="true">C</span><div><div class="bubble md" data-reply="${escapeHtml(key)}">${markdown(message.text)}</div><div class="stamp">Claude${stamp}</div></div></div>`
 }
 
 // The newest page, laid over what is shown: turns from its first one on are
@@ -48,8 +48,10 @@ async function loadNewest(target) {
     if (!Array.isArray(result.messages)) throw new Error('No conversation')
     const firstOffset = result.messages[0]?.offset ?? Infinity
     const kept = conversation.messages.filter(message => message.offset < firstOffset)
-    // More turns came than one page holds: what was shown no longer joins up.
-    const hasGap = kept.length && result.hasMore && result.before > kept.at(-1).offset
+    // The page begins after everything shown: more turns came than one page
+    // holds, so what was shown no longer joins up with it.
+    const lastShown = conversation.messages.at(-1)?.offset ?? -1
+    const hasGap = kept.length && result.hasMore && firstOffset > lastShown
     conversation.messages = hasGap ? result.messages : [...kept, ...result.messages]
     if (!conversation.isLoaded || hasGap) Object.assign(conversation, { before: result.before, hasMore: result.hasMore })
     conversation.isLoaded = true
@@ -116,7 +118,30 @@ export function workingStatus(session) {
   const dots = '<i></i><i></i><i></i>'
   if (!activity?.text) return `<div class="msg claude"><span class="avatar" aria-hidden="true">C</span><div class="bubble typing" aria-label="Claude is working">${dots}</div></div>`
   const since = activity.at ? `<span class="since">${timeAgo(activity.at)}</span>` : ''
-  return `<div class="live-status" role="status" aria-live="polite"><span class="spinner" style="${animationPhase(SPIN_MS)}" aria-hidden="true"></span><span class="what" style="${animationPhase(SHIMMER_MS)}">${escapeHtml(activity.text)}</span>${since}</div>`
+  return `<div class="live-status" role="status" aria-live="polite"><span class="spinner" data-steady style="${animationPhase(SPIN_MS)}" aria-hidden="true"></span><span class="what" data-steady style="${animationPhase(SHIMMER_MS)}">${escapeHtml(activity.text)}</span>${since}</div>`
+}
+
+// Replies that arrived below while you were reading further up. A conversation
+// is read up to its newest message whenever its end is in view; what came
+// after that is counted on a tag at the bottom of the chat, which takes you
+// there. Kept in this page's memory only.
+const isAtEnd = body => body.scrollTop + body.clientHeight >= body.scrollHeight - 8
+export function markRead(key) {
+  const conversation = state.conversations[key]
+  if (conversation?.isLoaded) conversation.readAt = Math.max(0, ...conversation.messages.map(message => message.at || 0))
+}
+export function newBelowHtml(key) {
+  const conversation = state.conversations[key]
+  if (!conversation?.isLoaded || conversation.readAt == null) return ''
+  const count = conversation.messages.filter(message => message.from === 'claude' && (message.at || 0) > conversation.readAt).length
+  return count ? `<button type="button" class="new-below" data-jump-newest>↓ ${count} new message${count > 1 ? 's' : ''}</button>` : ''
+}
+// Called once the chat is drawn and scrolled: with its end in view, it is read.
+export function settleRead(pane) {
+  const body = pane.querySelector('.pane-body')
+  if (!body || !pane.dataset.conversation || !isAtEnd(body)) return
+  markRead(pane.dataset.conversation)
+  pane.querySelector('.new-below')?.remove()
 }
 
 export function initConversation(renderLive) {
@@ -125,10 +150,13 @@ export function initConversation(renderLive) {
   // The pane body is drawn again every refresh, so listen on the pane; scroll
   // events do not bubble, hence the capture.
   pane.addEventListener('scroll', event => {
-    if (event.target.classList?.contains('pane-body') && event.target.scrollTop < LOAD_EDGE_PX && pane.dataset.conversation) loadOlder(pane.dataset.conversation)
+    if (!event.target.classList?.contains('pane-body')) return
+    if (event.target.scrollTop < LOAD_EDGE_PX && pane.dataset.conversation) loadOlder(pane.dataset.conversation)
+    settleRead(pane)
   }, true)
   pane.addEventListener('click', event => {
     const button = event.target.closest('[data-load-earlier]')
     if (button) loadOlder(button.dataset.loadEarlier)
+    if (event.target.closest('[data-jump-newest]')) { const body = pane.querySelector('.pane-body'); body.scrollTop = body.scrollHeight; settleRead(pane) }
   })
 }

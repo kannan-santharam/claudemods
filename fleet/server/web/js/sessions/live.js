@@ -2,6 +2,7 @@
 // column, keeping focus, caret and scroll across each 2-second refresh.
 
 import { $ } from '../core/dom.js'
+import { morph } from '../core/morph.js'
 import { escapeHtml, fillLevel, formatCost, formatTokens, placeOf, shortModel, timeAgo } from '../core/format.js'
 import { modelColor } from '../core/models.js'
 import { state } from '../core/state.js'
@@ -10,6 +11,7 @@ import { matchesFilter, renderFilters } from './filters.js'
 import { fitSplit } from './layout.js'
 import { attentionCount, isListView, isStuckUnseen, renderNav, renderSide } from './list-view.js'
 import { reconcileOutbox } from './outbox.js'
+import { markRead, settleRead } from './conversation.js'
 import { renderPane } from './pane.js'
 import { shellRows, subagentRows } from './table.js'
 import { byName, sessionTree, statusPill } from './tree.js'
@@ -94,7 +96,7 @@ export function renderLive() {
   const replyScroll = new Map([...area.querySelectorAll('[data-reply]')].map(reply => [reply.dataset.reply, reply.scrollTop]))
   const paneBody = pane.querySelector('.pane-body')
   const paneScroll = paneBody && pane.dataset.session === [...state.open][0] ? { view: pane.dataset.view, top: paneBody.scrollTop, atEnd: paneBody.scrollTop + paneBody.clientHeight >= paneBody.scrollHeight - 8 } : null
-  body.innerHTML = rows.join('') || `<tr><td colspan="8" class="empty">${sessions.length ? 'No session matches.' : 'No Claude Code sessions are running.'}</td></tr>`
+  morph(body, rows.join('') || `<tr><td colspan="8" class="empty">${sessions.length ? 'No session matches.' : 'No Claude Code sessions are running.'}</td></tr>`)
   // The List view's column, in its own order, which j and k then follow.
   const navOrder = renderNav(sessions, byId, childrenOf, belowOf)
   const wanting = attentionCount(sessions)
@@ -103,6 +105,8 @@ export function renderLive() {
   // Text being selected in the pane is left alone: redrawing it would drop the selection mid-drag.
   const selection = window.getSelection()
   const isSelectingInPane = Boolean(selection && !selection.isCollapsed && pane.contains(selection.anchorNode))
+  // With the chat's end in view, what has arrived since is read as it is drawn.
+  if (paneScroll?.atEnd && pane.dataset.conversation) markRead(pane.dataset.conversation)
   if (!isSelectingInPane) renderPane(byId, belowOf)
   renderSide(byId)
   // Size the split before scrolling the chat, so it lands on the newest message.
@@ -113,10 +117,12 @@ export function renderLive() {
   const isSameView = paneScroll && paneScroll.view === pane.dataset.view
   const isList = pane.dataset.view === 'subagents'
   if (newBody && !isSelectingInPane) newBody.scrollTop = isList ? (isSameView ? paneScroll.top : 0) : isSameView && !paneScroll.atEnd ? paneScroll.top : newBody.scrollHeight
+  settleRead(pane)
   for (const reply of area.querySelectorAll('[data-reply]')) if (replyScroll.has(reply.dataset.reply)) reply.scrollTop = replyScroll.get(reply.dataset.reply)
   if (keyAttr) {
     const field = area.querySelector(`[data-${keyAttr}="${CSS.escape(keyValue)}"]`)
-    if (field) { field.focus(); if (caret) field.setSelectionRange(caret[0], caret[1]) }
+    // Only when the redraw replaced it: the field that is still there has kept both.
+    if (field && field !== document.activeElement) { field.focus(); if (caret) field.setSelectionRange(caret[0], caret[1]) }
   }
   fitSplit()
   $('#select-all').checked = sessions.length > 0 && sessions.every(session => state.selected.has(session.sessionId))

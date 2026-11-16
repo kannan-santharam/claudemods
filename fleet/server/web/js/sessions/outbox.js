@@ -34,7 +34,7 @@ function showNewest() {
 }
 
 async function post(entry) {
-  Object.assign(entry, { status: 'sending', reason: '', serverId: '', at: Date.now() })
+  Object.assign(entry, { status: 'sending', reason: '', serverId: '', at: Date.now(), deliveredAt: 0, isInTranscript: false })
   showNewest()
   try {
     const result = await api('/api/send', { sessionIds: [entry.sessionId], text: entry.text })
@@ -75,7 +75,7 @@ export function reconcileOutbox() {
   for (const entry of Object.values(state.outbox).flat()) {
     if (entry.status !== 'sent') continue
     const delivery = deliveries.get(entry.serverId)
-    if (delivery) Object.assign(entry, delivery.isDelivered ? { status: 'delivered' } : { status: 'failed', reason: delivery.reason || 'The session did not take it.' })
+    if (delivery) Object.assign(entry, delivery.isDelivered ? { status: 'delivered', deliveredAt: Date.now() } : { status: 'failed', reason: delivery.reason || 'The session did not take it.' })
     else if (state.live && !running.has(entry.sessionId)) Object.assign(entry, { status: 'failed', reason: 'The session ended before the message reached it.' })
   }
 }
@@ -89,7 +89,8 @@ const TICKS = {
 
 // Pairs what was sent with the transcript's own messages, oldest first and each
 // message once, so the same words sent twice are two messages. Returns the tick
-// for a transcript message, and what the transcript does not carry yet.
+// for a transcript message, and what the transcript does not carry yet. A
+// message that has been seen in the transcript stays out of the second list for good.
 export function matchOutbox(sessionId, messages) {
   const entries = state.outbox[sessionId] || []
   const taken = new Set()
@@ -98,7 +99,14 @@ export function matchOutbox(sessionId, messages) {
   for (const entry of entries) {
     const wanted = squeezed(entry.text).slice(0, COMPARED_LENGTH)
     const match = entry.status === 'failed' || entry.status === 'sending' ? null : messages.find(message => message.from === 'you' && !taken.has(message) && (message.at || 0) >= entry.at - CLOCK_SLACK_MS && squeezed(message.text).includes(wanted))
-    if (match) { taken.add(match); tickOf.set(match, TICKS.delivered) } else waiting.push(entry)
+    if (match) { taken.add(match); tickOf.set(match, TICKS.delivered); entry.isInTranscript = true; continue }
+    // Its own bubble was in the transcript and has since moved out of the turns
+    // loaded here: it is not shown a second time at the end.
+    if (entry.isInTranscript) continue
+    // Claude has answered since taking it, so the transcript has had its chance
+    // to carry the message: whatever form it took there, this copy is done.
+    if (entry.status === 'delivered' && messages.some(message => message.from === 'claude' && (message.at || 0) > entry.deliveredAt)) { entry.isInTranscript = true; continue }
+    waiting.push(entry)
   }
   return { tickOf: message => tickOf.get(message) || '', waiting }
 }

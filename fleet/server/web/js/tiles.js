@@ -2,6 +2,7 @@
 // fill and plan usage.
 
 import { $ } from './core/dom.js'
+import { morph } from './core/morph.js'
 import { escapeHtml, fillLevel, formatCost, formatTokens, rangeName, timeAgo } from './core/format.js'
 import { state } from './core/state.js'
 
@@ -20,6 +21,12 @@ export function resetsIn(resetsAt) {
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `resets in ${hours}h ${minutes % 60}m`
   return `resets in ${Math.floor(hours / 24)}d ${hours % 24}h · ${new Date(resetTime).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`
+}
+// The 5-hour window alone, for a session's header while the right column is put away.
+export function fiveHourHtml() {
+  const limit = (state.live?.rateLimits || []).find(found => found.kind === 'five_hour' && typeof found.percentUsed === 'number')
+  if (!limit) return ''
+  return `<span class="pane-limit" title="Plan usage in the 5-hour window${limit.resetsAt ? ', resets ' + escapeHtml(new Date(limit.resetsAt).toLocaleString()) : ''}">5-hour window<span class="track"><b class="${fillLevel(limit.percentUsed)}" style="width:${Math.min(100, limit.percentUsed)}%"></b></span><b>${Math.round(limit.percentUsed)}%</b>${limit.resetsAt ? `<span class="resets">${resetsIn(limit.resetsAt)}</span>` : ''}</span>`
 }
 export function renderTiles() {
   const live = state.live, report = state.report
@@ -42,7 +49,7 @@ export function renderTiles() {
   const limitHtml = limits.length
     ? limits.map(limit => `<div class="limit"><div class="row"><span>${escapeHtml(limitName(limit.kind))}</span><span>${Math.round(limit.percentUsed)}%</span></div><div class="track"><b class="${fillLevel(limit.percentUsed)}" style="width:${Math.min(100, limit.percentUsed)}%"></b></div>${limit.resetsAt ? `<div class="resets" title="Resets ${escapeHtml(new Date(limit.resetsAt).toLocaleString())}">${resetsIn(limit.resetsAt)}</div>` : ''}</div>`).join('')
     : '<div class="sub" style="white-space:normal">Shows once a connected session reports in</div>'
-  $('#tiles').innerHTML = `
+  morph($('#tiles'), `
     <div class="tile"><div class="label">Live sessions</div><div class="value">${sessions.length}</div>
       <div class="sub">${count('busy')} working · ${count('idle') + count('shell')} idle${runningSubagentTotal ? ` · ${runningSubagentTotal} subagent${runningSubagentTotal > 1 ? 's' : ''}` : ''}${runningShellTotal ? ` · ${runningShellTotal} shell${runningShellTotal > 1 ? 's' : ''}` : ''}</div></div>
     <div class="tile ${waiting.length ? 'alert' : ''}"><div class="label">Waiting on you</div><div class="value">${waiting.length}</div>
@@ -53,5 +60,5 @@ export function renderTiles() {
       <div class="sub" title="${escapeHtml(pricingNote(state.report?.pricing))}">Today ${formatCost(totals?.today.cost)} · API list prices</div></div>
     <div class="tile"><div class="label">Avg context fill</div><div class="value">${averageFill}%</div>
       <div class="sub">${hot ? hot + ' session' + (hot > 1 ? 's' : '') + ' above 70%' : 'All below 70%'}</div></div>
-    <div class="tile"><div class="label">Plan usage</div>${limitHtml}</div>`
+    <div class="tile"><div class="label">Plan usage</div>${limitHtml}</div>`)
 }
