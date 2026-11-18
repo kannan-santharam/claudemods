@@ -2,11 +2,13 @@
 // subagents, details or screen below.
 
 import { $ } from '../core/dom.js'
+import { morph } from '../core/morph.js'
 import { escapeHtml, formatCost, formatTokens, placeOf, shortModel, timeAgo } from '../core/format.js'
 import { modelOptions } from '../core/models.js'
 import { fieldValue, state } from '../core/state.js'
+import { fiveHourHtml } from '../tiles.js'
 import { permissionCard, questionCard } from './ask-cards.js'
-import { conversationHtml, messageBubble, shownMessages, workingStatus } from './conversation.js'
+import { conversationHtml, messageBubble, newBelowHtml, shownMessages, workingStatus } from './conversation.js'
 import { screenHtml } from './screen.js'
 import { stuckNoteHtml } from './stuck-note.js'
 import { matchOutbox, outgoingBubble } from './outbox.js'
@@ -46,7 +48,7 @@ export function renderPane(byId, belowOf) {
   const pane = $('#session-pane')
   const session = byId.get([...state.open][0])
   pane.dataset.session = session ? session.sessionId : ''
-  if (!session) { pane.innerHTML = '<div class="pane-empty">Pick a session to see its conversation here.</div>'; pane.dataset.view = pane.dataset.conversation = ''; return }
+  if (!session) { morph(pane, '<div class="pane-empty">Pick a session to see its conversation here.</div>'); pane.dataset.view = pane.dataset.conversation = ''; return }
   const id = escapeHtml(session.sessionId)
   const place = placeOf(session)
   const tab = state.paneTab[session.sessionId] || 'chat'
@@ -61,6 +63,7 @@ export function renderPane(byId, belowOf) {
     : session.tty
     ? `<button class="btn small" data-focus="${id}" title="Bring its terminal tab to the front">Open tab ↗</button>`
     : `<button class="btn small" disabled title="Runs without a terminal${session.launcher ? ', started by ' + escapeHtml(session.launcher) : ''}">No tab</button>`
+  const runningSubagents = (session.subagents || []).filter(agent => agent.isRunning).length
   const tabButton = (key, label) => `<button type="button" role="tab" data-pane-tab="${key}" data-session="${id}" aria-selected="${tab === key}">${label}</button>`
   let content
   if (tab === 'files') content = files.length ? `<div class="drawer files">${filesHtml}</div>` : '<div class="pane-empty">No files edited today.</div>'
@@ -80,7 +83,7 @@ export function renderPane(byId, belowOf) {
     </dl>`
   else if (tab === 'subagents') content = subagentsHtml(session)
   else content = `<div class="thread">${chatThread(session)}</div>`
-  pane.innerHTML = `
+  morph(pane, `
     <div class="pane-head">
       <div class="pane-title"><h2>${escapeHtml(session.name)}</h2>${statusPill(session, belowOf?.get(session.sessionId))}</div>
       <div class="pane-where"><span title="${escapeHtml(place.note)}">${escapeHtml(place.folder)}</span><span>·</span><span>${escapeHtml(shortModel(session.model))}</span>${place.branch ? `<span>·</span><span title="${escapeHtml(place.note)}">${escapeHtml(place.branch)}</span>` : ''}${place.isElsewhere ? `<span class="tag" title="${escapeHtml(place.note)}">started in ${escapeHtml(session.folder)}</span>` : ''}${session.hidden ? `<span class="tag hidden-tag">hidden</span><span class="sid" data-copy="${escapeHtml(session.jobId)}" title="Click to copy">${escapeHtml(session.jobId)}</span>` : ''}<span class="link ${session.hasMod ? 'on' : ''}">${session.hasMod ? 'connected' : 'not connected'}</span></div>
@@ -88,6 +91,7 @@ export function renderPane(byId, belowOf) {
         ${opener}
         <button class="btn small" data-compact="${id}" title="Summarise the conversation so far to free up context (${session.contextPercent}% full)">Compact · ${session.contextPercent}%</button>
         <span class="spacer"></span>
+        ${fiveHourHtml()}
         <div class="actions-menu">
           <button class="btn small" data-actions-menu="${id}" aria-expanded="${state.actionsMenu === session.sessionId}" aria-haspopup="true">Actions ▾</button>
           ${state.actionsMenu === session.sessionId ? `<div class="menu" role="menu">
@@ -100,10 +104,11 @@ export function renderPane(byId, belowOf) {
         <button class="btn small danger" data-end="${id}" title="Stop this Claude session and close its tab; its conversation is kept and can be resumed">End session</button>
       </div>
       <div class="pane-tabs" role="tablist" aria-label="Show">
-        ${tabButton('chat', 'Chat')}${tabButton('files', `Files edited · ${files.length}`)}${tabButton('subagents', `Subagents${subagentCount(session) ? ' · ' + subagentCount(session) : ''}`)}${tabButton('details', 'Details')}${session.hidden ? tabButton('screen', 'Screen') : ''}
+        ${tabButton('chat', 'Chat')}${tabButton('files', `Files edited · ${files.length}`)}${tabButton('subagents', `Subagents${subagentCount(session) ? ' · ' + subagentCount(session) : ''}${runningSubagents ? ` (${runningSubagents} running)` : ''}`)}${tabButton('details', 'Details')}${session.hidden ? tabButton('screen', 'Screen') : ''}
       </div>
     </div>
     <div class="pane-body">${content}</div>
+    ${newBelowHtml(pane.dataset.conversation)}
     ${tab === 'chat' ? `<div class="pane-foot">
       ${stuckNoteHtml(session)}
       <div class="composer chat">
@@ -112,5 +117,5 @@ export function renderPane(byId, belowOf) {
       </div>
       ${delivery && !isShownInChat(delivery) ? `<div class="delivery ${delivery.isDelivered ? 'good' : 'bad'}">${delivery.isDelivered ? '✓ Delivered' : '✕ Not delivered'} as a ${escapeHtml(delivery.via)} ${timeAgo(delivery.at)} ago${delivery.reason ? ' — ' + escapeHtml(delivery.reason) : ''}: “<span class="mine">${escapeHtml(delivery.text.slice(0, 90))}</span>”</div>` : ''}
       ${session.hasMod ? '' : session.hidden ? '<div class="delivery bad">Not connected: a hidden session takes messages only through the Fleet mod, which has not reported in from it.</div>' : '<div class="delivery">Not connected: messages and commands are typed into its tab once it is idle.</div>'}
-    </div>` : ''}`
+    </div>` : ''}`)
 }

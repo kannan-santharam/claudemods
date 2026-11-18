@@ -2,6 +2,7 @@
 // on the right.
 
 import { $ } from '../core/dom.js'
+import { morph } from '../core/morph.js'
 import { clock, escapeHtml, fillLevel, formatCost, formatTokens, placeOf, shortModel, timeAgo } from '../core/format.js'
 import { aliasedModel, modelColor } from '../core/models.js'
 import { state } from '../core/state.js'
@@ -112,7 +113,7 @@ export function renderNav(sessions, byId, childrenOf, belowOf) {
   }
   shown.filter(session => !isShown.has(session.parentSessionId)).sort(byName).forEach(session => visit(session, 0))
   const html = items.join('') || `<div class="nav-empty">${sessions.length ? 'No session matches.' : 'No Claude Code sessions are running.'}</div>`
-  if (list.innerHTML !== html) { const top = list.scrollTop; list.innerHTML = html; list.scrollTop = top }
+  morph(list, html)
   return order
 }
 // The selected session's own figures, beside its chat.
@@ -140,5 +141,5 @@ export function renderSide(byId) {
       ${subagents.length ? `<div class="side-list"><h4>Subagents at work · ${subagents.length}</h4>${subagents.map(agent => `<div class="item open-subagent" role="button" tabindex="0" data-open-subagent="${escapeHtml(agent.agentId)}" data-session="${escapeHtml(session.sessionId)}" title="Open its conversation"><b title="${escapeHtml(agent.description)}">${escapeHtml(agent.description)}</b><span>${escapeHtml(agent.agentType || 'subagent')}${agent.model ? ' · ' + escapeHtml(shortModel(aliasedModel(agent.model))) : ''} · ${agent.waitingShells ? `waiting on ${agent.waitingShells} background shell${agent.waitingShells > 1 ? 's' : ''}` : 'for ' + timeAgo(agent.startedAt)}</span></div>`).join('')}</div>` : ''}
       ${shells.length ? `<div class="side-list"><h4>Background shells · ${shells.length}</h4>${shells.map(shell => `<div class="item"><b title="${escapeHtml(shell.command)}">${escapeHtml(shell.description || shell.command || 'Background shell')}</b>${shell.lastOutput ? `<code title="${escapeHtml(shell.lastOutput)}">${escapeHtml(shell.lastOutput)}</code>` : `<span>for ${timeAgo(shell.startedAt)}</span>`}</div>`).join('')}</div>` : ''}`
   }
-  if (holder.innerHTML !== html) holder.innerHTML = html
+  morph(holder, html)
 }

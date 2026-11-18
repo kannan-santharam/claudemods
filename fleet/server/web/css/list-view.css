@@ -105,3 +105,28 @@
 .side-list .item.open-subagent { cursor: pointer; }
 .side-list .item.open-subagent:hover b { color: var(--accent); }
 tr.session.stuck > td { background: var(--warning-soft); }
+/* The right column put away with the header's panel button: the chat takes its room, and
+   the 5-hour window, the one figure still wanted, sits in the session's own header. */
+#toggle-side { display: none; place-items: center; }
+#toggle-side[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+.pane-limit { display: none; align-items: center; gap: 7px; font-size: 11.5px; color: var(--text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pane-limit .track { width: 84px; height: 5px; margin: 0; }
+.pane-limit .resets { color: var(--text-muted); }
+@media (min-width: 1280px) {
+  :root:has(#view-sessions[data-layout="list"]:not([hidden])) #toggle-side { display: inline-grid; }
+  /* The column slides out to the right as its track closes; its cards keep their width, so
+     they are clipped, not squeezed. The chat's negative margin takes the gap back at the end. */
+  #view-sessions[data-layout="list"] .split { transition: grid-template-columns .3s cubic-bezier(.3, .7, .2, 1); }
+  #view-sessions[data-layout="list"] .side-col { overflow-x: hidden; transition: opacity .22s ease, visibility 0s; }
+  #view-sessions[data-layout="list"] .session-pane { transition: margin-right .3s cubic-bezier(.3, .7, .2, 1); }
+  #view-sessions[data-layout="list"] .side-col > * { width: 320px; flex-shrink: 0; }
+  :root[data-side="hidden"] #view-sessions[data-layout="list"] .split { grid-template-columns: 300px minmax(0, 1fr) 0px; }
+  :root[data-side="hidden"] #view-sessions[data-layout="list"] .side-col { opacity: 0; visibility: hidden; transition-delay: 0s, .3s; }
+  :root[data-side="hidden"] #view-sessions[data-layout="list"] .session-pane { margin-right: -14px; }
+  :root[data-side="hidden"] #view-sessions[data-layout="list"] .pane-limit { display: inline-flex; animation: pane-limit-in .3s ease both; }
+}
+@keyframes pane-limit-in { from { opacity: 0; transform: translateX(8px); } }
+@media (prefers-reduced-motion: reduce) {
+  #view-sessions[data-layout="list"] .split, #view-sessions[data-layout="list"] .side-col, #view-sessions[data-layout="list"] .session-pane { transition: none; }
+  :root[data-side="hidden"] #view-sessions[data-layout="list"] .pane-limit { animation: none; }
+}

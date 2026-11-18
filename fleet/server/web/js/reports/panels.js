@@ -2,17 +2,18 @@
 // projects and the messages sent from here.
 
 import { $ } from '../core/dom.js'
+import { morph } from '../core/morph.js'
 import { clock, duration, escapeHtml, fillLevel, formatCost, formatTokens, rangeHint, timeAgo } from '../core/format.js'
 import { state } from '../core/state.js'
 
 export function renderContextBars() {
   const sessions = (state.live?.sessions || []).slice().sort((first, second) => second.contextPercent - first.contextPercent)
-  $('#context-bars').innerHTML = sessions.map(session => `
+  morph($('#context-bars'), sessions.map(session => `
     <div class="bar-row" data-tip="${escapeHtml(session.name)}: ${formatTokens(session.contextTokens)} of ${formatTokens(session.contextWindow)} tokens">
       <span class="lbl">${escapeHtml(session.name)}</span>
       <div class="track"><b class="${fillLevel(session.contextPercent)}" style="width:${session.contextPercent}%"></b><s></s></div>
       <span class="v">${session.contextPercent}% · ${formatTokens(session.contextTokens)}</span>
-    </div>`).join('') || '<div class="empty">No live sessions</div>'
+    </div>`).join('') || '<div class="empty">No live sessions</div>')
 }
 
 export function renderTimeline() {
@@ -29,7 +30,7 @@ export function renderTimeline() {
   const first = new Date(start); first.setMinutes(0, 0, 0)
   for (let tick = first.getTime() + 3600e3; tick < now - 1800e3; tick += 3 * 3600e3) ticks.push(tick)
   const grid = ticks.map(tick => `<i style="left:${positionOf(tick)}%"></i>`).join('') + `<i class="now" style="left:100%"></i>`
-  $('#timeline').innerHTML = `
+  morph($('#timeline'), `
     <div class="tl-grid">${grid}</div>
     ${rows.map(row => `
       <div class="tl-row">
@@ -40,28 +41,28 @@ export function renderTimeline() {
         </div>
         <span class="waited" title="Waited for you today">${row.waitedTodayMs ? duration(row.waitedTodayMs) : ''}</span>
       </div>`).join('') || '<div class="empty">No activity in the last 24 hours</div>'}
-    <div class="tl-axis"><span></span><div class="tl-ticks">${ticks.map(tick => `<span style="left:${positionOf(tick)}%">${new Date(tick).toLocaleTimeString([], { hour: 'numeric' })}</span>`).join('')}</div><span class="waited">waited today</span></div>`
+    <div class="tl-axis"><span></span><div class="tl-ticks">${ticks.map(tick => `<span style="left:${positionOf(tick)}%">${new Date(tick).toLocaleTimeString([], { hour: 'numeric' })}</span>`).join('')}</div><span class="waited">waited today</span></div>`)
   $('#timeline-note').textContent = `Working time comes from the transcripts. “Waiting for you” is recorded by the dashboard server, so it starts ${new Date(report.statusLogSince).toLocaleString()}.`
 }
 
 export function renderProjects() {
   const report = state.report
   if (!report) return
-  $('#project-rows').innerHTML = report.projects.map(project => `
+  morph($('#project-rows'), report.projects.map(project => `
     <tr>
       <td><div class="name">${escapeHtml(project.project)}</div><div class="where"><code>${escapeHtml(project.cwd)}</code></div></td>
       <td class="num">${project.sessions}</td><td class="num">${project.prompts}</td><td class="num">${formatTokens(project.tokens)}</td>
       <td class="num">${formatCost(project.cost)}</td><td class="num">${project.commits}</td><td class="num">${project.files}</td>
       <td class="hide-sm"><div class="tags">${project.branches.slice(0, 2).map(branch => `<span class="tag">${escapeHtml(branch)}</span>`).join('')}${project.branches.length > 2 ? `<span class="tag">+${project.branches.length - 2}</span>` : ''}</div></td>
       <td class="hide-sm"><div class="tags">${project.topTools.slice(0, 3).map(usage => `<span class="tag">${escapeHtml(usage.tool)} ${usage.count}</span>`).join('')}</div></td>
-    </tr>`).join('') || '<tr><td colspan="9" class="empty">No activity in this range</td></tr>'
+    </tr>`).join('') || '<tr><td colspan="9" class="empty">No activity in this range</td></tr>')
   document.querySelectorAll('[data-range-hint]').forEach(hint => { hint.textContent = rangeHint(state.range) })
 }
 
 export function renderFeed() {
   const list = (state.live?.deliveries || []).slice().reverse()
-  $('#feed').innerHTML = list.map(delivery => `
+  morph($('#feed'), list.map(delivery => `
     <div><span>${delivery.isDelivered ? '✓' : '✕'}</span>
       <span class="msg"><b>${escapeHtml(delivery.name)}</b> · ${escapeHtml(delivery.via)} · “<span class="mine">${escapeHtml(delivery.text)}</span>”${delivery.reason ? ' — ' + escapeHtml(delivery.reason) : ''}</span>
-      <span class="t">${timeAgo(delivery.at)} ago</span></div>`).join('') || '<div class="empty" style="display:block">Nothing sent yet. Open a session in the list and message it from there.</div>'
+      <span class="t">${timeAgo(delivery.at)} ago</span></div>`).join('') || '<div class="empty" style="display:block">Nothing sent yet. Open a session in the list and message it from there.</div>')
 }

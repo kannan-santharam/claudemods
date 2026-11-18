@@ -3,6 +3,7 @@
 
 import { $ } from '../core/dom.js'
 import { state } from '../core/state.js'
+import { remember, remembered } from '../core/storage.js'
 import { office } from '../office/index.js'
 import { isListView } from './list-view.js'
 
@@ -33,6 +34,24 @@ export function fitSplit() {
   document.documentElement.style.setProperty('--split-top', Math.round(split.getBoundingClientRect().top + scrollY) + 'px')
 }
 
+// The header's panel button puts the List view's right column away, so the chat
+// takes its room; the choice is kept in this browser.
+function applySide(isHidden) {
+  if (isHidden) document.documentElement.dataset.side = 'hidden'
+  else delete document.documentElement.dataset.side
+  const button = $('#toggle-side')
+  button.setAttribute('aria-pressed', String(isHidden))
+  button.title = isHidden ? 'Show the right column' : 'Hide the right column'
+  button.setAttribute('aria-label', button.title)
+}
+
 export function initLayout() {
   addEventListener('resize', fitSplit)
+  applySide(remembered('fleet-hide-side') === '1')
+  $('#toggle-side').addEventListener('click', () => {
+    const isHidden = document.documentElement.dataset.side !== 'hidden'
+    remember('fleet-hide-side', isHidden ? '1' : '0')
+    applySide(isHidden)
+    drawOfficeMini()
+  })
 }

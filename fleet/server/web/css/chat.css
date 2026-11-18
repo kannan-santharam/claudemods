@@ -164,3 +164,7 @@
 .send-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
 .msg.outgoing.failed { margin-block: 4px; }
 :root[data-mine="hidden"] .delivery:hover .mine { filter: none; }
+
+/* Replies that arrived below while reading further up: a tag over the chat's foot that takes you there. It overlaps the chat rather than taking a row, so nothing moves when it shows. */
+.new-below { position: relative; z-index: 2; align-self: center; flex: none; height: 28px; margin: -38px 0 10px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--accent); color: #fff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+.new-below:hover { filter: brightness(1.08); }

@@ -1,6 +1,7 @@
 // The filter chips and search box both session views share.
 
 import { $ } from '../core/dom.js'
+import { morph } from '../core/morph.js'
 import { state } from '../core/state.js'
 
 // Which sessions the table lists: the segment picked above it and the search box.
@@ -22,12 +23,12 @@ export function renderFilters(sessions) {
     if (key === 'hidden' && !count) return ''
     return `<button type="button" data-filter="${key}" aria-pressed="${state.filter === key}">${label}<span>${count}</span></button>`
   }).join('')
-  if ($('#live-filters').innerHTML !== html) $('#live-filters').innerHTML = html
+  morph($('#live-filters'), html)
   // The List view's column has the same chips, compact: its group headings carry the counts.
   const compact = FILTERS.map(([key, label, test]) => {
     const count = sessions.filter(test).length
     if (key === 'hidden' && !count) return ''
     return `<button type="button" data-filter="${key}" aria-pressed="${state.filter === key}" title="${count} session${count === 1 ? '' : 's'}">${label}</button>`
   }).join('')
-  if ($('#nav-filters').innerHTML !== compact) $('#nav-filters').innerHTML = compact
+  morph($('#nav-filters'), compact)
 }
