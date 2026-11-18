@@ -32,6 +32,14 @@ export function replyOf(row) {
   return content.filter(block => block?.type === 'text' && block.text).map(block => block.text).join('\n').trim()
 }
 
+// The row Claude Code writes at the end of a transcript when its run is stopped:
+// "[Request interrupted by user]", or "... for tool use".
+function isInterruption(row) {
+  const content = row.message?.content
+  const text = typeof content === 'string' ? content : Array.isArray(content) ? content.filter(block => block?.type === 'text').map(block => block.text).join('') : ''
+  return text.trimStart().startsWith('[Request interrupted')
+}
+
 function newTranscript(filePath) {
   const relative = path.relative(PROJECTS_DIR, filePath).split(path.sep)
   // <project>/<session>.jsonl, or <project>/<session>/subagents/agent-*.jsonl
@@ -56,6 +64,7 @@ function newTranscript(filePath) {
     lastReplyAt: 0,
     lastTool: '',
     lastToolAt: 0,
+    isInterrupted: false, // a subagent's transcript ends with the row a stop writes
     firstPrompt: '',
     agentName: '',
     prompts: 0,
@@ -151,6 +160,8 @@ function ingestRow(transcript, row) {
   if (row.type === 'queue-operation' && typeof row.content === 'string' && !transcript.isSubagent) noteTaskNotifications(transcript, row.content, time)
   if (row.type === 'user' && message) {
     if (time) transcript.activeMinutes.add(Math.floor(time / 60000))
+    // A stopped subagent says so itself, as its last row; anything after means it was resumed.
+    if (transcript.isSubagent) transcript.isInterrupted = isInterruption(row)
     // A session's shells are in its own transcript, and a subagent's in its own file.
     if (!row.isSidechain || transcript.isSubagent) {
       if (row.toolUseResult?.backgroundTaskId) noteBackgroundShell(transcript, row, time)
@@ -166,6 +177,7 @@ function ingestRow(transcript, row) {
     return
   }
   if (row.type !== 'assistant' || !message) return
+  if (transcript.isSubagent) transcript.isInterrupted = false
   if (time) transcript.activeMinutes.add(Math.floor(time / 60000))
   if (!row.isSidechain && !transcript.isSubagent) {
     const reply = replyOf(row)

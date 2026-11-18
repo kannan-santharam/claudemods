@@ -98,7 +98,9 @@ function subagentsOf(sessionId, now, withFinished = false) {
     // this process started died with the old one, as a session's do.
     let waitingShells = 0
     if (meta.finished === true && transcript.lastTool !== 'SubagentHandback') for (const shell of transcript.shells?.values() || []) if (!shell.endedAt && shell.startedAt >= since && now - shell.startedAt < DAY_MS) waitingShells++
-    const isRunning = waitingShells > 0 || (meta.finished !== true && now - stat.mtimeMs < SUBAGENT_STALE_MS)
+    // A stopped subagent is never marked finished; its own transcript ends with
+    // the interruption, so it is not counted as running while it goes stale.
+    const isRunning = waitingShells > 0 || (meta.finished !== true && !transcript.isInterrupted && now - stat.mtimeMs < SUBAGENT_STALE_MS)
     // A subagent leaves the live view as soon as it finishes.
     if (!isRunning && !withFinished) continue
     found.push({
