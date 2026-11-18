@@ -156,9 +156,16 @@ function buildLiveView() {
       // Straight after a compaction the session still reports its last response's size.
       if (heartbeat.context?.tokens != null && !summary?.isContextFromCompaction) contextTokens = heartbeat.context.tokens
       if (heartbeat.context?.window) contextWindow = heartbeat.context.window
+      // Each session reports the limits as its own last response saw them, so an
+      // idle one holds an old reading. Usage only grows inside a window: the
+      // newest window wins, and in it the highest figure. A window that has
+      // already reset says nothing about now.
       for (const limit of heartbeat.rateLimits || []) {
+        const resetTime = Date.parse(limit.resetsAt) || 0
+        if (resetTime && resetTime <= now) continue
         const known = rateLimits.get(limit.kind)
-        if (!known || (heartbeat.at > known.at)) rateLimits.set(limit.kind, { ...limit, at: heartbeat.at })
+        const isNewer = !known || resetTime > known.resetTime || (resetTime === known.resetTime && (limit.percentUsed || 0) > (known.percentUsed || 0))
+        if (isNewer) rateLimits.set(limit.kind, { ...limit, at: heartbeat.at, resetTime })
       }
     }
     const topTools = Object.entries(summary?.tools || {})
@@ -224,7 +231,7 @@ function buildLiveView() {
   return {
     generatedAt: now,
     sessions,
-    rateLimits: [...rateLimits.values()],
+    rateLimits: [...rateLimits.values()].map(({ resetTime, ...limit }) => limit),
     deliveries: deliveries.slice(-20),
   }
 }
