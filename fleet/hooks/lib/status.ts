@@ -22,5 +22,7 @@ export async function heartbeat($: EngineInterface): Promise<void> {
     costUsd: usage.cost?.usd,
     turns,
     rateLimits: usage.rateLimits,
+    // This mod takes a stop from the dashboard (stop.ts).
+    canStop: true,
   })
 }

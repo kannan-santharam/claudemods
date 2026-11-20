@@ -39,10 +39,10 @@ export function messageBubble(message, key, from = 'You', tick = '') {
 
 // The newest page, laid over what is shown: turns from its first one on are
 // replaced, so a reply still being written grows in place.
-async function loadNewest(target) {
+async function loadNewest(target, seenAt = latestActivity(target)) {
   const conversation = conversationOf(target)
   conversation.isLoading = true
-  conversation.seenAt = latestActivity(target)
+  conversation.seenAt = seenAt
   try {
     const result = await api(`/api/conversation?${queryOf(conversation)}&limit=${PAGE_SIZE}`)
     if (!Array.isArray(result.messages)) throw new Error('No conversation')
@@ -52,8 +52,11 @@ async function loadNewest(target) {
     // holds, so what was shown no longer joins up with it.
     const lastShown = conversation.messages.at(-1)?.offset ?? -1
     const hasGap = kept.length && result.hasMore && firstOffset > lastShown
+    // Also the first page that holds anything: a session's first read can come
+    // before the server has found its transcript, and is then empty.
+    const isFirstPage = !conversation.isLoaded || !conversation.messages.length
     conversation.messages = hasGap ? result.messages : [...kept, ...result.messages]
-    if (!conversation.isLoaded || hasGap) Object.assign(conversation, { before: result.before, hasMore: result.hasMore })
+    if (isFirstPage || hasGap) Object.assign(conversation, { before: result.before, hasMore: result.hasMore })
     conversation.isLoaded = true
     conversation.hasFailed = false
   } catch {
@@ -61,7 +64,20 @@ async function loadNewest(target) {
   } finally {
     conversation.isLoading = false
   }
+  // The transcript changed again while this page was on its way.
   rerender()
+  if (conversation.isReloadWanted) {
+    conversation.isReloadWanted = false
+    loadNewest(conversation, conversation.seenAt)
+  }
+}
+// The server says the transcript has new lines (push.js): read the newest page
+// now, without waiting for the live view to notice.
+export function reloadConversation(key) {
+  const conversation = state.conversations[key]
+  if (!conversation?.isLoaded) return
+  if (conversation.isLoading) conversation.isReloadWanted = true
+  else loadNewest(conversation, conversation.seenAt)
 }
 
 // The page before the oldest one shown, keeping the reader's place.
@@ -119,6 +135,39 @@ export function workingStatus(session) {
   if (!activity?.text) return `<div class="msg claude"><span class="avatar" aria-hidden="true">C</span><div class="bubble typing" aria-label="Claude is working">${dots}</div></div>`
   const since = activity.at ? `<span class="since">${timeAgo(activity.at)}</span>` : ''
   return `<div class="live-status" role="status" aria-live="polite"><span class="spinner" data-steady style="${animationPhase(SPIN_MS)}" aria-hidden="true"></span><span class="what" data-steady style="${animationPhase(SHIMMER_MS)}">${escapeHtml(activity.text)}</span>${since}</div>`
+}
+
+// The reply a connected session is writing right now, as far as its mod has
+// reported it (push.js), as one more bubble at the end. It goes once the
+// transcript holds the text, which the conversation then shows as usual; once
+// anything newer has been said or sent (a reply that was stopped stays where it
+// was cut off, it does not trail the next prompt); or a while after the writing
+// stopped without either.
+const STREAM_LINGER_MS = 15000
+const STREAM_QUIET_MS = 60000
+const STREAM_MATCH_CHARS = 40
+// Pieces of a reply come a few times a second; this long without one, while
+// something newer is in the chat, and the writing has stopped.
+const STREAM_STEP_MS = 2500
+const squashed = text => text.replace(/\s+/g, '')
+export function streamingBubble(sessionId, messages) {
+  const stream = state.streams[sessionId]
+  const text = stream?.text?.trim()
+  if (!text) return ''
+  const age = Date.now() - stream.receivedAt
+  if (age > (stream.isDone ? STREAM_LINGER_MS : STREAM_QUIET_MS)) return ''
+  // Said or sent since its last piece: at once for a reply that has ended, and
+  // for one still being written only once no further piece has followed.
+  const isNewer = at => at > stream.receivedAt && (stream.isDone || age > STREAM_STEP_MS)
+  if (messages.some(message => isNewer(message.at || 0)) || (state.outbox[sessionId] || []).some(entry => isNewer(entry.at))) return ''
+  // In the transcript already: its end is there, or for a reply too long to be
+  // shown whole, its beginning. Only a reply from after this one began counts
+  // (the one before may have said the same), and a few words still being
+  // written prove nothing.
+  const written = squashed(text)
+  const shown = squashed(messages.findLast(message => message.from === 'claude' && (message.at || 0) >= stream.startedAt - 1000)?.text || '')
+  if ((stream.isDone || written.length >= STREAM_MATCH_CHARS) && (shown.includes(written.slice(-160)) || (written.length > 2000 && shown.includes(written.slice(0, 160))))) return ''
+  return `<div class="msg claude streaming" data-key="claude:stream"><span class="avatar" aria-hidden="true">C</span><div><div class="bubble md">${markdown(text)}</div><div class="stamp">Claude · ${stream.isDone ? 'just now' : 'writing…'}</div></div></div>`
 }
 
 // Replies that arrived below while you were reading further up. A conversation

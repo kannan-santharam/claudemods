@@ -12,6 +12,7 @@ import { fitSplit } from './layout.js'
 import { attentionCount, isListView, isStuckUnseen, renderNav, renderSide } from './list-view.js'
 import { reconcileOutbox } from './outbox.js'
 import { markRead, settleRead } from './conversation.js'
+import { watchConversation } from './push.js'
 import { renderPane } from './pane.js'
 import { shellRows, subagentRows } from './table.js'
 import { byName, sessionTree, statusPill } from './tree.js'
@@ -108,6 +109,7 @@ export function renderLive() {
   // With the chat's end in view, what has arrived since is read as it is drawn.
   if (paneScroll?.atEnd && pane.dataset.conversation) markRead(pane.dataset.conversation)
   if (!isSelectingInPane) renderPane(byId, belowOf)
+  watchConversation(pane.dataset.conversation || '')
   renderSide(byId)
   // Size the split before scrolling the chat, so it lands on the newest message.
   fitSplit()

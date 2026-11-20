@@ -47,6 +47,14 @@ async function post(entry) {
   for (const delay of [1200, 2500, 6000]) setTimeout(refresh, delay)
 }
 
+// Whether Stop is offered: a connected session that is working, or that was
+// sent a message from here a moment ago and may not show as working yet.
+const JUST_SENT_MS = 10000
+export function canStop(session) {
+  if (!session.hasMod) return false
+  // Once it has replied since, that message's turn is over.
+  return session.status === 'busy' || (state.outbox[session.sessionId] || []).some(entry => entry.status !== 'failed' && Date.now() - entry.at < JUST_SENT_MS && (session.lastReplyAt || 0) < entry.at)
+}
 export function sendToSession(sessionId, text) {
   const list = outboxOf(sessionId)
   const entry = { localId: 'out-' + nextLocalId++, sessionId, text, at: Date.now(), status: 'sending', reason: '', serverId: '' }

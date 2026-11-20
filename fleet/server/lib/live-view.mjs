@@ -139,6 +139,15 @@ export function liveView() {
   return liveCache.view
 }
 
+// When a limit's window resets, in milliseconds: an ISO time, or a number of
+// seconds or milliseconds; 0 when it does not say. Two sessions can report the
+// same window a moment apart.
+const SAME_WINDOW_MS = 60 * 1000
+function resetTimeOf(resetsAt) {
+  if (typeof resetsAt === 'number') return resetsAt < 1e12 ? resetsAt * 1000 : resetsAt
+  return Date.parse(resetsAt) || 0
+}
+
 function buildLiveView() {
   const now = Date.now()
   const today = dayKey(now)
@@ -159,12 +168,15 @@ function buildLiveView() {
       // Each session reports the limits as its own last response saw them, so an
       // idle one holds an old reading. Usage only grows inside a window: the
       // newest window wins, and in it the highest figure. A window that has
-      // already reset says nothing about now.
+      // already reset says nothing about now. Without a reset time there is no
+      // window to tell apart, and the newest report wins as it always did.
       for (const limit of heartbeat.rateLimits || []) {
-        const resetTime = Date.parse(limit.resetsAt) || 0
+        if (typeof limit.percentUsed !== 'number') continue
+        const resetTime = resetTimeOf(limit.resetsAt)
         if (resetTime && resetTime <= now) continue
         const known = rateLimits.get(limit.kind)
-        const isNewer = !known || resetTime > known.resetTime || (resetTime === known.resetTime && (limit.percentUsed || 0) > (known.percentUsed || 0))
+        const isSameWindow = known && Math.abs(resetTime - known.resetTime) < SAME_WINDOW_MS
+        const isNewer = !known || (!resetTime && !known.resetTime ? heartbeat.at > known.at : isSameWindow ? limit.percentUsed > known.percentUsed : resetTime > known.resetTime)
         if (isNewer) rateLimits.set(limit.kind, { ...limit, at: heartbeat.at, resetTime })
       }
     }

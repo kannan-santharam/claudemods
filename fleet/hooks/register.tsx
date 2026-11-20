@@ -13,6 +13,8 @@ import { REGISTRY_POLL_MS, scan } from './lib/scan'
 import { SERVER_CHECK_MS, ensureServer, isServerHealthy, serverState } from './lib/server'
 import { readIsOpen } from './lib/state'
 import { HEARTBEAT_MS, heartbeat } from './lib/status'
+import { watchTurnEnd, watchTurnStart } from './lib/stop'
+import { streamReply } from './lib/stream'
 
 // The engine reads matchers and the command's name off this file's source, so
 // both are spelled here rather than imported: the pane's id is lib/pane.tsx's PANE.
@@ -59,6 +61,12 @@ export const register: Register = on => {
     })
     return next(event)
   })
+
+  on('turn.start', watchTurnStart)
+
+  on('turn.step', streamReply)
+
+  on('turn.complete', watchTurnEnd)
 
   on('tool.check', askPermissionOnDashboard)
 

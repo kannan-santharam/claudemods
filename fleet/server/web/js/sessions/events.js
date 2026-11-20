@@ -7,7 +7,7 @@ import { remember } from '../core/storage.js'
 import { askToCompact } from '../dialogs/compact.js'
 import { askToEnd } from '../dialogs/end-session.js'
 import { askToSwitchModel } from '../dialogs/switch-model.js'
-import { attachHidden, focusTab, sendFromDraft, sessionCommand } from './actions.js'
+import { attachHidden, focusTab, sendFromDraft, sessionCommand, stopSession } from './actions.js'
 import { answerAsk, pickOption } from './asks.js'
 import { drawOfficeMini, placeTiles, wideQuery } from './layout.js'
 import { renderLive, selectSession } from './live.js'
@@ -39,6 +39,9 @@ export function initSessionEvents() {
     // dataset keys are camelCase; their attributes are kebab-case (applyModel → data-apply-model).
     const dataAttribute = name => target.closest(`[data-${name.replace(/[A-Z]/g, letter => '-' + letter.toLowerCase())}]`)?.dataset[name]
     const focusId = dataAttribute('focus'), sendId = dataAttribute('send'), selectId = dataAttribute('select')
+    const stopId = dataAttribute('stop')
+    // The button goes when the turn ends: focus returns to the message box, not to nowhere.
+    if (stopId) { $('#session-pane textarea')?.focus(); return stopSession(stopId) }
     const compactId = dataAttribute('compact')
     if (compactId) return askToCompact(compactId)
     const endId = dataAttribute('end')
@@ -132,6 +135,11 @@ export function initSessionEvents() {
       return event.target.click()
     }
     const id = event.target.dataset && event.target.dataset.draft
+    // Escape in the message box stops what the session is doing, as in its terminal.
+    if (id && event.key === 'Escape' && !event.repeat && !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey && !event.isComposing && !state.actionsMenu && $('#lost').hidden) {
+      event.preventDefault()
+      return stopSession(id)
+    }
     if (id && event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault()
       resetRecall(id)

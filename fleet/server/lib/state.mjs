@@ -38,6 +38,8 @@ export const transcriptIndexes = {
   mainFileIndex: { version: -1, bySession: new Map() },
 }
 export const liveCache = { at: 0, view: null }
+// The reply each connected session is writing right now: sessionId -> { id, text, isDone, startedAt, updatedAt }
+export const streams = new Map()
 
 export const asks = new Map() // id -> { id, sessionId, kind, toolName, toolInput, suggestions, questions, createdAt, answer }
 export const askWaiters = new Map() // id -> Set of resolve(answer)

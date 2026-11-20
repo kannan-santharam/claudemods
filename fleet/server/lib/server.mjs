@@ -45,7 +45,9 @@ export async function handleRequest(request, response) {
       return await getRoutes.get(url.pathname)({ request, response, url })
     }
     if (request.method !== 'POST') return send(response, 405, { error: 'method' })
-    const body = await readBody(request)
+    // A body that is not a JSON object is the caller's mistake, not the server's.
+    const body = await readBody(request).catch(() => null)
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return send(response, 400, { error: 'a JSON object is expected' })
 
     if (postRoutes.has(url.pathname)) return await postRoutes.get(url.pathname)({ request, response, url, body })
     return send(response, 404, { error: 'not found' })

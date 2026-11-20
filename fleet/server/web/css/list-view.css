@@ -41,14 +41,15 @@
 .nav-item.child { margin-left: 16px; }
 .nav-item.child::after { content: "↳"; position: absolute; left: -13px; top: 7px; font-size: 12px; color: var(--text-muted); }
 .nav-dot { width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--text-muted); }
-/* Working: a solid green dot that sends out a ring, so it never fades from view. */
-.nav-dot.busy { width: 10px; height: 10px; margin: 5px -1px 0; background: var(--good); animation: nav-ping 1.5s ease-out infinite; }
-@keyframes nav-ping { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--good) 65%, transparent); } to { box-shadow: 0 0 0 8px transparent; } }
+/* Working: a solid green dot that sends out a ring, so it never fades from view. Idle
+   while its subagents work: the same in blue, or red when one of them needs you. */
+.nav-dot.busy, .nav-dot.delegating { --dot: var(--good); width: 10px; height: 10px; margin: 5px -1px 0; background: var(--dot); animation: nav-ping 1.5s ease-out infinite; }
+@keyframes nav-ping { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--dot) 65%, transparent); } to { box-shadow: 0 0 0 8px transparent; } }
 .nav-dot.waiting { background: var(--critical); border-radius: 2px; transform: rotate(45deg); }
 .nav-dot.shell { background: var(--series-7); }
-.nav-dot.delegating { background: transparent; border: 2px solid var(--accent); animation: blink 1.6s infinite; }
-.nav-dot.delegating.needs { border-color: var(--critical); }
-@media (prefers-reduced-motion: reduce) { .nav-dot.busy, .nav-dot.delegating { animation: none; } .nav-dot.busy { box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 30%, transparent); } }
+.nav-dot.delegating { --dot: var(--accent); }
+.nav-dot.delegating.needs { --dot: var(--critical); }
+@media (prefers-reduced-motion: reduce) { .nav-dot.busy, .nav-dot.delegating { animation: none; } .nav-dot.busy, .nav-dot.delegating { box-shadow: 0 0 0 3px color-mix(in srgb, var(--dot) 30%, transparent); } }
 .nav-main { min-width: 0; display: grid; gap: 2px; }
 .nav-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .nav-name { font-weight: 600; font-size: 13.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

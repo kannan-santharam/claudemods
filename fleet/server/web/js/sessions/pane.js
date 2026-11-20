@@ -8,16 +8,16 @@ import { modelOptions } from '../core/models.js'
 import { fieldValue, state } from '../core/state.js'
 import { fiveHourHtml } from '../tiles.js'
 import { permissionCard, questionCard } from './ask-cards.js'
-import { conversationHtml, messageBubble, newBelowHtml, shownMessages, workingStatus } from './conversation.js'
+import { conversationHtml, messageBubble, newBelowHtml, shownMessages, streamingBubble, workingStatus } from './conversation.js'
 import { screenHtml } from './screen.js'
 import { stuckNoteHtml } from './stuck-note.js'
-import { matchOutbox, outgoingBubble } from './outbox.js'
+import { canStop, matchOutbox, outgoingBubble } from './outbox.js'
 import { subagentCount, subagentsHtml } from './subagents.js'
 import { lastDelivery, statusPill } from './tree.js'
 
 // The conversation as a chat, read from the transcript as it is scrolled; until
-// that arrives, the last exchange the live view carries. Then a typing bubble
-// while it works, and any question it is waiting on.
+// that arrives, the last exchange the live view carries. Then the reply being
+// written, a typing bubble while it works, and any question it is waiting on.
 function chatThread(session) {
   const lastMessages = []
   if (session.lastPrompt) lastMessages.push({ from: 'you', at: session.lastPromptAt, text: session.lastPrompt })
@@ -29,6 +29,7 @@ function chatThread(session) {
   const sent = matchOutbox(session.sessionId, shown.length ? shown : lastMessages)
   const bubbles = [conversationHtml(session, 'You', sent.tickOf) ?? lastMessages.map(message => messageBubble(message, session.sessionId, 'You', sent.tickOf(message))).join('')].filter(Boolean)
   for (const entry of sent.waiting) bubbles.push(outgoingBubble(entry))
+  bubbles.push(streamingBubble(session.sessionId, shown.length ? shown : lastMessages))
   if (session.status === 'busy') bubbles.push(workingStatus(session))
   const asks = session.asks || []
   for (const ask of asks) bubbles.push(`<div class="msg claude"><span class="avatar" aria-hidden="true">C</span><div class="ask-card">${ask.kind === 'question' ? questionCard(ask) : permissionCard(ask)}</div></div>`)
@@ -113,7 +114,8 @@ export function renderPane(byId, belowOf) {
       ${stuckNoteHtml(session)}
       <div class="composer chat">
         <textarea rows="2" data-draft="${id}" placeholder="Message ${escapeHtml(session.name)} — Enter to send, Shift+Enter for a new line, ↑ for your earlier messages">${escapeHtml(state.drafts[session.sessionId] || '')}</textarea>
-        <button class="btn primary" data-send="${id}" aria-label="Send">Send ➤</button>
+        ${canStop(session) ? `<button class="btn stop" data-key="stop" data-stop="${id}" title="Stop what it is doing, as Esc does in its terminal (Esc)">Stop</button>` : ''}
+        <button class="btn primary" data-key="send" data-send="${id}" aria-label="Send">Send ➤</button>
       </div>
       ${delivery && !isShownInChat(delivery) ? `<div class="delivery ${delivery.isDelivered ? 'good' : 'bad'}">${delivery.isDelivered ? '✓ Delivered' : '✕ Not delivered'} as a ${escapeHtml(delivery.via)} ${timeAgo(delivery.at)} ago${delivery.reason ? ' — ' + escapeHtml(delivery.reason) : ''}: “<span class="mine">${escapeHtml(delivery.text.slice(0, 90))}</span>”</div>` : ''}
       ${session.hasMod ? '' : session.hidden ? '<div class="delivery bad">Not connected: a hidden session takes messages only through the Fleet mod, which has not reported in from it.</div>' : '<div class="delivery">Not connected: messages and commands are typed into its tab once it is idle.</div>'}

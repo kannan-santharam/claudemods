@@ -17,6 +17,7 @@ import { initReportControls } from './reports/controls.js'
 import { focusTab, loadOptions } from './sessions/actions.js'
 import { initOutbox } from './sessions/outbox.js'
 import { initConversation } from './sessions/conversation.js'
+import { initPush } from './sessions/push.js'
 import { initSessionEvents } from './sessions/events.js'
 import { initKeyboard } from './sessions/keyboard.js'
 import { initSubagents } from './sessions/subagents.js'
@@ -34,7 +35,15 @@ initTheme()
 initPrivacy()
 initLayout()
 initSessionEvents()
-initConversation(renderLive)
+// Redraws asked for between refreshes (a page of the conversation arrived, a
+// reply is being written): a native select closes when redrawn, so they wait
+// while one has focus, as the refresh itself does.
+const redrawSessions = () => {
+  const active = document.activeElement
+  if (!(active && active.tagName === 'SELECT' && $('#view-sessions').contains(active))) renderLive()
+}
+initConversation(redrawSessions)
+initPush(redrawSessions)
 initOutbox(renderLive, refreshLive)
 initSubagents(renderLive)
 initKeyboard()

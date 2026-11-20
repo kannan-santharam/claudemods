@@ -37,7 +37,7 @@ export function replyOf(row) {
 function isInterruption(row) {
   const content = row.message?.content
   const text = typeof content === 'string' ? content : Array.isArray(content) ? content.filter(block => block?.type === 'text').map(block => block.text).join('') : ''
-  return text.trimStart().startsWith('[Request interrupted')
+  return /^\[Request interrupted by user[^\]]*\]$/.test(text.trim())
 }
 
 function newTranscript(filePath) {
@@ -366,13 +366,37 @@ export function mainTranscriptOf(sessionId) {
 // own transcript gets its new lines read now rather than at the next full scan
 // (every 15 seconds, which also finds new files). It shares the full scan's
 // lock, so no line is read twice.
+// One transcript's new lines, read now rather than on the next scan, for a
+// page that is watching it (push.mjs). False when a scan holds the files: the
+// caller asks again shortly.
+export async function readTranscriptNow(transcript) {
+  if (transcriptScan.isScanning) return false
+  transcriptScan.isScanning = true
+  try {
+    const { size } = await fsp.stat(transcript.filePath)
+    if (size > transcript.offset) {
+      await readNewLines(transcript, size)
+      transcript.size = size
+      liveCache.at = 0
+    }
+  } catch (error) {
+    log('watched read failed', transcript.filePath, error.message)
+  } finally {
+    transcriptScan.isScanning = false
+  }
+  return true
+}
+
 export async function readLiveTranscripts(sessionIds) {
   if (transcriptScan.isScanning) return
   transcriptScan.isScanning = true
   try {
     let hasNewLines = false
-    for (const sessionId of sessionIds) {
-      const transcript = mainTranscriptOf(sessionId)
+    // Their subagents' too: one that is stopped or done leaves the running count at once.
+    const wanted = new Set(sessionIds)
+    const reading = sessionIds.map(mainTranscriptOf)
+    for (const transcript of transcripts.values()) if (transcript.isSubagent && wanted.has(transcript.sessionId)) reading.push(transcript)
+    for (const transcript of reading) {
       if (!transcript) continue
       try {
         const { size } = await fsp.stat(transcript.filePath)
